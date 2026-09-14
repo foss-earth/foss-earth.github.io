@@ -2,7 +2,10 @@ export { loadInputModePreference, saveInputModePreference, loadInputSensitivityP
 export { isSafariGestureSupported } from "./safariGestures";
 export {
   createGlobeGamepadAdapter,
+  createStandardGlobeProfile,
   GLOBE_GAMEPAD_ACTIONS,
+  STANDARD_GLOBE_PROFILE_ID,
+  STANDARD_GLOBE_PROFILE_NAME,
   type GlobeGamepadAdapterOptions,
   type GlobeNavigationActionId,
   type GlobeNavigationIntent,

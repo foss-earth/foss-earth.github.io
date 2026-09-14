@@ -70,7 +70,9 @@ npm run ci
 ```
 
 The suite covers camera and geodetic math, terrain streaming, and jsdom smoke tests for app
-startup, URL key parsing, north-up reset behavior, layer lifecycle delegation, and cleanup.
+startup, URL key parsing, north-up reset behavior, layer lifecycle delegation, and cleanup. The
+built-in controller profile is tested against simulated gamepad input: stick, trigger and button
+directions, the deadzone, and capture suppression.
 `npm run test:watch` reruns on change.
 
 See [Manual QA checklist](manual-qa.md) for what to exercise by hand before a release.

@@ -28,9 +28,14 @@ own. There is nothing to download.
 | **Mouse** | Left drag | Right drag | Wheel |
 | **Trackpad** | Drag | Shift + swipe | Pinch |
 | **Touch** | One finger | Two fingers | Pinch |
+| **Controller** | Left stick | Right stick | Right trigger in, left trigger out |
 
 The **?** button in the bottom bar shows this in the app. The **N** button resets the view to
-north-up.
+north-up; on a controller, so does the top face button (Y on an Xbox layout).
+
+By default a controller uses the built-in **Standard controller** profile. Open
+**Controller bindings** to rebind any action, keep your own profiles, or import and export them as
+JSON.
 
 ## Documentation
 
