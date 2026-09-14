@@ -27,6 +27,8 @@ repository, so pushing to `main` does **not** republish the site — you have to
 ## Before the first deploy on a new machine
 
 - Node.js 22 or newer.
+- The built gamepad-tools checkout beside this one, as described in
+  [Development](development.md#running-locally). Both `npm ci` and the build need it.
 - `npm ci` at least once, so the `gh-pages` CLI is installed.
 - Push access to `origin`, with git credentials already working (the command pushes as you).
 

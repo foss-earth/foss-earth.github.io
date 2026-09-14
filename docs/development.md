@@ -8,16 +8,40 @@ and needs no setup.
 
 - Node.js 22 or newer
 - npm
+- A built checkout of [gamepad-tools](https://github.com/Felipegalind0/gamepad-tools) beside this
+  one (see below)
 - Optional: a Google Maps Tiles API key with the Maps Tiles API enabled
 
 ## Running locally
 
+FOSS Earth takes its controller and keyboard bindings from gamepad-tools, linked from a sibling
+folder: `package.json` depends on `file:../Felipegalind0/gamepad-tools`. A fresh clone of this
+repository alone fails `npm ci`. Clone both into the same parent folder:
+
+```text
+<parent>/
+├── foss-earth/              this repository
+└── Felipegalind0/
+    └── gamepad-tools/
+```
+
+gamepad-tools does not commit its compiled output. Its package exports point at `dist/`, which is
+gitignored, so build it before installing here:
+
 ```sh
+git clone https://github.com/Felipegalind0/gamepad-tools.git Felipegalind0/gamepad-tools
+(cd Felipegalind0/gamepad-tools && npm install && npm run build)
+git clone https://github.com/foss-earth/foss-earth.github.io.git foss-earth
+cd foss-earth
 npm ci
 npm run dev
 ```
 
 Open the Vite URL printed by the dev server.
+
+npm links the sibling folder instead of copying it, so FOSS Earth sees changes there without
+reinstalling. But its code is read from `dist/`, so run `npm run build` in gamepad-tools after
+changing its source. Its `styles.css` is the one export read straight from `src/`.
 
 ## Google Photorealistic 3D Tiles
 
