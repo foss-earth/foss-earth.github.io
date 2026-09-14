@@ -1,7 +1,7 @@
 # Development
 
 This page is for people who want to change the code. If you just want to use FOSS Earth, open
-[the live site](https://felipegalind0.github.io/foss-earth/) — it is the same build, always current,
+[the live site](https://foss-earth.github.io/) — it is the same build, always current,
 and needs no setup.
 
 ## Requirements

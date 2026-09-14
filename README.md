@@ -3,7 +3,7 @@
 A photorealistic 3D globe that runs in your browser. Fly anywhere on Earth over real terrain and
 real imagery — no install, no account, no sign-up.
 
-### **[→ Open FOSS Earth](https://felipegalind0.github.io/foss-earth/)**
+### **[→ Open FOSS Earth](https://foss-earth.github.io/)**
 
 That link is the app. It is free, it works on phones and desktops, and it stays up to date on its
 own. There is nothing to download.
