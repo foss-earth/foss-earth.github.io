@@ -32,6 +32,7 @@
   "dependencies": {
     "@babylonjs/core": "^8.21.1",
     "@babylonjs/loaders": "^8.21.1",
+    "@felipegalind0/gamepad-tools": "file:../Felipegalind0/gamepad-tools",
     "3d-tiles-renderer": "^0.4.24",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
