@@ -1,0 +1,1 @@
+import{mr as e}from"./viewer-BxZdTYyy.js";export{e as lightProxyPixelShaderWGSL};
