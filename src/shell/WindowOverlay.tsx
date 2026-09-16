@@ -36,6 +36,8 @@ export interface WindowOverlayProps<TabId extends string = never> {
   locationSearchProvider?: LocationSearchProvider;
   enableAirportPresets?: boolean;
   overlayApiRef?: { current: WindowOverlayHandle<TabId> | null };
+  /** Return `false` to keep the tab open. */
+  onBeforeCloseTab?: (tabId: "location" | TabId) => boolean | void;
 }
 
 export function WindowOverlay<TabId extends string = never>({
@@ -46,6 +48,7 @@ export function WindowOverlay<TabId extends string = never>({
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
   overlayApiRef,
+  onBeforeCloseTab,
 }: WindowOverlayProps<TabId>) {
   type OverlayTabId = "location" | TabId;
   const tabDefinitions: readonly WindowTabDefinition<OverlayTabId>[] = [
@@ -135,6 +138,7 @@ export function WindowOverlay<TabId extends string = never>({
         addMenuOpen={primaryAddOpen}
         onAddMenuOpenChange={(open) => { setPrimaryAddOpen(open); if (open) setSecondaryAddOpen(false); }}
         strings={{ openPanelTabAriaLabel: "Open left panel", openPanelTabTitle: "Open left panel" }}
+        onBeforeCloseTab={onBeforeCloseTab}
       />
       <WorkspaceDockSlot<OverlayTabId>
         side="right"
@@ -151,6 +155,7 @@ export function WindowOverlay<TabId extends string = never>({
         onAddMenuOpenChange={(open) => { setSecondaryAddOpen(open); if (open) setPrimaryAddOpen(false); }}
         visible
         strings={{ openPanelTabAriaLabel: "Open right panel", openPanelTabTitle: "Open right panel" }}
+        onBeforeCloseTab={onBeforeCloseTab}
       />
     </div>
   );

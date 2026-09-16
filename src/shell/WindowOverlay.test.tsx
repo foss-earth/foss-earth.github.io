@@ -114,3 +114,31 @@ it("opens or selects a tab on the left when both slots fit, and on the right whe
     expect(host.querySelector('[data-side="right"] .foss-earth-tab-button')?.textContent).toBe("Debug");
   } finally { await act(async () => root.unmount()); }
 });
+
+it("lets the host veto a tab close", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const allowClose = vi.fn(() => false);
+  const overlayApiRef: { current: WindowOverlayHandle<"debug"> | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    additionalTabs={[{ id: "debug", label: "Debug" }]}
+    renderAdditionalTab={() => <p>Debug panel</p>}
+    overlayApiRef={overlayApiRef}
+    onBeforeCloseTab={allowClose}
+  />));
+  try {
+    await act(async () => overlayApiRef.current!.openOrSelectTab("debug"));
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close Debug tab"]')!.click());
+    expect(allowClose).toHaveBeenCalledWith("debug");
+    expect(host.querySelector(".foss-earth-tab-button")?.textContent).toBe("Debug");
+    allowClose.mockReturnValueOnce(true);
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close Debug tab"]')!.click());
+    expect(host.querySelector(".foss-earth-tab-button")).toBeNull();
+  } finally { await act(async () => root.unmount()); }
+});

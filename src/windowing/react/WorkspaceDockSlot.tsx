@@ -85,6 +85,8 @@ export interface WorkspaceDockSlotProps<TabId extends string> {
   renderTabAddButtonContent?: ReactNode;
   renderTabCloseButtonContent?: (tabId: TabId) => ReactNode;
   dockPanelProps?: WorkspaceDockPanelOverrides;
+  /** Return `false` to keep the tab open. */
+  onBeforeCloseTab?: (tabId: TabId) => boolean | void;
 }
 
 function availableTabsFromWorkspace<TabId extends string>(
@@ -121,6 +123,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
     renderTabAddButtonContent,
     renderTabCloseButtonContent,
     dockPanelProps,
+    onBeforeCloseTab,
   } = props;
 
   if (!visible) return null;
@@ -146,6 +149,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
   };
 
   const handleCloseTab = (tabId: TabId) => {
+    if (onBeforeCloseTab?.(tabId) === false) return;
     onWorkspaceStateChange(closeTabInWorkspace(workspaceState, slotId, tabId));
   };
 
