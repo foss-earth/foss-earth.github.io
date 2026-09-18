@@ -1,5 +1,15 @@
 # Agent Instructions
 
+## Scratch files and working directories
+
+- Never write outside this repository. No `/tmp`, no `/private/tmp`, no
+  `/var/folders`, no harness-provided "scratchpad" directory. macOS empties
+  `/private/tmp` on every restart.
+- Scratch that must not be committed goes in the gitignored `build/` tree:
+  `build/benchmarks/<area>/` for benchmark output that is not a tracked
+  `results*.json`, and `build/tools/` for tools that are not dependencies, such
+  as Playwright in `build/tools/playwright/`.
+
 ## Testing and computer use
 
 - Prefer terminal commands, scripts, APIs, and headless browser automation for tests and benchmarks, including CPU/GPU comparisons.
