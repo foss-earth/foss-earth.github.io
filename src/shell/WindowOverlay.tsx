@@ -12,6 +12,9 @@ import {
 } from "../windowing";
 
 import { searchLocations } from "../search/locationSearch";
+import { GAME_LOG_BOUNDS_EVENT } from "../log/createGameLog";
+import { nextLeftDock, nextRightDock } from "../log/fitLogResize";
+import { setWorkspaceSlotCollapsed, setWorkspaceSlotSize } from "../windowing/core/workspaceState";
 
 const DEFAULT_LOCATION: GeodeticLocation = {
   latDeg: 44.977753,
@@ -57,6 +60,60 @@ export function WindowOverlay<TabId extends string = never>({
   ];
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const workspace = useWindowWorkspace<OverlayTabId>();
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+  const leftDockMemory = useRef<{ width: number; collapsed: boolean } | null>(null);
+  const rightDockMemory = useRef<{ width: number; collapsed: boolean } | null>(null);
+
+  useEffect(() => {
+    const onBounds = (event: Event) => {
+      const edge = (event as CustomEvent<{ left: number; right: number } | null>).detail;
+      const { state, setState } = workspaceRef.current;
+      const fits: Array<{ slot: "primary" | "secondary"; width: number; collapsed: boolean }> = [];
+      const remember = (
+        slot: "primary" | "secondary",
+        memory: { current: { width: number; collapsed: boolean } | null },
+        next: { width: number; collapsed: boolean; saved: { width: number; collapsed: boolean } | null },
+        currentWidth: number,
+        currentCollapsed: boolean,
+      ) => {
+        memory.current = next.saved;
+        if (next.width === currentWidth && next.collapsed === currentCollapsed) return;
+        fits.push({ slot, width: next.width, collapsed: next.collapsed });
+      };
+      const leftPanel = document.querySelector<HTMLElement>('.foss-earth-dock-panel[data-side="left"]');
+      if (leftPanel) {
+        const slot = state.primary;
+        remember("primary", leftDockMemory, nextLeftDock({
+          logLeft: edge?.left ?? null,
+          dockLeft: leftPanel.dataset.collapsed === "false" ? leftPanel.getBoundingClientRect().left : 12,
+          currentWidth: slot.width ?? 320,
+          currentCollapsed: slot.collapsed,
+          saved: leftDockMemory.current,
+        }), slot.width ?? 320, slot.collapsed);
+      }
+      const rightPanel = document.querySelector<HTMLElement>('.foss-earth-dock-panel[data-side="right"]');
+      const rightSlot = state.secondary;
+      remember("secondary", rightDockMemory, nextRightDock({
+        logRight: edge?.right ?? null,
+        dockRight: rightPanel && rightPanel.dataset.collapsed === "false"
+          ? rightPanel.getBoundingClientRect().right
+          : window.innerWidth - 12,
+        currentWidth: rightSlot.width ?? 320,
+        currentCollapsed: rightSlot.collapsed,
+        saved: rightDockMemory.current,
+      }), rightSlot.width ?? 320, rightSlot.collapsed);
+      if (fits.length === 0) return;
+      setState((current) => fits.reduce((next, fit) => {
+        const sized = setWorkspaceSlotSize(next, fit.slot, { width: fit.width });
+        return sized[fit.slot].collapsed === fit.collapsed
+          ? sized
+          : setWorkspaceSlotCollapsed(sized, fit.slot, fit.collapsed);
+      }, current));
+    };
+    window.addEventListener(GAME_LOG_BOUNDS_EVENT, onBounds);
+    return () => window.removeEventListener(GAME_LOG_BOUNDS_EVENT, onBounds);
+  }, []);
   const [primaryAddOpen, setPrimaryAddOpen] = useState(false);
   const [secondaryAddOpen, setSecondaryAddOpen] = useState(false);
   const [availableWidth, setAvailableWidth] = useState(0);
@@ -86,9 +143,20 @@ export function WindowOverlay<TabId extends string = never>({
   openTabContextRef.current = { primaryAvailable, tabDefinitions };
 
   useEffect(() => {
+    if (availableWidth <= 0) return;
+    document.documentElement.dataset.dockLayout = primaryAvailable ? "dual" : "single";
+  }, [availableWidth, primaryAvailable]);
+
+  useEffect(() => {
     if (availableWidth <= 0 || primaryAvailable || workspace.state.primary.tabs.length === 0) return;
     workspace.setState((current) => moveTabsBetweenWorkspaceSlots(current, "primary", "secondary"));
   }, [availableWidth, primaryAvailable, workspace]);
+
+  useEffect(() => {
+    return () => {
+      delete document.documentElement.dataset.dockLayout;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!overlayApiRef) return;

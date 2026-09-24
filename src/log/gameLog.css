@@ -1,0 +1,191 @@
+/*
+ * One window (narrower than WindowOverlay's two-slot threshold): the left
+ * edge, under the FPS chip. The attitude cluster owns the bottom-left.
+ * index.html repeats the placement rules so the first paint matches.
+ */
+.game-log {
+  --game-log-accent: #e8b647;
+  --game-log-max-width: min(380px, calc(100vw - 88px));
+  position: fixed;
+  z-index: 25;
+  top: calc(84px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+  display: flex;
+  /* Newest line first; older lines scroll below it. */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  /* As wide as the longest line, so the log covers as little as possible. */
+  width: max-content;
+  max-width: var(--game-log-max-width);
+  /*
+   * About four lines, which is 1/8 of a typical screen. A short landscape
+   * phone gets a quarter of its height, never less than two lines.
+   */
+  max-height: clamp(3.5rem, 25vh, 7rem);
+  max-height: clamp(3.5rem, 25dvh, 7rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* createGameLog keeps a history reader's place itself. */
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 241, 244, 0.35) transparent;
+  touch-action: pan-y;
+  pointer-events: none;
+  color: #ecf1f4;
+  font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/*
+ * Two windows: centred in the gap between the docks. WindowOverlay sets
+ * data-dock-layout="dual" from the same fit check that shows the left dock.
+ */
+html[data-dock-layout="dual"] .game-log {
+  --game-log-max-width: clamp(220px, calc(100vw - 688px), 560px);
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.game-log__lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: max-content;
+  max-width: 100%;
+  max-height: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(236, 241, 244, 0.35) transparent;
+  touch-action: pan-y;
+}
+
+.game-log__lines[data-scrollable], .game-log[data-open] .game-log__lines { pointer-events: auto; }
+.game-log__lines[data-scrollable] { scrollbar-gutter: stable; }
+.game-log[hidden], .game-log [hidden] { display: none !important; }
+
+/* History (☰ in the toolbar) shows every line, including faded ones. */
+.game-log[data-open] {
+  max-height: 50vh;
+  max-height: 50dvh;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(4, 7, 11, 0.45);
+}
+.game-log:not([data-open]) .game-log__lines > [data-fading] { opacity: 0; }
+.game-log:not([data-open]) .game-log__lines > [data-expired] { display: none; }
+
+.game-log__peek {
+  pointer-events: auto;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+/* Same bottom-right grip as the left dock: drag resizes, a click minimizes. */
+.game-log__resize {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 20px;
+  height: 20px;
+  color: rgba(148, 163, 184, 0.7);
+  cursor: nwse-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+.game-log__peek {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 9rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(4, 7, 11, 0.72);
+  font-size: 10px;
+  line-height: 1.2;
+}
+.game-log__peek-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.game-log[data-sized] {
+  max-width: none;
+  max-height: none;
+  padding: 4px 8px 22px 4px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(8, 15, 27, 0.94);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.3);
+}
+.game-log[data-sized] .game-log__lines {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  max-height: none;
+}
+.game-log[data-minimized] .game-log__lines,
+.game-log[data-minimized] .game-log__resize,
+.game-log:not([data-minimized]) .game-log__peek { display: none; }
+.game-log__peek[data-tone="warning"] .game-log__icon { color: var(--game-log-accent); }
+.game-log__peek[data-tone="error"] .game-log__icon { color: #ffd1c9; }
+.game-log__peek[data-tone="success"] .game-log__icon { color: #8bc5a8; }
+
+.game-log__line {
+  box-sizing: border-box;
+  display: grid;
+  flex: none;
+  grid-template-columns: 1.1em minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(4, 7, 11, 0.66);
+  text-shadow: 0 1px 1px #000;
+  transition: opacity 500ms ease;
+}
+.game-log__icon { color: #9aabb8; text-align: center; }
+.game-log__text { overflow-wrap: anywhere; white-space: pre-line; }
+.game-log__text a { color: var(--game-log-accent); pointer-events: auto; }
+.game-log__value { color: #9aabb8; font-variant-numeric: tabular-nums; }
+.game-log__actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.game-log__actions button {
+  pointer-events: auto;
+  border: 1px solid var(--game-log-accent);
+  border-radius: 5px;
+  padding: 4px 10px;
+  color: #101820;
+  background: var(--game-log-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.game-log__actions button[aria-pressed="false"] { color: var(--game-log-accent); background: transparent; }
+.game-log__actions button:disabled { opacity: 0.6; cursor: wait; }
+.game-log__actions button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.game-log__bar { grid-column: 2 / -1; height: 2px; margin-top: 4px; overflow: hidden; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.game-log__bar::before { content: ""; display: block; width: var(--game-log-progress, 0%); height: 100%; background: var(--game-log-accent); transition: width 180ms ease; }
+.game-log__bar:not([aria-valuenow])::before { width: 32%; animation: game-log-pulse 1.8s ease-in-out infinite alternate; }
+.game-log__line[data-tone="success"] .game-log__icon { color: #8bc5a8; }
+.game-log__line[data-tone="warning"] .game-log__icon { color: var(--game-log-accent); }
+.game-log__line[data-tone="error"] { background: rgba(58, 18, 16, 0.84); }
+.game-log__line[data-tone="error"] .game-log__icon, .game-log__line[data-tone="error"] .game-log__text { color: #ffd1c9; }
+@keyframes game-log-pulse { to { transform: translateX(210%); } }
+@media (prefers-reduced-motion: reduce) {
+  .game-log__line, .game-log__bar::before { transition: none; animation: none; }
+}
+
+/* Startup has actionable diagnostics, not a single opaque progress value. */
+.game-log[data-loading-details] {
+  max-height: min(65vh, 30rem);
+  max-height: min(65dvh, 30rem);
+}

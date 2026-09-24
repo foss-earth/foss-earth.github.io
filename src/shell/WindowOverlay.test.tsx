@@ -97,6 +97,7 @@ it("opens or selects a tab on the left when both slots fit, and on the right whe
     await act(async () => overlayApiRef.current!.openOrSelectTab("debug"));
     const left = host.querySelector<HTMLElement>('[data-side="left"]')!;
     expect(left.querySelector(".foss-earth-tab-button")?.textContent).toBe("Debug");
+    expect(document.documentElement.dataset.dockLayout).toBe("dual");
     expect(left.dataset.collapsed).toBe("false");
     await act(async () => left.querySelector<HTMLButtonElement>(".foss-earth-tab-button")!.click());
     expect(left.dataset.collapsed).toBe("true");
@@ -106,6 +107,7 @@ it("opens or selects a tab on the left when both slots fit, and on the right whe
     width = 700;
     await act(async () => window.dispatchEvent(new Event("resize")));
     expect(host.querySelector('[data-side="left"]')).toBeNull();
+    expect(document.documentElement.dataset.dockLayout).toBe("single");
     const right = host.querySelector<HTMLElement>('[data-side="right"]')!;
     expect(right.querySelector(".foss-earth-tab-button")?.textContent).toBe("Debug");
     await act(async () => right.querySelector<HTMLButtonElement>('[aria-label="Close Debug tab"]')!.click());

@@ -19,3 +19,13 @@ export { attachMapDownloadSpeed, setMapSourceLabel, type MapDownloadSource } fro
 export { searchLocations, nearbyAirports } from "../search/locationSearch";
 export { MapCachePanel } from "./MapCachePanel";
 export { inspectMapCache, clearMapCache, type MapCacheSnapshot, type MapCacheEntry } from "../terrain/mapCache";
+export {
+  createGameLog,
+  GAME_LOG_FADE_MS,
+  GAME_LOG_LINE_MS,
+  type GameLog,
+  type GameLogAction,
+  type GameLogEntry,
+  type GameLogLine,
+  type GameLogTone,
+} from "../log/createGameLog";

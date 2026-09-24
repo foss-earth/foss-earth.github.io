@@ -15,6 +15,9 @@ if (!rootElement) {
 trackViewportInsets();
 
 void createGlobeApp(rootElement).then((globeApp) => {
+  if (new URLSearchParams(window.location.search).get("bench") === "1") {
+    window.__fossEarthBench = globeApp;
+  }
   const overlayRoot = document.createElement("div");
   overlayRoot.className = "foss-earth-overlay-root";
   rootElement.querySelector(".globe-shell")?.append(overlayRoot);
