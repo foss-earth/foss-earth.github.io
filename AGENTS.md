@@ -25,6 +25,22 @@
   nothing floats in a screen corner.
 - Spec and reasons: [docs/ui-layout.md](docs/ui-layout.md).
 
+## Settings
+
+- The user decides how their machine's compute, memory and bandwidth are spent,
+  not the programmer. Anything that decides what is loaded, drawn, kept or
+  computed is a named parameter the user can see and change, with a real unit,
+  bounds, a default and the reason for it. Never hardcode such a value, and never
+  hide values behind an opaque choice such as Low, Medium and High.
+- Continuous quantities get continuous controls. A range is one track with two
+  thumbs, never two sliders.
+- Presets are for people who do not want to tune: JSON lists of parameter
+  values, shown in full, copied when applied, and marked Custom after any edit.
+  No code branches on a preset's name.
+- Automatic behaviour moves a value only inside a range the user sets, and shows
+  where the value is and why.
+- Spec: [Settings](docs/proposals/settings.md).
+
 ## Scratch files and working directories
 
 - Never write outside this repository. No `/tmp`, no `/private/tmp`, no
