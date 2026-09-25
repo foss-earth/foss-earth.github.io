@@ -8,6 +8,20 @@ export type {
   HudBarSlotItem,
 } from "./hudBar";
 export { createHudBar } from "./hudBar";
+export { createMapDetailSlider, describeDetailStatus, type MapDetailSliderHandle, type MapDetailSliderOptions } from "./mapDetailSlider";
+export {
+  createMapDetailController,
+  MAP_DETAIL_STORAGE_KEY,
+  type MapDetailActiveSource,
+  type MapDetailController,
+  type MapDetailControllerOptions,
+  type MapDetailDelivery,
+  type MapDetailRequirement,
+  type MapDetailSeedResult,
+  type MapDetailStorage,
+} from "./mapDetailController";
+export { createMapDetailPanel, type MapDetailPanelHandle } from "./mapDetailPanel";
+export { connectMapDetailRuntime, type MapDetailRuntime } from "./connectMapDetailRuntime";
 export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from "./WindowOverlay";
 export { trackViewportInsets, VIEWPORT_INSET_BOTTOM_PROPERTY, type ViewportInsetsHandle } from "./viewportInsets";
 export { createInputModeHud, type InputModeHudOptions, type InputModeHudHandle } from "../hud/inputModeHud";
