@@ -67,6 +67,8 @@ export interface WorkspaceDockSlotProps<TabId extends string> {
   slotId: WindowSlotId;
   workspaceState: WindowWorkspaceState<TabId>;
   onWorkspaceStateChange: (next: WindowWorkspaceState<TabId>) => void;
+  /** Lets a shell coordinate a width request with its other windows. */
+  onWidthChange?: (width: number) => void;
   tabDefinitions: readonly WindowTabDefinition<TabId>[];
   getTabLabel: (tabId: TabId) => string;
   renderTabContent: (tabId: TabId) => ReactNode;
@@ -105,6 +107,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
     slotId,
     workspaceState,
     onWorkspaceStateChange,
+    onWidthChange,
     tabDefinitions,
     getTabLabel,
     renderTabContent,
@@ -221,7 +224,8 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
       width={width}
       maxWidth={maxWidth}
       onWidthChange={(nextWidth) => {
-        onWorkspaceStateChange(setWorkspaceSlotSize(workspaceState, slotId, { width: nextWidth }));
+        if (onWidthChange) onWidthChange(nextWidth);
+        else onWorkspaceStateChange(setWorkspaceSlotSize(workspaceState, slotId, { width: nextWidth }));
       }}
       collapsed={slotState.collapsed}
       onCollapsedChange={(collapsed) => {

@@ -1,22 +1,27 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   LocationPanel,
-  canFitSecondarySlot,
-  moveTabsBetweenWorkspaceSlots,
   openOrSelectTabInWorkspace,
   WorkspaceDockSlot,
   useWindowWorkspace,
   type GeodeticLocation,
   type LocationSearchProvider,
   type WindowTabDefinition,
+  type WindowWorkspaceState,
+  type WindowSlotId,
 } from "../windowing";
 
 import { searchLocations } from "../search/locationSearch";
-import { GAME_LOG_BOUNDS_EVENT } from "../log/createGameLog";
-import { nextLeftDock, nextRightDock } from "../log/fitLogResize";
 import { AdoptedElement } from "./AdoptedElement";
 import { SectionsPanel, type PanelSection } from "./SectionsPanel";
-import { closeTabInWorkspace, setWorkspaceSlotCollapsed, setWorkspaceSlotSize, slotIdForOpenTab } from "../windowing/core/workspaceState";
+import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLog";
+import { resolveDockLayout, type DockLayoutMode, type DockResizePriority } from "./dockLayout";
+import { foldWorkspace, restoreWorkspace, forgetCompactWorkspaceTab, type CompactWorkspaceMemory } from "./compactWorkspace";
+import {
+  closeTabInWorkspace,
+  setWorkspaceSlotSize,
+  slotIdForOpenTab,
+} from "../windowing/core/workspaceState";
 
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "settings";
@@ -104,65 +109,40 @@ export function WindowOverlay<TabId extends string = never>({
   ];
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const workspace = useWindowWorkspace<OverlayTabId>();
-  const workspaceRef = useRef(workspace);
-  workspaceRef.current = workspace;
-  const leftDockMemory = useRef<{ width: number; collapsed: boolean } | null>(null);
-  const rightDockMemory = useRef<{ width: number; collapsed: boolean } | null>(null);
-
-  useEffect(() => {
-    const onBounds = (event: Event) => {
-      const edge = (event as CustomEvent<{ left: number; right: number } | null>).detail;
-      const { state, setState } = workspaceRef.current;
-      const fits: Array<{ slot: "primary" | "secondary"; width: number; collapsed: boolean }> = [];
-      const remember = (
-        slot: "primary" | "secondary",
-        memory: { current: { width: number; collapsed: boolean } | null },
-        next: { width: number; collapsed: boolean; saved: { width: number; collapsed: boolean } | null },
-        currentWidth: number,
-        currentCollapsed: boolean,
-      ) => {
-        memory.current = next.saved;
-        if (next.width === currentWidth && next.collapsed === currentCollapsed) return;
-        fits.push({ slot, width: next.width, collapsed: next.collapsed });
-      };
-      const leftPanel = document.querySelector<HTMLElement>('.foss-earth-dock-panel[data-side="left"]');
-      if (leftPanel) {
-        const slot = state.primary;
-        remember("primary", leftDockMemory, nextLeftDock({
-          logLeft: edge?.left ?? null,
-          dockLeft: leftPanel.dataset.collapsed === "false" ? leftPanel.getBoundingClientRect().left : 12,
-          currentWidth: slot.width ?? 320,
-          currentCollapsed: slot.collapsed,
-          saved: leftDockMemory.current,
-        }), slot.width ?? 320, slot.collapsed);
+  const compactMemory = useRef<CompactWorkspaceMemory<OverlayTabId> | null>(null);
+  const forgetClosedTabs = (next: WindowWorkspaceState<OverlayTabId>): void => {
+    if (!compactMemory.current) return;
+    for (const tabId of compactMemory.current.primary.tabs) {
+      if (!next.primary.tabs.includes(tabId) && !next.secondary.tabs.includes(tabId)) {
+        compactMemory.current = forgetCompactWorkspaceTab(compactMemory.current, tabId);
       }
-      const rightPanel = document.querySelector<HTMLElement>('.foss-earth-dock-panel[data-side="right"]');
-      const rightSlot = state.secondary;
-      remember("secondary", rightDockMemory, nextRightDock({
-        logRight: edge?.right ?? null,
-        dockRight: rightPanel && rightPanel.dataset.collapsed === "false"
-          ? rightPanel.getBoundingClientRect().right
-          : window.innerWidth - 12,
-        currentWidth: rightSlot.width ?? 320,
-        currentCollapsed: rightSlot.collapsed,
-        saved: rightDockMemory.current,
-      }), rightSlot.width ?? 320, rightSlot.collapsed);
-      if (fits.length === 0) return;
-      setState((current) => fits.reduce((next, fit) => {
-        const sized = setWorkspaceSlotSize(next, fit.slot, { width: fit.width });
-        return sized[fit.slot].collapsed === fit.collapsed
-          ? sized
-          : setWorkspaceSlotCollapsed(sized, fit.slot, fit.collapsed);
-      }, current));
+    }
+  };
+  const updateWorkspace = (next: WindowWorkspaceState<OverlayTabId>): void => {
+    forgetClosedTabs(next);
+    workspace.setState(next);
+  };
+  const [logWidth, setLogWidth] = useState<number | null>(() => {
+    const log = document.querySelector<HTMLElement>("#app-log[data-sized]");
+    return log ? Number.parseFloat(log.style.width) || null : null;
+  });
+  const [resizePriority, setResizePriority] = useState<DockResizePriority>(logWidth === null ? "windows" : "log");
+  const [layoutMode, setLayoutMode] = useState<DockLayoutMode>("single");
+
+  useLayoutEffect(() => {
+    const onSize = (event: Event) => {
+      const { width, resized } = (event as CustomEvent<GameLogSizeChange>).detail;
+      setLogWidth(width);
+      if (resized) setResizePriority("log");
     };
-    window.addEventListener(GAME_LOG_BOUNDS_EVENT, onBounds);
-    return () => window.removeEventListener(GAME_LOG_BOUNDS_EVENT, onBounds);
+    window.addEventListener(GAME_LOG_SIZE_EVENT, onSize);
+    return () => window.removeEventListener(GAME_LOG_SIZE_EVENT, onSize);
   }, []);
   const [primaryAddOpen, setPrimaryAddOpen] = useState(false);
   const [secondaryAddOpen, setSecondaryAddOpen] = useState(false);
   const [availableWidth, setAvailableWidth] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = overlayRef.current;
     if (!element) return;
     const update = () => setAvailableWidth(element.clientWidth);
@@ -176,28 +156,60 @@ export function WindowOverlay<TabId extends string = never>({
     };
   }, []);
 
-  const primaryAvailable = canFitSecondarySlot({
+  const layout = resolveDockLayout({
     availableWidth,
-    primaryMinWidth: Math.max(320, workspace.state.primary.width ?? 320),
-    secondaryMinWidth: Math.max(320, workspace.state.secondary.width ?? 320),
-    centerGap: 220,
-    edgeGap: 12,
+    primaryWidth: workspace.state.primary.width ?? 320,
+    secondaryWidth: workspace.state.secondary.width ?? 320,
+    logWidth,
+    priority: resizePriority,
+    previousMode: layoutMode,
   });
+  const primaryAvailable = layout.mode === "dual";
+  // Remember actual transitions so resizing a single right window cannot force
+  // a wide log into the center by shrinking it solely to create another window.
+  if (layoutMode !== layout.mode) setLayoutMode(layout.mode);
 
-  useEffect(() => {
+  const resizeWindow = (slotId: WindowSlotId, width: number): void => {
+    setResizePriority("windows");
+    workspace.setState((current) => {
+      // Start from what the user sees when switching from resizing the log.
+      // Otherwise an untouched dock can jump back to its old preferred width.
+      const other = slotId === "primary" ? "secondary" : "primary";
+      const baseline = resizePriority === "log"
+        ? setWorkspaceSlotSize(current, other, { width: other === "primary" ? layout.primaryWidth : layout.secondaryWidth })
+        : current;
+      return setWorkspaceSlotSize(baseline, slotId, { width });
+    });
+  };
+
+  // Publish the same allocation used by the slots before the browser paints.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.dockLayout = layout.mode;
+    root.style.setProperty("--foss-log-left", `${layout.logLeft}px`);
+    root.style.setProperty("--foss-log-center", `${layout.logCenter}px`);
+    root.style.setProperty("--foss-log-width", `${layout.logWidth}px`);
+  }, [layout.mode, layout.logLeft, layout.logCenter, layout.logWidth]);
+
+  useLayoutEffect(() => {
     if (availableWidth <= 0) return;
-    document.documentElement.dataset.dockLayout = primaryAvailable ? "dual" : "single";
-  }, [availableWidth, primaryAvailable]);
-
-  useEffect(() => {
-    if (availableWidth <= 0 || primaryAvailable || workspace.state.primary.tabs.length === 0) return;
-    workspace.setState((current) => moveTabsBetweenWorkspaceSlots(current, "primary", "secondary"));
+    if (!primaryAvailable && !compactMemory.current) {
+      const folded = foldWorkspace(workspace.state);
+      compactMemory.current = folded.memory;
+      workspace.setState(folded.state);
+    } else if (primaryAvailable && compactMemory.current) {
+      const memory = compactMemory.current;
+      compactMemory.current = null;
+      workspace.setState(restoreWorkspace(workspace.state, memory));
+    }
   }, [availableWidth, primaryAvailable, workspace]);
 
-  useEffect(() => {
-    return () => {
-      delete document.documentElement.dataset.dockLayout;
-    };
+  useLayoutEffect(() => () => {
+    const root = document.documentElement;
+    delete root.dataset.dockLayout;
+    root.style.removeProperty("--foss-log-left");
+    root.style.removeProperty("--foss-log-center");
+    root.style.removeProperty("--foss-log-width");
   }, []);
 
   // Refresh the imperative API with the committed workspace and layout each render.
@@ -222,7 +234,7 @@ export function WindowOverlay<TabId extends string = never>({
         }
         // Closing from a toolbar button asks first, as the tab's own close button does.
         if (onBeforeCloseTab?.(tabId) === false) return;
-        workspace.setState(closeTabInWorkspace(state, slotId, tabId));
+        updateWorkspace(closeTabInWorkspace(state, slotId, tabId));
       },
     };
     return () => {
@@ -254,13 +266,14 @@ export function WindowOverlay<TabId extends string = never>({
         slotId="primary"
         visible={primaryAvailable}
         workspaceState={workspace.state}
-        onWorkspaceStateChange={workspace.setState}
+        onWorkspaceStateChange={updateWorkspace}
+        onWidthChange={(width) => resizeWindow("primary", width)}
         tabDefinitions={tabDefinitions}
         getTabLabel={(tabId) => tabDefinitions.find((tab) => tab.id === tabId)?.label ?? tabId}
         renderTabContent={renderTabContent}
         restoreOnTabSelect
-        width={workspace.state.primary.width ?? 320}
-        maxWidth={420}
+        width={layout.primaryWidth}
+        maxWidth={layout.maxWindowWidth}
         addMenuOpen={primaryAddOpen}
         onAddMenuOpenChange={(open) => { setPrimaryAddOpen(open); if (open) setSecondaryAddOpen(false); }}
         strings={{ openPanelTabAriaLabel: "Open left panel", openPanelTabTitle: "Open left panel" }}
@@ -270,13 +283,14 @@ export function WindowOverlay<TabId extends string = never>({
         side="right"
         slotId="secondary"
         workspaceState={workspace.state}
-        onWorkspaceStateChange={workspace.setState}
+        onWorkspaceStateChange={updateWorkspace}
+        onWidthChange={(width) => resizeWindow("secondary", width)}
         tabDefinitions={tabDefinitions}
         getTabLabel={(tabId) => tabDefinitions.find((tab) => tab.id === tabId)?.label ?? tabId}
         renderTabContent={renderTabContent}
         restoreOnTabSelect
-        width={workspace.state.secondary.width ?? 320}
-        maxWidth={420}
+        width={layout.secondaryWidth}
+        maxWidth={layout.maxWindowWidth}
         addMenuOpen={secondaryAddOpen}
         onAddMenuOpenChange={(open) => { setSecondaryAddOpen(open); if (open) setPrimaryAddOpen(false); }}
         visible

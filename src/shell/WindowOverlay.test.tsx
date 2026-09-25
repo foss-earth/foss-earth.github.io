@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { WindowOverlay, type WindowOverlayHandle } from "./WindowOverlay";
+import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLog";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); });
 
@@ -68,12 +69,46 @@ it("owns responsive launchers, cross-side tab moves, minimize/restore, and Locat
     expect(apply).toHaveBeenLastCalledWith({ latDeg: 46, lonDeg: -92 });
     width = 1200;
     await act(async () => window.dispatchEvent(new Event("resize")));
-    expect(host.querySelector('[aria-label="Open left panel"]')).not.toBeNull();
+    expect(host.querySelector('[data-side="left"] .foss-earth-tab-button')?.textContent).toBe("Location");
     await click('[aria-label="Close Location tab"]');
     await click('[aria-label="Close Aircraft tab"]');
     expect(host.querySelector('[aria-label="Open right panel"]')).not.toBeNull();
   } finally { await act(async () => root.unmount()); }
   expect(disconnect).toHaveBeenCalledOnce();
+});
+
+it("folds tabs for a growing log and restores their homes without resurrecting closed tabs", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1280);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const api: { current: WindowOverlayHandle<"debug"> | null } = { current: null };
+  const logSize = async (width: number) => act(async () => {
+    window.dispatchEvent(new CustomEvent<GameLogSizeChange>(GAME_LOG_SIZE_EVENT, { detail: { width, resized: true } }));
+  });
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => null} setViewState={() => {}} overlayApiRef={api}
+    additionalTabs={[{ id: "debug", label: "Debug" }]} renderAdditionalTab={() => <p>Debug</p>}
+  />));
+  try {
+    await act(async () => api.current!.openOrSelectTab("debug"));
+    await logSize(960);
+    expect(document.documentElement.dataset.dockLayout).toBe("single");
+    expect(host.querySelector('[data-side="left"]')).toBeNull();
+    expect(host.querySelector('[data-side="right"] .foss-earth-tab-button')?.textContent).toBe("Debug");
+    await logSize(860);
+    expect(document.documentElement.dataset.dockLayout).toBe("dual");
+    expect(document.documentElement.style.getPropertyValue("--foss-log-center")).toBe("640px");
+    expect(host.querySelector('[data-side="left"] .foss-earth-tab-button')?.textContent).toBe("Debug");
+    await logSize(960);
+    await act(async () => api.current!.toggleTab("debug"));
+    await act(async () => api.current!.openOrSelectTab("debug"));
+    await logSize(860);
+    expect(host.querySelector('[aria-label="Open left panel"]')).not.toBeNull();
+    expect(host.querySelector('[data-side="right"] .foss-earth-tab-button')?.textContent).toBe("Debug");
+  } finally { await act(async () => root.unmount()); }
 });
 
 it("opens or selects a tab on the left when both slots fit, and on the right when they do not", async () => {

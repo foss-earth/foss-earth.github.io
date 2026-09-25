@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createGameLog, GAME_LOG_FADE_MS, GAME_LOG_LINE_MS, type GameLog } from "./createGameLog";
+import { createGameLog, GAME_LOG_FADE_MS, GAME_LOG_LINE_MS, GAME_LOG_SIZE_EVENT, type GameLog, type GameLogSizeChange } from "./createGameLog";
 
 let log: GameLog;
 const rows = () => [...log.element.querySelectorAll<HTMLElement>(".game-log__line")];
@@ -15,6 +15,7 @@ afterEach(() => {
   log?.destroy();
   vi.useRealTimers();
   document.body.replaceChildren();
+  delete document.documentElement.dataset.dockLayout;
 });
 
 describe("game log", () => {
@@ -156,6 +157,60 @@ describe("game log", () => {
     expect(log.isMinimized()).toBe(false);
     expect(log.element.style.width).toBe("380px");
     expect(log.element.style.height).toBe("200px");
-    expect(log.element.style.left).toBe("320px");
+    // A saved size must never pin the log on the left after the layout changes.
+    expect(log.element.style.left).toBe("");
+    expect(log.element.style.top).toBe("");
+    expect(log.element.style.transform).toBe("");
+  });
+
+  it("releases and restores its preferred width on minimize, reopen, and destroy", () => {
+    const widths: Array<number | null> = [];
+    const onSize = (event: Event) => widths.push((event as CustomEvent<GameLogSizeChange>).detail.width);
+    window.addEventListener(GAME_LOG_SIZE_EVENT, onSize);
+    try {
+      log = createGameLog();
+      log.print({ text: "Terrain loading", tone: "progress" });
+      log.element.getBoundingClientRect = () => ({ left: 400, top: 12, width: 220, height: 140, right: 620, bottom: 152, x: 400, y: 12, toJSON() {} });
+      const grip = log.element.querySelector<HTMLElement>(".game-log__resize")!;
+      grip.dispatchEvent(new PointerEvent("pointerdown", { button: 0, clientX: 620, clientY: 152, pointerId: 1 }));
+      grip.dispatchEvent(new PointerEvent("pointermove", { button: 0, clientX: 700, clientY: 212, pointerId: 1 }));
+      grip.dispatchEvent(new PointerEvent("pointerup", { button: 0, clientX: 700, clientY: 212, pointerId: 1 }));
+      expect(widths.at(-1)).toBe(380);
+      log.minimize();
+      expect(widths.at(-1)).toBeNull();
+      log.setOpen(true);
+      expect(widths.at(-1)).toBe(380);
+      log.minimize();
+      log.print({ text: "Terrain ready" });
+      expect(widths.at(-1)).toBe(380);
+      log.destroy();
+      expect(widths.at(-1)).toBeNull();
+    } finally {
+      window.removeEventListener(GAME_LOG_SIZE_EVENT, onSize);
+    }
+  });
+
+  it("keeps one resize scale across a mode change and distinguishes messages from manual resizing", () => {
+    const changes: GameLogSizeChange[] = [];
+    const onSize = (event: Event) => changes.push((event as CustomEvent<GameLogSizeChange>).detail);
+    window.addEventListener(GAME_LOG_SIZE_EVENT, onSize);
+    try {
+      log = createGameLog();
+      log.print({ text: "Loading", tone: "progress" });
+      document.documentElement.dataset.dockLayout = "dual";
+      log.element.getBoundingClientRect = () => ({ left: 360, top: 12, width: 560, height: 140, right: 920, bottom: 152, x: 360, y: 12, toJSON() {} });
+      const grip = log.element.querySelector<HTMLElement>(".game-log__resize")!;
+      grip.dispatchEvent(new PointerEvent("pointerdown", { button: 0, clientX: 920, clientY: 152, pointerId: 1 }));
+      grip.dispatchEvent(new PointerEvent("pointermove", { button: 0, clientX: 1120, clientY: 152, pointerId: 1 }));
+      expect(changes.at(-1)).toEqual({ width: 960, resized: true });
+      document.documentElement.dataset.dockLayout = "single";
+      grip.dispatchEvent(new PointerEvent("pointermove", { button: 0, clientX: 1070, clientY: 152, pointerId: 1 }));
+      expect(changes.at(-1)).toEqual({ width: 860, resized: true });
+      grip.dispatchEvent(new PointerEvent("pointerup", { button: 0, clientX: 1070, clientY: 152, pointerId: 1 }));
+      log.print({ text: "Another update" });
+      expect(changes.at(-1)).toEqual({ width: 860, resized: false });
+    } finally {
+      window.removeEventListener(GAME_LOG_SIZE_EVENT, onSize);
+    }
   });
 });

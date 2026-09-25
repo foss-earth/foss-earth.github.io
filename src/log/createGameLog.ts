@@ -41,8 +41,16 @@ export interface GameLog {
 /** How long a finished line stays on screen after its last change. */
 export const GAME_LOG_LINE_MS = 8000;
 export const GAME_LOG_FADE_MS = 500;
-/** The log's right edge, or null when it no longer claims space from the right dock. */
-export const GAME_LOG_BOUNDS_EVENT = "foss-earth-game-log-bounds";
+/** Preferred log width, or null when the shell can use its natural width. */
+export const GAME_LOG_SIZE_EVENT = "foss-earth-game-log-size";
+export interface GameLogSizeChange {
+  width: number | null;
+  /** Ordinary log messages and restore calls must not steal resize priority. */
+  resized: boolean;
+}
+
+/** Resizing remembers dimensions; the shell always owns placement. */
+interface LogSize { width: number; height: number }
 const MAX_LINES = 40;
 const PREVIEW_CHARS = 28;
 const RESIZE_CLICK_PX = 6;
@@ -101,44 +109,33 @@ export function createGameLog(): GameLog {
   let open = false;
   let minimized = false;
   let destroyed = false;
-  let sized: { left: number; top: number; width: number; height: number } | null = null;
+  let sized: LogSize | null = null;
   let drag: {
     startX: number; startY: number; startW: number; startH: number;
     originLeft: number; originTop: number; pointerId: number; moved: boolean;
-    previous: { left: number; top: number; width: number; height: number } | null;
+    previous: LogSize | null; centered: boolean;
   } | null = null;
   const timers = new Map<Element, ReturnType<typeof setTimeout>>();
 
-  const claimDocks = (edge: { left: number; right: number } | null): void => {
-    window.dispatchEvent(new CustomEvent(GAME_LOG_BOUNDS_EVENT, { detail: edge }));
+  const requestWidth = (width: number | null, resized = false): void => {
+    window.dispatchEvent(new CustomEvent<GameLogSizeChange>(GAME_LOG_SIZE_EVENT, { detail: { width, resized } }));
   };
 
-  const edgeLimit = (side: "left" | "right"): number => {
-    const open = document.querySelector(`.foss-earth-dock-panel[data-side="${side}"][data-collapsed="false"]`);
-    const plus = document.querySelector<HTMLElement>(`[aria-label="Open ${side} panel"], .foss-earth-dock-panel[data-side="${side}"][data-collapsed="true"] .foss-earth-tab-add`);
-    if (!open && plus) {
-      const rect = plus.getBoundingClientRect();
-      return side === "left" ? rect.left : rect.right;
-    }
-    return side === "left" ? LOG_DOCK_GAP : window.innerWidth - LOG_DOCK_GAP;
-  };
-
-  const applySize = (): void => {
+  const applySize = (resized = false): void => {
+    element.style.left = "";
+    element.style.top = "";
+    element.style.transform = "";
     if (!sized || minimized) {
-      element.style.left = "";
-      element.style.top = "";
       element.style.width = "";
       element.style.height = "";
-      element.style.transform = "";
       element.removeAttribute("data-sized");
+      requestWidth(null);
       return;
     }
-    element.style.left = `${sized.left}px`;
-    element.style.top = `${sized.top}px`;
     element.style.width = `${sized.width}px`;
     element.style.height = `${sized.height}px`;
-    element.style.transform = "none";
     element.setAttribute("data-sized", "");
+    requestWidth(sized.width, resized);
   };
 
   const syncScrollable = (): void => {
@@ -167,7 +164,6 @@ export function createGameLog(): GameLog {
       element.removeAttribute("data-open");
     }
     applySize();
-    if (!sized || minimized) claimDocks(null);
     syncPeek();
   };
 
@@ -310,6 +306,8 @@ export function createGameLog(): GameLog {
       pointerId: event.pointerId,
       moved: false,
       previous: sized,
+      // Keep the width request continuous if this drag changes the layout mode.
+      centered: document.documentElement.dataset.dockLayout !== "single",
     };
     resize.setPointerCapture?.(event.pointerId);
   });
@@ -322,8 +320,10 @@ export function createGameLog(): GameLog {
       origin: { left: drag.originLeft, top: drag.originTop, width: drag.startW, height: drag.startH },
       dx: event.clientX - drag.startX,
       dy: event.clientY - drag.startY,
-      minLeft: edgeLimit("left"),
-      maxRight: edgeLimit("right"),
+      // Request dimensions only. The shell fits both docks and the log together.
+      centered: drag.centered,
+      minLeft: -Infinity,
+      maxRight: Infinity,
       minWidth: MIN_WIDTH,
       minHeight: MIN_HEIGHT,
       maxHeight: Math.max(MIN_HEIGHT, window.innerHeight - drag.originTop - LOG_DOCK_GAP),
@@ -333,9 +333,8 @@ export function createGameLog(): GameLog {
       setMinimized(true);
       return;
     }
-    sized = next;
-    applySize();
-    claimDocks({ left: next.left, right: next.left + next.width });
+    sized = { width: next.width, height: next.height };
+    applySize(true);
   });
   resize.addEventListener("pointerup", (event) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
@@ -376,6 +375,7 @@ export function createGameLog(): GameLog {
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
       element.remove();
+      requestWidth(null);
     },
   };
 }

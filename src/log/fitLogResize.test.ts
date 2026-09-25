@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fitLogResize, nextLeftDock, nextRightDock } from "./fitLogResize";
+import { fitLogResize } from "./fitLogResize";
 
 const origin = { left: 400, top: 40, width: 200, height: 140 };
 
@@ -12,37 +12,20 @@ describe("log resize", () => {
     expect(box).toEqual({ left: 360, top: 40, width: 280, height: 160 });
   });
 
-  it("stops at the right edge of the expand button and gives that space back when the log retreats", () => {
-    const pushed = nextRightDock({
-      logRight: 788, dockRight: 1000, currentWidth: 320, currentCollapsed: false, saved: null,
-    });
-    expect(pushed.collapsed).toBe(false);
-    expect(pushed.width).toBe(200);
-    expect(pushed.saved).toEqual({ width: 320, collapsed: false });
+  it("grows and shrinks a left-anchored log at the same rate as the pointer", () => {
+    const input = {
+      origin: { ...origin, left: 12 },
+      centered: false,
+      dy: 0,
+      minLeft: -Infinity,
+      maxRight: Infinity,
+      minWidth: 160,
+      minHeight: 128,
+      maxHeight: 800,
+    };
 
-    const minimized = nextRightDock({
-      logRight: 980, dockRight: 1000, currentWidth: 200, currentCollapsed: false, saved: pushed.saved,
-    });
-    expect(minimized.collapsed).toBe(true);
-
-    const restored = nextRightDock({
-      logRight: null, dockRight: 1000, currentWidth: 88, currentCollapsed: true, saved: minimized.saved,
-    });
-    expect(restored).toMatchObject({ width: 320, collapsed: false, saved: null });
-  });
-
-  it("shrinks the left dock the same way, then restores it", () => {
-    const pushed = nextLeftDock({
-      logLeft: 224, dockLeft: 12, currentWidth: 320, currentCollapsed: false, saved: null,
-    });
-    expect(pushed).toMatchObject({ width: 200, collapsed: false });
-    const minimized = nextLeftDock({
-      logLeft: 34, dockLeft: 12, currentWidth: 200, currentCollapsed: false, saved: pushed.saved,
-    });
-    expect(minimized.collapsed).toBe(true);
-    const restored = nextLeftDock({
-      logLeft: null, dockLeft: 12, currentWidth: 200, currentCollapsed: true, saved: minimized.saved,
-    });
-    expect(restored).toMatchObject({ width: 320, collapsed: false, saved: null });
+    expect(fitLogResize({ ...input, dx: 40 })).toEqual({ left: 12, top: 40, width: 240, height: 140 });
+    expect(fitLogResize({ ...input, dx: -40 })).toEqual({ left: 12, top: 40, width: 160, height: 140 });
+    expect(fitLogResize({ ...input, dx: -41 })).toBeNull();
   });
 });

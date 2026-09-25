@@ -1,15 +1,15 @@
 /*
- * One window (narrower than WindowOverlay's two-slot threshold): the left
- * edge, under the FPS chip. The attitude cluster owns the bottom-left.
- * index.html repeats the placement rules so the first paint matches.
+ * Before the shell mounts, use the left edge. Once mounted, WindowOverlay
+ * allocates the log and both docks together, including user-resized widths.
  */
 .game-log {
   --game-log-accent: #e8b647;
-  --game-log-max-width: min(380px, calc(100vw - 88px));
+  --game-log-max-width: var(--foss-log-width, min(380px, calc(100vw - 88px)));
   position: fixed;
   z-index: 25;
-  top: calc(84px + env(safe-area-inset-top, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: var(--foss-log-left, calc(12px + env(safe-area-inset-left, 0px)));
+  transform: none;
   box-sizing: border-box;
   display: flex;
   /* Newest line first; older lines scroll below it. */
@@ -39,13 +39,11 @@
 }
 
 /*
- * Two windows: centred in the gap between the docks. WindowOverlay sets
- * data-dock-layout="dual" from the same fit check that shows the left dock.
+ * Two windows: fixed to the viewport center, even with unequal dock widths.
+ * WindowOverlay allocates enough room on both sides of that center.
  */
 html[data-dock-layout="dual"] .game-log {
-  --game-log-max-width: clamp(220px, calc(100vw - 688px), 560px);
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  left: 50%;
+  left: var(--foss-log-center);
   transform: translateX(-50%);
 }
 
@@ -117,7 +115,6 @@ html[data-dock-layout="dual"] .game-log {
   white-space: nowrap;
 }
 .game-log[data-sized] {
-  max-width: none;
   max-height: none;
   padding: 4px 8px 22px 4px;
   border: 1px solid rgba(148, 163, 184, 0.28);

@@ -174,7 +174,7 @@ export function DockPanel(props: DockPanelProps) {
   };
 
   const expandedStyle: CSSProperties = collapsed
-    ? {}
+    ? { maxWidth: width }
     : {
         width,
         height: panelHeight,
