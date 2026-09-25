@@ -1,1 +1,0 @@
-import{Ur as e}from"./viewer-BxZdTYyy.js";export{e as _KTXTextureLoader};
