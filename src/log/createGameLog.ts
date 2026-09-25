@@ -105,7 +105,7 @@ export function createGameLog(): GameLog {
   let drag: {
     startX: number; startY: number; startW: number; startH: number;
     originLeft: number; originTop: number; pointerId: number; moved: boolean;
-    previous: typeof sized;
+    previous: { left: number; top: number; width: number; height: number } | null;
   } | null = null;
   const timers = new Map<Element, ReturnType<typeof setTimeout>>();
 
