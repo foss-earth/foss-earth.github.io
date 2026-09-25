@@ -50,6 +50,9 @@
   `build/benchmarks/<area>/` for benchmark output that is not a tracked
   `results*.json`, and `build/tools/` for tools that are not dependencies, such
   as Playwright in `build/tools/playwright/`.
+- `build/` is disposable: delete a run's output once its results are recorded.
+  What may stay, and why, is listed in
+  [0sfs's build scratch list](../0sfs/docs/build-scratch.md).
 
 ## Testing and computer use
 
@@ -57,6 +60,22 @@
 - Do not take over the user's cursor or use a visible Chrome/browser GUI when a terminal or headless route can perform the task.
 - Use GUI automation only when it is the only viable way to verify the required behavior; explain that necessity before using it.
 - For GPU benchmarks, verify that the terminal/headless runtime uses the real hardware GPU rather than a software fallback.
+
+## Checks
+
+- Check what a change touches, and run the full suite once, when the work is done.
+  After an edit: `npx tsc -b`, `npx vitest related --run <changed files>` (or
+  `npm run test:changed`) and `npm run lint`. For finished work: `npm run ci`, once.
+- `tsc -b` and `npm run lint` are incremental. Never pass `--force` or delete
+  `node_modules/.tmp` or `node_modules/.cache` to make them check everything again.
+- Documentation-only changes need no typecheck, tests or build.
+- Keep each run's output in a log under `build/` and read it again rather than
+  rerunning. To look into a failure, rerun that test file, not the suite.
+- To check a series of commits, run each commit's related tests and the full suite
+  on the last one only. A worktree gets its own `node_modules/.tmp`.
+- Cap repeated or background runs at half the cores (`--maxWorkers=50%`), and don't
+  run a suite while another session is running one.
+- Benchmarks and headless-browser GPU runs only when the task asks for them.
 
 ## Personal data
 
