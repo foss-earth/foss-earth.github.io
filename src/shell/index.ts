@@ -29,3 +29,17 @@ export {
   type GameLogLine,
   type GameLogTone,
 } from "../log/createGameLog";
+export {
+  canRequestFullscreen,
+  enterFullscreen,
+  exitFullscreen,
+  isFullscreen,
+  isStandaloneDisplay,
+  onFullscreenChange,
+  prefersHomeScreenInstall,
+  readFullscreenEveryVisit,
+  readFullscreenPromptDismissed,
+  toggleFullscreen,
+  writeFullscreenEveryVisit,
+  writeFullscreenPromptDismissed,
+} from "./fullscreen";
