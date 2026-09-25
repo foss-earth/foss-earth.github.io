@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveMapRuntimeConfig } from "./resolveMapRuntimeConfig";
+import { DEFAULT_RASTER_IMAGERY, resolveMapRuntimeConfig } from "./resolveMapRuntimeConfig";
 
 describe("resolveMapRuntimeConfig", () => {
   it("uses Google tiles when a key is present and no map source override exists", () => {
@@ -44,5 +44,12 @@ describe("resolveMapRuntimeConfig", () => {
     expect(config.rasterBaseMap.id).toBe("usgs-topo");
     expect(config.terrainSource.id).toBe("aws-terrarium");
     expect(config.rasterQuality).toBe("high");
+  });
+
+  it("draws 2D imagery from the projected atlas unless the URL rolls back to legacy", () => {
+    expect(DEFAULT_RASTER_IMAGERY).toBe("atlas");
+    expect(resolveMapRuntimeConfig({ searchParams: new URLSearchParams() }).rasterImagery).toBe("atlas");
+    expect(resolveMapRuntimeConfig({ searchParams: new URLSearchParams("rasterImagery=legacy") }).rasterImagery).toBe("legacy");
+    expect(resolveMapRuntimeConfig({ searchParams: new URLSearchParams("rasterImagery=other") }).rasterImagery).toBe("atlas");
   });
 });

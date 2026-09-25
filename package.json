@@ -15,6 +15,7 @@
     "./windowing.css": "./src/windowing/styles/windowing.css",
     "./layers": "./src/layers/types.ts",
     "./cameraMath": "./src/camera/cameraMath.ts",
+    "./mapDetailPolicy": "./src/terrain/mapDetailPolicy.ts",
     "./perf": "./src/perf/index.ts",
     "./smoothElevation": "./src/terrain/smoothElevation.ts",
     "./style.css": "./src/styles/globe.css"
