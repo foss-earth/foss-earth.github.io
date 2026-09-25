@@ -2,7 +2,7 @@ import "./styles/globe.css";
 import "./windowing/styles/windowing.css";
 import { createRoot } from "react-dom/client";
 import { createGlobeApp } from "./app/createGlobeApp";
-import { WindowOverlay } from "./shell/WindowOverlay";
+import { WindowOverlay, type WindowOverlayHandle } from "./shell/WindowOverlay";
 import { trackViewportInsets } from "./shell/viewportInsets";
 
 const rootElement = document.getElementById("root");
@@ -14,7 +14,10 @@ if (!rootElement) {
 // Lift the fixed HUD clear of any browser toolbar overlaying the page bottom.
 trackViewportInsets();
 
-void createGlobeApp(rootElement).then((globeApp) => {
+// Filled once the overlay mounts; the toolbar buttons read it when clicked.
+const overlayApi: { current: WindowOverlayHandle | null } = { current: null };
+
+void createGlobeApp(rootElement, { overlayApiRef: overlayApi }).then((globeApp) => {
   if (new URLSearchParams(window.location.search).get("bench") === "1") {
     window.__fossEarthBench = globeApp;
   }
@@ -25,6 +28,11 @@ void createGlobeApp(rootElement).then((globeApp) => {
     <WindowOverlay
       getViewState={globeApp.getViewState}
       setViewState={(location) => globeApp.setViewState(location)}
+      controlsSections={globeApp.controlsSections}
+      settingsSections={globeApp.settingsSections}
+      mapTab={globeApp.mapTab}
+      rendererTab={globeApp.rendererTab}
+      overlayApiRef={overlayApi}
     />,
   );
 }).catch((error: unknown) => {

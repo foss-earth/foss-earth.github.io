@@ -3,6 +3,8 @@ export interface HudBarButtonItem {
   id: string;
   title: string;
   ariaLabel: string;
+  /** For a readout that is also a button, such as the position that toggles Location. */
+  ariaLive?: "off" | "polite" | "assertive";
   appearance?: "circle" | "chip";
   className?: string;
   text?: string;
@@ -14,6 +16,10 @@ export interface HudBarMenuOption {
   label: string;
 }
 
+/**
+ * @deprecated A toolbar button toggles the tab that holds its settings; it
+ * never pops up a menu of its own. See docs/ui-layout.md.
+ */
 export interface HudBarMenuItem {
   kind: "menu";
   id: string;
@@ -59,6 +65,7 @@ function createButton(item: HudBarButtonItem): HTMLButtonElement {
   button.type = "button";
   button.title = item.title;
   button.setAttribute("aria-label", item.ariaLabel);
+  if (item.ariaLive) button.setAttribute("aria-live", item.ariaLive);
   applyClassNames(button, item.appearance === "chip" ? "hud-chip" : "hud-circle-button", item.className);
   if (item.content) {
     button.append(item.content());
@@ -109,6 +116,12 @@ function createSlot(item: HudBarSlotItem): HTMLElement {
   return slot;
 }
 
+/**
+ * Set on the root while a HUD bar is mounted: the bar's height, which grows as
+ * it wraps on a narrow screen. Hosts lift anything anchored above the bar by it.
+ */
+export const HUD_BAR_HEIGHT_PROPERTY = "--foss-hud-bar-height";
+
 export function createHudBar(container: HTMLElement, options: HudBarOptions): HudBarHandle {
   const element = document.createElement("div");
   const elementsById = new Map<string, HTMLElement>();
@@ -128,6 +141,13 @@ export function createHudBar(container: HTMLElement, options: HudBarOptions): Hu
   }
 
   container.replaceChildren(element);
+  const root = document.documentElement;
+  const publishHeight = (): void => {
+    root.style.setProperty(HUD_BAR_HEIGHT_PROPERTY, `${Math.ceil(element.getBoundingClientRect().height)}px`);
+  };
+  const heightObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publishHeight);
+  heightObserver?.observe(element);
+  publishHeight();
 
   return {
     element,
@@ -135,6 +155,8 @@ export function createHudBar(container: HTMLElement, options: HudBarOptions): Hu
       return (elementsById.get(id) as T | undefined) ?? null;
     },
     destroy(): void {
+      heightObserver?.disconnect();
+      root.style.removeProperty(HUD_BAR_HEIGHT_PROPERTY);
       element.remove();
     },
   };

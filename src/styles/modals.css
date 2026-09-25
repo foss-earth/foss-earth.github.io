@@ -103,7 +103,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* ─── Settings Modal Content ──────────────────────────────────────── */
+/* ─── Settings Content ──────────────────────────────────────── */
 .settings-line {
   margin: 0;
   font-size: 13px;
@@ -111,20 +111,12 @@
   line-height: 1.5;
 }
 
-.settings-renderer-line {
-  margin: 0;
-  font-family: "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 12px;
-  color: rgba(147, 197, 253, 0.85);
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-}
-
+/* A paragraph grid: items at their own width, wrapping like words. See docs/ui-layout.md. */
 .settings-metric-menu {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -132,7 +124,7 @@
 }
 
 .settings-section-title {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   margin: 0 0 2px;
   color: rgba(147, 197, 253, 0.88);
   font-size: 12px;
@@ -140,13 +132,38 @@
 }
 
 .settings-checkbox {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-width: 0;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
   color: rgba(239, 246, 255, 0.82);
   font-size: 12px;
   line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-checkbox:has(input:checked) {
+  border-color: var(--globe-accent, #60a5fa);
+}
+
+/* A slider needs the whole line, the way a heading does. */
+.settings-slider-row {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(239, 246, 255, 0.82);
+  font-size: 12px;
+}
+
+.settings-slider-row input {
+  width: 100%;
+  accent-color: var(--globe-accent);
   cursor: pointer;
 }
 
@@ -161,3 +178,39 @@
 .settings-checkbox span {
   min-width: 0;
 }
+/* Settings content now sits in a dock tab, which is white in the light theme. */
+.settings-section-content {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-section-content .settings-line {
+  margin: 0;
+}
+
+:root[data-theme="light"] .settings-metric-menu {
+  border-color: rgba(71, 85, 105, 0.2);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme="light"] .settings-section-title {
+  color: #1d4ed8;
+}
+
+:root[data-theme="light"] .settings-checkbox,
+:root[data-theme="light"] .settings-slider-row {
+  color: rgba(15, 23, 42, 0.86);
+}
+
+:root[data-theme="light"] .settings-checkbox {
+  border-color: rgba(71, 85, 105, 0.3);
+}
+
+:root[data-theme="light"] .settings-checkbox:has(input:checked) {
+  border-color: #1d4ed8;
+}
+
+:root[data-theme="light"] .settings-line {
+  color: rgba(15, 23, 42, 0.72);
+}
+

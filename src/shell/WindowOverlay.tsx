@@ -14,7 +14,16 @@ import {
 import { searchLocations } from "../search/locationSearch";
 import { GAME_LOG_BOUNDS_EVENT } from "../log/createGameLog";
 import { nextLeftDock, nextRightDock } from "../log/fitLogResize";
-import { setWorkspaceSlotCollapsed, setWorkspaceSlotSize } from "../windowing/core/workspaceState";
+import { AdoptedElement } from "./AdoptedElement";
+import { SectionsPanel, type PanelSection } from "./SectionsPanel";
+import { closeTabInWorkspace, setWorkspaceSlotCollapsed, setWorkspaceSlotSize, slotIdForOpenTab } from "../windowing/core/workspaceState";
+
+/** Tabs the overlay builds from a host's sections. */
+type SectionTabId = "controls" | "settings";
+/** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
+type ElementTabId = "map" | "renderer";
+/** Every tab the overlay can offer without the host defining it. */
+type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 
 const DEFAULT_LOCATION: GeodeticLocation = {
   latDeg: 44.977753,
@@ -27,7 +36,12 @@ function currentLocation(getViewState: () => GeodeticLocation | null): GeodeticL
 }
 
 export interface WindowOverlayHandle<TabId extends string = never> {
-  openOrSelectTab(tabId: "location" | TabId): void;
+  openOrSelectTab(tabId: BuiltInTabId | TabId): void;
+  /**
+   * What a toolbar button does: shows the tab, or closes it when it is already
+   * the one showing.
+   */
+  toggleTab(tabId: BuiltInTabId | TabId): void;
 }
 
 export interface WindowOverlayProps<TabId extends string = never> {
@@ -36,11 +50,22 @@ export interface WindowOverlayProps<TabId extends string = never> {
   /** Hosts supply tab contents; the shared overlay owns both window slots. */
   additionalTabs?: readonly WindowTabDefinition<TabId>[];
   renderAdditionalTab?: (tabId: TabId) => ReactNode;
+  /**
+   * Adds the shared Controls tab, built from these collapsible sections. A host
+   * that already supplies its own `controls` tab leaves this out.
+   */
+  controlsSections?: readonly PanelSection[];
+  /** Adds the shared Settings tab, the same way. */
+  settingsSections?: readonly PanelSection[];
+  /** Adds the shared Map tab showing this element, from `createMapSourcePanel`. */
+  mapTab?: HTMLElement;
+  /** Adds the shared Renderer tab showing this element, from `createRendererPanel`. */
+  rendererTab?: HTMLElement;
   locationSearchProvider?: LocationSearchProvider;
   enableAirportPresets?: boolean;
   overlayApiRef?: { current: WindowOverlayHandle<TabId> | null };
   /** Return `false` to keep the tab open. */
-  onBeforeCloseTab?: (tabId: "location" | TabId) => boolean | void;
+  onBeforeCloseTab?: (tabId: BuiltInTabId | TabId) => boolean | void;
 }
 
 export function WindowOverlay<TabId extends string = never>({
@@ -48,15 +73,34 @@ export function WindowOverlay<TabId extends string = never>({
   setViewState,
   additionalTabs = [],
   renderAdditionalTab,
+  controlsSections,
+  settingsSections,
+  mapTab,
+  rendererTab,
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
   overlayApiRef,
   onBeforeCloseTab,
 }: WindowOverlayProps<TabId>) {
-  type OverlayTabId = "location" | TabId;
+  type OverlayTabId = BuiltInTabId | TabId;
+  const sectionTabs: Partial<Record<SectionTabId, readonly PanelSection[]>> = {
+    ...(controlsSections ? { controls: controlsSections } : {}),
+    ...(settingsSections ? { settings: settingsSections } : {}),
+  };
+  const elementTabs: Partial<Record<ElementTabId, HTMLElement>> = {
+    ...(mapTab ? { map: mapTab } : {}),
+    ...(rendererTab ? { renderer: rendererTab } : {}),
+  };
+  const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", settings: "Settings" };
+  const elementTabLabels: Record<ElementTabId, string> = { map: "Map", renderer: "Renderer" };
+  const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
+  const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);
+  const builtInTabs: readonly string[] = ["location", ...builtInSectionTabs, ...builtInElementTabs];
   const tabDefinitions: readonly WindowTabDefinition<OverlayTabId>[] = [
     { id: "location", label: "Location" },
-    ...additionalTabs.filter((tab) => tab.id !== "location"),
+    ...builtInSectionTabs.map((id) => ({ id, label: sectionTabLabels[id] })),
+    ...additionalTabs.filter((tab) => !builtInTabs.includes(tab.id)),
+    ...builtInElementTabs.map((id) => ({ id, label: elementTabLabels[id] })),
   ];
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const workspace = useWindowWorkspace<OverlayTabId>();
@@ -139,8 +183,6 @@ export function WindowOverlay<TabId extends string = never>({
     centerGap: 220,
     edgeGap: 12,
   });
-  const openTabContextRef = useRef({ primaryAvailable, tabDefinitions });
-  openTabContextRef.current = { primaryAvailable, tabDefinitions };
 
   useEffect(() => {
     if (availableWidth <= 0) return;
@@ -158,25 +200,41 @@ export function WindowOverlay<TabId extends string = never>({
     };
   }, []);
 
+  // Refresh the imperative API with the committed workspace and layout each render.
   useLayoutEffect(() => {
     if (!overlayApiRef) return;
+    const openOrSelectTab = (tabId: OverlayTabId): void => {
+      workspace.setState((current) => openOrSelectTabInWorkspace(
+        current,
+        tabId,
+        primaryAvailable ? "primary" : "secondary",
+        tabDefinitions,
+      ));
+    };
     overlayApiRef.current = {
-      openOrSelectTab(tabId) {
-        const { primaryAvailable: canUseLeft, tabDefinitions: definitions } = openTabContextRef.current;
-        workspace.setState((current) => openOrSelectTabInWorkspace(
-          current,
-          tabId,
-          canUseLeft ? "primary" : "secondary",
-          definitions,
-        ));
+      openOrSelectTab,
+      toggleTab(tabId) {
+        const { state } = workspace;
+        const slotId = slotIdForOpenTab(state, tabId);
+        if (!slotId || state[slotId].activeTab !== tabId || state[slotId].collapsed) {
+          openOrSelectTab(tabId);
+          return;
+        }
+        // Closing from a toolbar button asks first, as the tab's own close button does.
+        if (onBeforeCloseTab?.(tabId) === false) return;
+        workspace.setState(closeTabInWorkspace(state, slotId, tabId));
       },
     };
     return () => {
       overlayApiRef.current = null;
     };
-  }, [overlayApiRef, workspace]);
+  });
 
   const renderTabContent = (tabId: OverlayTabId) => {
+    const sections = sectionTabs[tabId as SectionTabId];
+    if (sections) return <SectionsPanel sections={sections} />;
+    const element = elementTabs[tabId as ElementTabId];
+    if (element) return <AdoptedElement element={element} className="foss-earth-element-tab" />;
     if (tabId !== "location") return renderAdditionalTab?.(tabId as TabId) ?? null;
     return (
       <LocationPanel

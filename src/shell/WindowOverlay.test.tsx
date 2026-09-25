@@ -144,3 +144,87 @@ it("lets the host veto a tab close", async () => {
     expect(host.querySelector(".foss-earth-tab-button")).toBeNull();
   } finally { await act(async () => root.unmount()); }
 });
+
+it("toggles a tab for a toolbar button: shows it, then closes it once it is showing", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const allowClose = vi.fn((): boolean | void => undefined);
+  const overlayApiRef: { current: WindowOverlayHandle<"debug"> | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    additionalTabs={[{ id: "debug", label: "Debug" }]}
+    renderAdditionalTab={() => <p>Debug panel</p>}
+    overlayApiRef={overlayApiRef}
+    onBeforeCloseTab={allowClose}
+  />));
+  const toggle = async (tabId: "location" | "debug") => act(async () => overlayApiRef.current!.toggleTab(tabId));
+  const tabs = () => Array.from(host.querySelectorAll(".foss-earth-tab-button"), (button) => button.textContent);
+  const selected = () => host.querySelector(".foss-earth-tab-shell-selected .foss-earth-tab-button")?.textContent;
+  try {
+    await toggle("location");
+    expect(tabs()).toEqual(["Location"]);
+    await toggle("debug");
+    expect(tabs()).toEqual(["Location", "Debug"]);
+    expect(selected()).toBe("Debug");
+
+    // Open but behind another tab: the button brings it forward rather than closing it.
+    await toggle("location");
+    expect(tabs()).toEqual(["Location", "Debug"]);
+    expect(selected()).toBe("Location");
+    await toggle("location");
+    expect(tabs()).toEqual(["Debug"]);
+    expect(allowClose).toHaveBeenLastCalledWith("location");
+
+    // A collapsed panel is not showing its tab either, so the button restores it.
+    const left = host.querySelector<HTMLElement>('[data-side="left"]')!;
+    await act(async () => left.querySelector<HTMLButtonElement>(".foss-earth-tab-button")!.click());
+    expect(left.dataset.collapsed).toBe("true");
+    await toggle("debug");
+    expect(left.dataset.collapsed).toBe("false");
+    expect(tabs()).toEqual(["Debug"]);
+
+    allowClose.mockReturnValueOnce(false);
+    await toggle("debug");
+    expect(tabs()).toEqual(["Debug"]);
+    await toggle("debug");
+    expect(tabs()).toEqual([]);
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("adds Map and Renderer tabs showing the elements a host hands over", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const mapTab = document.createElement("div");
+  mapTab.textContent = "Basemaps";
+  const rendererTab = document.createElement("div");
+  rendererTab.textContent = "Renderers";
+  const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    mapTab={mapTab}
+    rendererTab={rendererTab}
+    overlayApiRef={overlayApiRef}
+  />));
+  try {
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Open right panel"]')!.click());
+    expect(Array.from(host.querySelectorAll('[role="menuitem"]'), (item) => item.textContent))
+      .toEqual(expect.arrayContaining(["Map", "Renderer"]));
+    await act(async () => overlayApiRef.current!.toggleTab("map"));
+    expect(host.contains(mapTab)).toBe(true);
+    await act(async () => overlayApiRef.current!.toggleTab("renderer"));
+    expect(host.contains(rendererTab)).toBe(true);
+    await act(async () => overlayApiRef.current!.toggleTab("renderer"));
+    expect(rendererTab.isConnected).toBe(false);
+    expect(host.contains(mapTab)).toBe(true);
+  } finally { await act(async () => root.unmount()); }
+});

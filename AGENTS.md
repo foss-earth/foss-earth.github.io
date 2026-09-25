@@ -1,5 +1,14 @@
 # Agent Instructions
 
+## UI
+
+- Lay out every set of controls as a paragraph grid: items at their own width,
+  wrapping like words, as the HUD bar does. Never fixed columns.
+- Every setting has one home, a section of a tab. A toolbar button toggles that
+  tab, showing it or closing it; nothing pops up a menu or a second copy, and
+  nothing floats in a screen corner.
+- Spec and reasons: [docs/ui-layout.md](docs/ui-layout.md).
+
 ## Scratch files and working directories
 
 - Never write outside this repository. No `/tmp`, no `/private/tmp`, no

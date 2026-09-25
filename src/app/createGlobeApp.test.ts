@@ -121,11 +121,16 @@ const viewState: GlobeViewState = {
   zoomMeters: 600,
 };
 
-async function createAppUnderTest() {
+/** Stands in for the WindowOverlay the host mounts, recording what the toolbar asks of it. */
+function fakeOverlay() {
+  return { current: { openOrSelectTab: vi.fn(), toggleTab: vi.fn() } };
+}
+
+async function createAppUnderTest(options: import("./createGlobeApp").GlobeAppOptions = {}) {
   const { createGlobeApp } = await import("./createGlobeApp");
   const root = document.createElement("div");
   document.body.append(root);
-  const app = await createGlobeApp(root);
+  const app = await createGlobeApp(root, options);
   return { app, root };
 }
 
@@ -186,6 +191,7 @@ beforeEach(() => {
         protocol: "arcgis-tile",
         urlTemplate: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
         attribution: "USGS The National Map",
+        attributionUrl: "https://www.usgs.gov/information-policies-and-instructions/acknowledging-or-crediting-usgs",
       },
       lastError: null,
     },
@@ -211,6 +217,14 @@ beforeEach(() => {
     onMapDownloadRateChange: vi.fn(() => vi.fn()),
     isStreamingTiles: vi.fn(() => false),
     onTilesStreamingChange: vi.fn(() => vi.fn()),
+    setMapSource: vi.fn(),
+    setTerrainSource: vi.fn(),
+    getGoogleTerrainDetailState: vi.fn(() => null),
+    setGoogleTerrainDetailTarget: vi.fn(),
+    setRasterDetailTarget: vi.fn(),
+    getRasterDetailFeedback: vi.fn(() => null),
+    onRasterDetailFeedback: vi.fn(() => vi.fn()),
+    subscribeStatus: vi.fn(() => vi.fn()),
     getGlobeAnchorRotation: vi.fn(() => true),
     setGlobeAnchorRotation: vi.fn(),
     destroy: mockState.runtimeDestroy,
@@ -225,7 +239,7 @@ describe("createGlobeApp smoke behavior", () => {
       expect.any(HTMLCanvasElement),
       expect.objectContaining({ googleApiKey: null }),
     );
-    expect(root.querySelector("#runtimeModePill .map-source-label")?.textContent).toBe("USGS Imagery Topo");
+    expect(root.querySelector(".map-source-hud .map-source-label")?.textContent).toBe("USGS Imagery Topo");
     expect(Array.from(root.querySelector(".hud-bar")?.children ?? []).slice(0, 3).map((el) => el.id)).toEqual([
       "northButton",
       "helpButton",
@@ -235,7 +249,7 @@ describe("createGlobeApp smoke behavior", () => {
     const inputModeControl = root.querySelector("#inputModeButton")?.closest(".input-mode-control");
     expect(inputModeControl).not.toBeNull();
     expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#themeButton") as Element) + 1);
-    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#rendererControl") as Element) - 1);
+    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#rendererModePill") as Element) - 1);
     expect(root.querySelector("#settingsBuildLine")?.textContent).toMatch(
       /^Build: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
     );
@@ -306,16 +320,76 @@ describe("createGlobeApp smoke behavior", () => {
     );
   });
 
-  it("opens the map source menu from the source chip", async () => {
+  it("toggles a tab from each toolbar button, and pops up no menu", async () => {
+    const overlay = fakeOverlay();
+    const { root } = await createAppUnderTest({ overlayApiRef: overlay });
+
+    for (const [button, tab] of [
+      ["#settingsButton", "settings"],
+      ["#inputModeButton", "controls"],
+      ["#hudStatus", "location"],
+      ["#rendererModePill", "renderer"],
+      [".map-source-hud__provider", "map"],
+    ]) {
+      root.querySelector<HTMLButtonElement>(button)!.click();
+      expect(overlay.current.toggleTab).toHaveBeenLastCalledWith(tab);
+    }
+    expect(overlay.current.toggleTab).toHaveBeenCalledTimes(5);
+    expect(root.querySelector("#hudStatus")).toBeInstanceOf(HTMLButtonElement);
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(root.querySelector("[aria-haspopup]")).toBeNull();
+  });
+
+  it("offers the basemap and elevation choice in a Map tab", async () => {
+    const { app } = await createAppUnderTest();
+    // A radio only reports a change while it is in the document, as it is once the tab is open.
+    document.body.append(app.mapTab);
+    const checked = (name: string) => app.mapTab.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
+
+    expect(checked("foss-earth-map-source")).toBe("usgs-imagery-topo");
+    expect(app.mapTab.querySelector<HTMLElement>('[aria-label="Elevation provider"]')!.hidden).toBe(false);
+    // Detail has its one home in the Map tab, beside the basemap choice.
+    expect(app.mapTab.querySelectorAll('[aria-label="Detail"]')).toHaveLength(1);
+
+    const google = app.mapTab.querySelector<HTMLInputElement>('input[value="google"]')!;
+    google.click();
+    expect(app.runtime.setMapSource).toHaveBeenCalledWith("google");
+    expect(new URL(window.location.href).searchParams.get("mapSource")).toBe("google");
+
+    const terrarium = app.mapTab.querySelector<HTMLInputElement>('input[name="foss-earth-elevation-source"][value="aws-terrarium"]')!;
+    terrarium.click();
+    expect(app.runtime.setTerrainSource).toHaveBeenCalledWith(expect.objectContaining({ id: "aws-terrarium" }));
+    expect(new URL(window.location.href).searchParams.get("elevationSource")).toBe("aws-terrarium");
+  });
+
+  it("ends the bar at the bottom right with the detail rail, then the speed and basemap, then its credit link", async () => {
     const { root } = await createAppUnderTest();
-    const sourceChip = root.querySelector<HTMLButtonElement>("#runtimeModePill");
-    const menu = root.querySelector<HTMLElement>("#mapSourceMenu");
+    const bar = root.querySelector(".hud-bar")!;
+    const end = bar.lastElementChild!;
+    expect(end.id).toBe("mapSourceSlot");
+    const chip = end.querySelector(".map-source-hud__chip")!;
+    expect(Array.from(chip.children, (child) => child.className)).toEqual([
+      "map-source-hud__provider",
+      "map-source-hud__credit",
+    ]);
+    expect(chip.firstElementChild!.firstElementChild!.className).toBe("map-download-speed");
+    const credit = chip.querySelector<HTMLAnchorElement>(".map-source-hud__credit")!;
+    expect(credit.href).toContain("usgs.gov");
+    expect(credit.target).toBe("_blank");
+    const rail = chip.previousElementSibling!;
+    expect(rail.classList.contains("map-detail-control")).toBe(true);
+    expect(rail.classList.contains("is-unavailable")).toBe(true);
+    // The rail stays still while the renderer reports no raster detail.
+    expect(rail.querySelector<HTMLInputElement>("input")!.disabled).toBe(true);
+    expect(root.textContent).not.toContain("Terrain attribution");
+  });
 
-    expect(menu?.hidden).toBe(true);
-    sourceChip?.click();
+  it("offers the renderer choice in a Renderer tab, and nowhere else", async () => {
+    const { app, root } = await createAppUnderTest();
 
-    expect(menu?.hidden).toBe(false);
-    expect(sourceChip?.getAttribute("aria-expanded")).toBe("true");
+    expect(app.rendererTab.textContent).toContain("Running on WebGL, chosen automatically.");
+    expect(app.rendererTab.querySelector<HTMLInputElement>("input:checked")?.value).toBe("auto");
+    expect(root.querySelector("#settingsRendererLine")).toBeNull();
   });
 
   it("toggles globe anchor rotation pan from settings", async () => {
@@ -330,10 +404,80 @@ describe("createGlobeApp smoke behavior", () => {
     expect(setGlobeAnchorRotation).toHaveBeenCalledWith(false);
   });
 
-  it("mounts the input mode selector in the HUD bar", async () => {
+  it("splits its sections between a Controls tab and a Settings tab", async () => {
+    const { app } = await createAppUnderTest();
+
+    expect(app.controlsSections.map(({ id, title, defaultOpen }) => [id, title, defaultOpen])).toEqual([
+      ["input-method", "Input method", true],
+      ["controller", "Controller", false],
+    ]);
+    expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
+      ["toolbar", "Toolbar"],
+      ["camera", "Camera"],
+      ["performance", "Performance debug"],
+      ["about", "About"],
+    ]);
+    const performance = app.settingsSections.find((section) => section.id === "performance")!.element!;
+    expect(performance.querySelector("#settingsPerformanceMetrics")).not.toBeNull();
+  });
+
+  it("shows every toolbar button until one is hidden in Settings, and remembers it", async () => {
+    const first = await createAppUnderTest();
+    for (const id of ["helpButton", "settingsButton", "themeButton"]) {
+      expect(first.root.querySelector<HTMLElement>(`#${id}`)!.hidden).toBe(false);
+    }
+    expect(first.root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(false);
+
+    const help = first.root.querySelector<HTMLInputElement>('[data-hud-button="help"]')!;
+    expect(help.checked).toBe(true);
+    help.click();
+    expect(first.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
+    expect(JSON.parse(window.localStorage.getItem("foss-earth.hudButtons")!)).toMatchObject({ help: false, settings: true });
+    first.app.destroy();
+
+    const second = await createAppUnderTest();
+    expect(second.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
+    expect(second.root.querySelector<HTMLInputElement>('[data-hud-button="help"]')!.checked).toBe(false);
+    expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
+  });
+
+  it("keeps input method settings only in Controls, where its toolbar button leads", async () => {
+    const overlay = fakeOverlay();
+    const { app, root } = await createAppUnderTest({ overlayApiRef: overlay });
+
+    root.querySelector<HTMLButtonElement>("#inputModeButton")!.click();
+    expect(overlay.current.toggleTab).toHaveBeenCalledWith("controls");
+    expect(root.querySelectorAll(".input-mode-inline")).toHaveLength(1);
+    const inputMethod = app.controlsSections.find((section) => section.id === "input-method")!.element!;
+    expect(inputMethod.querySelector(".input-mode-inline")).not.toBeNull();
+
+    root.querySelector<HTMLInputElement>('[data-hud-button="inputMode"]')!.click();
+    expect(root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(true);
+    // jsdom reports a fine pointer and no touch: a desktop, so the choice is there.
+    const pointer = inputMethod.querySelector<HTMLButtonElement>(".input-mode-toggle-option:not(.is-active)")!;
+    pointer.click();
+    expect(mockState.setInputMode).toHaveBeenLastCalledWith(pointer.dataset.mode);
+  });
+
+  it("keeps controller bindings in the Controls tab, not a corner panel", async () => {
+    const overlay = fakeOverlay();
+    const { app, root } = await createAppUnderTest({ overlayApiRef: overlay });
+
+    expect(root.querySelector(".gt-launcher")).toBeNull();
+    expect(root.querySelector(".gt-host-panel")).toBeNull();
+    const controller = app.controlsSections.find((section) => section.id === "controller")!.element!;
+    expect(controller.classList.contains("gt-root")).toBe(true);
+    expect(controller.childElementCount).toBeGreaterThan(0);
+
+    app.openControllerBindings();
+    expect(overlay.current.openOrSelectTab).toHaveBeenCalledWith("controls");
+    expect(overlay.current.toggleTab).not.toHaveBeenCalled();
+  });
+
+  it("mounts the input method button in the HUD bar, with no popup", async () => {
     const { root } = await createAppUnderTest();
     expect(root.querySelector("#inputModeButton")).not.toBeNull();
-    expect(root.querySelector("#inputModeMenu")).not.toBeNull();
+    expect(root.querySelector("#inputModeMenu")).toBeNull();
   });
 
   it("shows and applies the compass scale tuner from settings", async () => {

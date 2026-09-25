@@ -7,7 +7,8 @@ export type {
   HudBarOptions,
   HudBarSlotItem,
 } from "./hudBar";
-export { createHudBar } from "./hudBar";
+export { createHudBar, HUD_BAR_HEIGHT_PROPERTY } from "./hudBar";
+export { createMapSourceHud, type MapSourceHudHandle, type MapSourceHudOptions, type MapSourceHudStatus } from "./mapSourceHud";
 export { createMapDetailSlider, describeDetailStatus, type MapDetailSliderHandle, type MapDetailSliderOptions } from "./mapDetailSlider";
 export {
   createMapDetailController,
@@ -23,6 +24,10 @@ export {
 export { createMapDetailPanel, type MapDetailPanelHandle } from "./mapDetailPanel";
 export { connectMapDetailRuntime, type MapDetailRuntime } from "./connectMapDetailRuntime";
 export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from "./WindowOverlay";
+export { SectionsPanel, type PanelSection } from "./SectionsPanel";
+export { createMapSourcePanel, type MapSourcePanelHandle, type MapSourcePanelOptions, type MapSourceStatus } from "./mapSourcePanel";
+export { createRendererPanel, getRendererLabel, type RendererPanelHandle, type RendererPanelOptions } from "./rendererPanel";
+export { PANEL_SECTIONS_OPEN_STORAGE_KEY } from "./panelSectionsOpen";
 export { trackViewportInsets, VIEWPORT_INSET_BOTTOM_PROPERTY, type ViewportInsetsHandle } from "./viewportInsets";
 export { createInputModeHud, type InputModeHudOptions, type InputModeHudHandle } from "../hud/inputModeHud";
 

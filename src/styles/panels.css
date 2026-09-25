@@ -31,7 +31,8 @@
 /* ─── Extra Panels Grid (bottom-right) ───────────────────────────── */
 .extra-panels-grid {
   position: fixed;
-  bottom: var(--foss-hud-bottom);
+  /* Above the bar, whose map source now ends at the bottom-right corner. */
+  bottom: calc(var(--foss-hud-bottom) + var(--foss-hud-bar-height, 32px) + 8px);
   right: var(--foss-hud-right);
   z-index: 10;
   display: flex;
