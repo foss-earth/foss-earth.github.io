@@ -50,9 +50,10 @@
   `build/benchmarks/<area>/` for benchmark output that is not a tracked
   `results*.json`, and `build/tools/` for tools that are not dependencies, such
   as Playwright in `build/tools/playwright/`.
-- `build/` is disposable: delete a run's output once its results are recorded.
-  What may stay, and why, is listed in
-  [0sfs's build scratch list](../0sfs/docs/build-scratch.md).
+- `build/` also holds working material, such as the only copies of the map
+  detail runs. Never delete from it without the user agreeing to each folder.
+  [0sfs's build scratch list](../0sfs/docs/build-scratch.md) says what the large
+  folders are for.
 
 ## Testing and computer use
 
