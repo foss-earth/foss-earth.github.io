@@ -316,6 +316,20 @@ describe("settings registry", () => {
     expect(reloaded.listPresets()).toEqual([]);
   });
 
+  it("imports a preset as the user's with its values as given, and refuses one that is not a preset", () => {
+    const storage = memoryStorage();
+    const settings = registry(storage);
+    const mine = settings.savePreset("Mine");
+    const result = settings.importPreset(JSON.stringify({ id: mine.id, name: "Mine", description: "", values: { "test.budget": 256, "other.app": "x" }, reset: ["test.cap"] }));
+    expect(result).toEqual({ preset: { id: "user:mine-2", name: "Mine", description: "Imported.",
+      values: { "test.budget": 256, "other.app": "x" }, reset: ["test.cap"] } });
+    expect(registry(storage).listPresets().map(preset => preset.id)).toEqual([mine.id, "user:mine-2"]);
+    expect(settings.importPreset("{")).toEqual({ error: "The file is not JSON." });
+    expect(settings.importPreset({ name: "No values" })).toEqual({ error: "A preset has a name and its values." });
+    expect(settings.importPreset({ name: "Bad", values: { "test.budget": [1] } })).toEqual({ error: "test.budget is not a number, text, a switch or a range." });
+    expect(settings.importPreset({ name: "Bad reset", values: {}, reset: "test." })).toEqual({ error: "A preset's reset list holds parameter ids." });
+  });
+
   it("returns a preset's reset list to defaults, matches the preset with the most values, and says when saved presets change", () => {
     const settings = registry();
     const device = { id: "device", name: "This device", description: "Defaults.", values: {}, reset: ["test.", "test.cap"] };

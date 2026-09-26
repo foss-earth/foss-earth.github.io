@@ -132,7 +132,8 @@ export interface PresetsSectionHandle {
  * built-in or saved, with everything it sets in full. Applying one lists every
  * value it changes, from and to, and asks once; its values are copied, so a
  * later edit makes them Custom and nothing follows the preset afterwards.
- * Saved presets can be renamed, exported and deleted.
+ * Saved presets can be renamed, exported and deleted, and an exported one
+ * imported again.
  */
 export function createPresetsSection(settings: SettingsRegistry = getAppSettings()): PresetsSectionHandle {
   const element = document.createElement("div");
@@ -141,7 +142,36 @@ export function createPresetsSection(settings: SettingsRegistry = getAppSettings
   const list = document.createElement("div");
   list.className = "foss-earth-presets__list";
   const saveAll = createSavePresetControl(settings, {}, "every setting");
-  element.append(status.element, list, saveAll.element);
+
+  // A preset exported here, or on another device, comes back as the user's.
+  const importer = document.createElement("div");
+  importer.className = "foss-earth-choices foss-earth-preset-import";
+  const pick = document.createElement("label");
+  pick.className = "foss-earth-choice foss-earth-parameter__action";
+  pick.textContent = "Import a preset…";
+  const file = document.createElement("input");
+  file.type = "file";
+  file.accept = "application/json,.json";
+  file.hidden = true;
+  file.setAttribute("aria-label", "Preset file to import");
+  pick.append(file);
+  const imported = paragraph("foss-earth-choices__note");
+  imported.setAttribute("role", "status");
+  imported.hidden = true;
+  importer.append(pick, imported);
+  const onFile = async (): Promise<void> => {
+    const chosen = file.files?.[0];
+    if (!chosen) return;
+    const result = settings.importPreset(await chosen.text());
+    file.value = "";
+    imported.hidden = false;
+    imported.textContent = "error" in result
+      ? `Not imported: ${result.error}`
+      : `Imported “${result.preset.name}” with ${Object.keys(result.preset.values).length} values; it is listed above.`;
+  };
+  const onChange = (): void => { void onFile(); };
+  file.addEventListener("change", onChange);
+  element.append(status.element, list, saveAll.element, importer);
 
   const describeValue = (spec: ParameterSpec, value: Parameters<typeof formatValue>[1]): string =>
     spec.sensitive ? "set" : formatValue(spec, value, settings.inspect(spec.id).choices);
@@ -272,6 +302,7 @@ export function createPresetsSection(settings: SettingsRegistry = getAppSettings
     destroy() {
       unsubscribe();
       saveAll.destroy();
+      file.removeEventListener("change", onChange);
       element.remove();
     },
   };

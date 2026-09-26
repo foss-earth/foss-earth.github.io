@@ -142,6 +142,12 @@ export interface SettingsRegistry {
   matchingPreset(filter?: SettingsFilter): SettingsPreset | null;
   /** Saves the current values of `filter` as a preset of the user's. */
   savePreset(name: string, filter?: SettingsFilter): SettingsPreset;
+  /**
+   * Adds a preset given as JSON or an object, such as one exported from
+   * Settings → Presets, as the user's. Its values are kept as given: applying
+   * it lists any this app cannot take.
+   */
+  importPreset(data: unknown): { preset: SettingsPreset } | { error: string };
   renamePreset(id: string, name: string): boolean;
   deletePreset(id: string): boolean;
   isUserPreset(id: string): boolean;
@@ -180,6 +186,11 @@ function defaultStorage(): SettingsStorage | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isParameterValue(value: unknown): value is ParameterValue {
+  return (typeof value === "number" && Number.isFinite(value)) || typeof value === "string" || typeof value === "boolean"
+    || isNumberRange(value);
 }
 
 function isPreset(value: unknown): value is SettingsPreset {
@@ -521,6 +532,21 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     for (const listener of [...listeners]) listener(none);
   }
 
+  /** `user:` and the name, numbered when a preset already has it. */
+  function userPresetId(name: string): string {
+    const existing = new Set(registry.listPresets().map(preset => preset.id));
+    let id = `user:${slug(name)}`;
+    for (let n = 2; existing.has(id); n++) id = `user:${slug(name)}-${n}`;
+    return id;
+  }
+
+  function addUserPreset(preset: SettingsPreset): SettingsPreset {
+    record.userPresets = [...(record.userPresets ?? []), preset];
+    writeRecord();
+    presetsChanged();
+    return preset;
+  }
+
   /** The parameters a preset returns to their defaults, in `filter`: its `reset` entries less the values it sets. */
   function presetResetIds(preset: SettingsPreset, filter?: SettingsFilter): string[] {
     const entries = preset.reset ?? [];
@@ -784,14 +810,30 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
         if (spec.session || spec.sensitive || spec.readOnly) continue;
         values[spec.id] = stateOf(spec.id).value;
       }
-      const existing = new Set(registry.listPresets().map(preset => preset.id));
-      let id = `user:${slug(name)}`;
-      for (let n = 2; existing.has(id); n++) id = `user:${slug(name)}-${n}`;
-      const preset: SettingsPreset = { id, name, description: "Saved from this device's values.", values };
-      record.userPresets = [...(record.userPresets ?? []), preset];
-      writeRecord();
-      presetsChanged();
-      return preset;
+      return addUserPreset({ id: userPresetId(name), name, description: "Saved from this device's values.", values });
+    },
+    importPreset(data) {
+      let input = data;
+      if (typeof data === "string") {
+        try { input = JSON.parse(data); } catch { return { error: "The file is not JSON." }; }
+      }
+      if (!isRecord(input) || typeof input.name !== "string" || !input.name.trim() || !isRecord(input.values)) {
+        return { error: "A preset has a name and its values." };
+      }
+      const values = Object.entries(input.values);
+      const invalid = values.find(([, value]) => !isParameterValue(value));
+      if (invalid) return { error: `${invalid[0]} is not a number, text, a switch or a range.` };
+      const reset = input.reset;
+      if (reset !== undefined && !(Array.isArray(reset) && reset.every(entry => typeof entry === "string"))) {
+        return { error: "A preset's reset list holds parameter ids." };
+      }
+      const name = input.name.trim();
+      const description = typeof input.description === "string" && input.description.trim() ? input.description.trim() : "Imported.";
+      return { preset: addUserPreset({
+        id: userPresetId(name), name, description,
+        values: Object.fromEntries(values) as Record<string, ParameterValue>,
+        ...(reset ? { reset: [...reset] as string[] } : {}),
+      }) };
     },
     renamePreset(id, name) {
       const list = record.userPresets ?? [];

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSettingsRegistry, type SettingsStorage } from "../../settings/registry";
 import type { ParameterSpec, SettingsPreset } from "../../settings/types";
 import { createParameterSection } from "./parameterSection";
@@ -124,6 +124,30 @@ describe("presets", () => {
     expect(settings.listPresets().some(preset => preset.id === saved.id)).toBe(false);
     expect(block(saved.id)).toBeNull();
     expect(status(loading.element).textContent).toBe("Custom");
+  });
+
+  it("imports an exported preset as the user's, and says why a file is refused", async () => {
+    const { settings, panel, block, button } = setup();
+    const exported = { id: "user:from-elsewhere", name: "From elsewhere", description: "Exported on another device.", values: { "t.budget": 512, "t.other-app": 3 } };
+    const input = panel.element.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const note = panel.element.querySelector<HTMLElement>(".foss-earth-preset-import [role=status]")!;
+    const choose = async (text: string): Promise<void> => {
+      Object.defineProperty(input, "files", { configurable: true, value: [new File([text], "preset.json", { type: "application/json" })] });
+      input.dispatchEvent(new Event("change"));
+      await vi.waitFor(() => expect(note.hidden).toBe(false));
+    };
+
+    await choose(JSON.stringify(exported));
+    expect(note.textContent).toBe("Imported “From elsewhere” with 2 values; it is listed above.");
+    const preset = settings.listPresets().find(entry => entry.name === "From elsewhere")!;
+    expect(block(preset.id).querySelector(".foss-earth-choices__heading")!.textContent).toBe("From elsewhere (yours)");
+    // A value for a parameter this app lacks is kept, and left out when applied.
+    button(block(preset.id), "Apply…").click();
+    expect(block(preset.id).querySelector(".foss-earth-preset__confirm")!.textContent).toContain("Left as they are: t.other-app (Not a parameter of this app.)");
+
+    note.hidden = true;
+    await choose("not json");
+    expect(note.textContent).toBe("Not imported: The file is not JSON.");
   });
 
   it("offers no Save as preset where nothing could be saved", () => {

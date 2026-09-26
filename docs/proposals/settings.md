@@ -676,9 +676,12 @@ Where stage 1 differs from this spec:
   with Save as preset (its values, secrets, read-only and URL-only values
   aside), and the Presets section with one for everything; saved presets are
   renamed, exported as JSON and deleted (a second click confirms) in the
-  Presets section. `subscribe` listeners are called with no ids when the
-  saved presets change. `createPresetsSection`, `createPresetStatus` and
-  `createSavePresetControl` are exported for hosts.
+  Presets section. **Import a preset…** adds an exported one back as the
+  user's (`importPreset`), with its values kept as given, so applying it lists
+  any this app cannot take; 0sfs moves its old ground profiles in this way.
+  `subscribe` listeners are called with no ids when the saved presets change.
+  `createPresetsSection`, `createPresetStatus` and `createSavePresetControl`
+  are exported for hosts.
 - **The constants test** (`src/settings/tuningConstants.test.ts`) parses the
   source and finds every `const NAME = …` holding a number, at any depth, and
   every number given as a default (`?? n`, `|| n`, `name = n`), other than 0,
