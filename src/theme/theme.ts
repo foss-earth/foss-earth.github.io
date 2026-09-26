@@ -1,27 +1,25 @@
+import { getAppSettings } from "../settings/appSettings";
+import type { SettingsRegistry } from "../settings/registry";
+
 /**
  * Shared theme state. The active theme is reflected on `document.documentElement`
  * via both `data-theme="light|dark"` (for foss-earth's own CSS) and the
  * `.dark` / `.light` classes (so Tailwind-driven consumers like the
  * Moir-Park-Capital frontend automatically follow).
  *
- * Persisted in localStorage under `foss-earth.theme`. Cross-tab and intra-tab
- * subscribers are notified via the `foss-earth:theme-change` custom event and
- * the standard `storage` event.
+ * The theme is the `interface.theme` parameter. Subscribers hear about changes
+ * in this tab and, through the registry following its record, in others, via
+ * the `foss-earth:theme-change` custom event.
  */
 export type GlobeTheme = "light" | "dark";
 
-const STORAGE_KEY = "foss-earth.theme";
+const THEME_ID = "interface.theme";
 const EVENT_NAME = "foss-earth:theme-change";
-const DEFAULT_THEME: GlobeTheme = "dark";
 
-function readStoredTheme(): GlobeTheme {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === "light" || raw === "dark") return raw;
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_THEME;
+let watched: SettingsRegistry | null = null;
+
+function readTheme(settings: SettingsRegistry): GlobeTheme {
+  return settings.get(THEME_ID) === "light" ? "light" : "dark";
 }
 
 function applyTheme(theme: GlobeTheme): void {
@@ -32,53 +30,50 @@ function applyTheme(theme: GlobeTheme): void {
   root.classList.toggle("light", theme === "light");
 }
 
-let currentTheme: GlobeTheme = readStoredTheme();
-applyTheme(currentTheme);
+/** The app's registry, watched so every change is applied and announced once. */
+function settings(): SettingsRegistry {
+  const current = getAppSettings();
+  if (current !== watched) {
+    watched = current;
+    current.watch(THEME_ID, () => {
+      const theme = readTheme(current);
+      applyTheme(theme);
+      try {
+        window.dispatchEvent(new CustomEvent<GlobeTheme>(EVENT_NAME, { detail: theme }));
+      } catch {
+        /* ignore */
+      }
+    });
+    applyTheme(readTheme(current));
+  }
+  return current;
+}
+
+settings();
 
 export function getTheme(): GlobeTheme {
-  return currentTheme;
+  return readTheme(settings());
 }
 
 export function setTheme(theme: GlobeTheme): void {
   if (theme !== "light" && theme !== "dark") return;
-  if (theme === currentTheme) return;
-  currentTheme = theme;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, theme);
-  } catch {
-    /* ignore */
-  }
-  applyTheme(theme);
-  try {
-    window.dispatchEvent(new CustomEvent<GlobeTheme>(EVENT_NAME, { detail: theme }));
-  } catch {
-    /* ignore */
-  }
+  settings().set(THEME_ID, theme);
 }
 
 export function toggleTheme(): GlobeTheme {
-  const next: GlobeTheme = currentTheme === "dark" ? "light" : "dark";
+  const next: GlobeTheme = getTheme() === "dark" ? "light" : "dark";
   setTheme(next);
   return next;
 }
 
 export function onThemeChange(cb: (theme: GlobeTheme) => void): () => void {
+  settings();
   const onCustom = (e: Event): void => {
     const detail = (e as CustomEvent<GlobeTheme>).detail;
     if (detail === "light" || detail === "dark") cb(detail);
   };
-  const onStorage = (e: StorageEvent): void => {
-    if (e.key !== STORAGE_KEY) return;
-    const next = e.newValue === "light" || e.newValue === "dark" ? e.newValue : DEFAULT_THEME;
-    if (next === currentTheme) return;
-    currentTheme = next;
-    applyTheme(next);
-    cb(next);
-  };
   window.addEventListener(EVENT_NAME, onCustom);
-  window.addEventListener("storage", onStorage);
   return () => {
     window.removeEventListener(EVENT_NAME, onCustom);
-    window.removeEventListener("storage", onStorage);
   };
 }

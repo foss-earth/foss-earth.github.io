@@ -121,6 +121,19 @@ const viewState: GlobeViewState = {
   zoomMeters: 600,
 };
 
+/** A parameter's input inside a tab section's element. */
+function parameterInput(section: HTMLElement | undefined, id: string): HTMLInputElement {
+  const input = section?.querySelector<HTMLInputElement>(`[data-parameter="${id}"] input`);
+  if (!input) throw new Error(`No control for ${id}`);
+  return input;
+}
+
+function sectionElement(sections: readonly { id: string; element?: HTMLElement }[], id: string): HTMLElement {
+  const element = sections.find(section => section.id === id)?.element;
+  if (!element) throw new Error(`No section ${id}`);
+  return element;
+}
+
 /** Stands in for the WindowOverlay the host mounts, recording what the toolbar asks of it. */
 function fakeOverlay() {
   return { current: { openOrSelectTab: vi.fn(), toggleTab: vi.fn() } };
@@ -297,9 +310,10 @@ describe("createGlobeApp smoke behavior", () => {
   });
 
   it("toggles hidden performance metrics from settings", async () => {
-    const { root } = await createAppUnderTest();
-    const activeMeshesInput = root.querySelector<HTMLInputElement>('[data-perf-metric="activeMeshes"]');
-    const tilesInput = root.querySelector<HTMLInputElement>('[data-perf-metric="tiles"]');
+    const { root, app } = await createAppUnderTest();
+    const performance = sectionElement(app.settingsSections, "performance");
+    const activeMeshesInput = parameterInput(performance, "interface.performanceHud.activeMeshes");
+    const tilesInput = parameterInput(performance, "interface.performanceHud.tiles");
 
     expect(activeMeshesInput?.checked).toBe(false);
     expect(tilesInput?.checked).toBe(false);
@@ -351,15 +365,23 @@ describe("createGlobeApp smoke behavior", () => {
     // Detail has its one home in the Map tab, beside the basemap choice.
     expect(app.mapTab.querySelectorAll('[aria-label="Detail"]')).toHaveLength(1);
 
-    const google = app.mapTab.querySelector<HTMLInputElement>('input[value="google"]')!;
+    // Choosing saves the parameter, which the runtime follows; the old URL parameter goes.
+    window.history.replaceState(null, "", "/?mapSource=usgs-topo");
+    const google = app.mapTab.querySelector<HTMLInputElement>('input[name="foss-earth-map-source"][value="google"]')!;
     google.click();
-    expect(app.runtime.setMapSource).toHaveBeenCalledWith("google");
-    expect(new URL(window.location.href).searchParams.get("mapSource")).toBe("google");
+    const { getAppSettings } = await import("../settings/appSettings");
+    expect(getAppSettings().get("map.source.basemap")).toBe("google");
+    expect(new URL(window.location.href).searchParams.has("mapSource")).toBe(false);
 
     const terrarium = app.mapTab.querySelector<HTMLInputElement>('input[name="foss-earth-elevation-source"][value="aws-terrarium"]')!;
     terrarium.click();
-    expect(app.runtime.setTerrainSource).toHaveBeenCalledWith(expect.objectContaining({ id: "aws-terrarium" }));
-    expect(new URL(window.location.href).searchParams.get("elevationSource")).toBe("aws-terrarium");
+    expect(getAppSettings().get("map.source.elevation")).toBe("aws-terrarium");
+    // Keys and the map cache have their homes in the same tab.
+    expect(app.mapTab.querySelector('[data-parameter="map.source.googleKey"]')).not.toBeNull();
+    expect(app.mapTab.querySelector(".foss-earth-map-cache-section")).not.toBeNull();
+    expect([...app.mapTab.querySelectorAll(".foss-earth-panel-section__title")].map(title => title.textContent)).toEqual([
+      "Source", "Detail", "Loading and memory",
+    ]);
   });
 
   it("ends the bar at the bottom right with the detail rail, then the speed and basemap, then its credit link", async () => {
@@ -393,8 +415,8 @@ describe("createGlobeApp smoke behavior", () => {
   });
 
   it("toggles globe anchor rotation pan from settings", async () => {
-    const { root, app } = await createAppUnderTest();
-    const toggle = root.querySelector<HTMLInputElement>("#globeAnchorRotationToggle");
+    const { app } = await createAppUnderTest();
+    const toggle = parameterInput(sectionElement(app.settingsSections, "camera"), "input.globeAnchorRotation");
     const setGlobeAnchorRotation = vi.mocked(app.runtime.setGlobeAnchorRotation);
 
     expect(toggle?.checked).toBe(true);
@@ -409,16 +431,20 @@ describe("createGlobeApp smoke behavior", () => {
 
     expect(app.controlsSections.map(({ id, title, defaultOpen }) => [id, title, defaultOpen])).toEqual([
       ["input-method", "Input method", true],
+      ["orbit", "Orbit", false],
       ["controller", "Controller", false],
     ]);
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
       ["toolbar", "Toolbar"],
       ["camera", "Camera"],
       ["performance", "Performance debug"],
+      ["saved-settings", "Saved settings"],
       ["about", "About"],
     ]);
-    const performance = app.settingsSections.find((section) => section.id === "performance")!.element!;
-    expect(performance.querySelector("#settingsPerformanceMetrics")).not.toBeNull();
+    const performance = sectionElement(app.settingsSections, "performance");
+    expect(performance.querySelector('[data-parameter="interface.performanceHud.fps"]')).not.toBeNull();
+    // Every section can list all its parameters.
+    expect(performance.querySelector(".foss-earth-parameter-section__toggle")).not.toBeNull();
   });
 
   it("shows every toolbar button until one is hidden in Settings, and remembers it", async () => {
@@ -428,16 +454,20 @@ describe("createGlobeApp smoke behavior", () => {
     }
     expect(first.root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(false);
 
-    const help = first.root.querySelector<HTMLInputElement>('[data-hud-button="help"]')!;
+    // A checkbox only reports a change while it is in the document, as it is once the tab is open.
+    document.body.append(sectionElement(first.app.settingsSections, "toolbar"));
+    const help = parameterInput(sectionElement(first.app.settingsSections, "toolbar"), "interface.toolbar.help");
     expect(help.checked).toBe(true);
     help.click();
     expect(first.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
-    expect(JSON.parse(window.localStorage.getItem("foss-earth.hudButtons")!)).toMatchObject({ help: false, settings: true });
+    expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values).toMatchObject({ "interface.toolbar.help": false });
     first.app.destroy();
 
+    const { resetAppSettings } = await import("../settings/appSettings");
+    resetAppSettings();
     const second = await createAppUnderTest();
     expect(second.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
-    expect(second.root.querySelector<HTMLInputElement>('[data-hud-button="help"]')!.checked).toBe(false);
+    expect(parameterInput(sectionElement(second.app.settingsSections, "toolbar"), "interface.toolbar.help").checked).toBe(false);
     expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
   });
 
@@ -447,11 +477,12 @@ describe("createGlobeApp smoke behavior", () => {
 
     root.querySelector<HTMLButtonElement>("#inputModeButton")!.click();
     expect(overlay.current.toggleTab).toHaveBeenCalledWith("controls");
-    expect(root.querySelectorAll(".input-mode-inline")).toHaveLength(1);
     const inputMethod = app.controlsSections.find((section) => section.id === "input-method")!.element!;
-    expect(inputMethod.querySelector(".input-mode-inline")).not.toBeNull();
+    expect(inputMethod.querySelectorAll(".input-mode-inline")).toHaveLength(1);
+    expect(root.querySelectorAll(".input-mode-inline")).toHaveLength(0);
 
-    root.querySelector<HTMLInputElement>('[data-hud-button="inputMode"]')!.click();
+    document.body.append(sectionElement(app.settingsSections, "toolbar"));
+    parameterInput(sectionElement(app.settingsSections, "toolbar"), "interface.toolbar.inputMode").click();
     expect(root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(true);
     // jsdom reports a fine pointer and no touch: a desktop, so the choice is there.
     const pointer = inputMethod.querySelector<HTMLButtonElement>(".input-mode-toggle-option:not(.is-active)")!;
@@ -481,8 +512,8 @@ describe("createGlobeApp smoke behavior", () => {
   });
 
   it("shows and applies the compass scale tuner from settings", async () => {
-    const { root } = await createAppUnderTest();
-    const toggle = root.querySelector<HTMLInputElement>("#compassScaleTunerToggle");
+    const { root, app } = await createAppUnderTest();
+    const toggle = parameterInput(sectionElement(app.settingsSections, "performance"), "interface.compassScaleTuner");
     const tuner = root.querySelector<HTMLElement>(".compass-scale-tuner");
 
     expect(toggle?.checked).toBe(false);

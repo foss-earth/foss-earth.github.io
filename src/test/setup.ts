@@ -1,4 +1,5 @@
 import { beforeEach, vi } from "vitest";
+import { resetAppSettings } from "../settings/appSettings";
 
 const storage = new Map<string, string>();
 
@@ -15,4 +16,6 @@ vi.stubGlobal("localStorage", {
 
 beforeEach(() => {
   storage.clear();
+  // The app registry reads storage once; each test starts from an empty record.
+  resetAppSettings();
 });

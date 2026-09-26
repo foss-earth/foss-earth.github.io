@@ -96,19 +96,34 @@ Every setting lives in exactly one place, a section of a tab.
 - Nothing floats in a screen corner behind a launcher button. Controls go in a
   tab, where the dock layout manages the space.
 - A tab that holds several groups is built from collapsible sections
-  (`SectionsPanel` from `foss-earth/shell`). A section starts closed unless
-  people usually arrive wanting it, as Input method does when its toolbar button
-  opens Controls. A tab that is a single choice shows it directly, a heading and
-  then pills: Map (`createMapSourcePanel`) and Renderer (`createRendererPanel`).
-  The Map tab's last group, Detail (`createMapDetailPanel`), follows the same
-  pattern: its range track and sentences take whole lines, and the default choice
-  and the Restore and Reset actions are pills.
+  (`SectionsPanel` from `foss-earth/shell`, or `createSectionsElement` for a tab
+  whose content is an element). A section starts closed unless people usually
+  arrive wanting it, as Input method does when its toolbar button opens
+  Controls, and Source and Detail do in the Map tab.
+- Each section is a parameter section (`createParameterSection`, see the
+  [settings spec](proposals/settings.md#implementation)): its own controls,
+  then a control for every main-level parameter homed in it that those don't
+  cover, hosts' included, then **Show all parameters**. The Map tab
+  (`createMapSourcePanel`) is Source, Detail and Loading and memory; the
+  Renderer tab (`createRendererPanel`) is Renderer. Both add a section for
+  every section of their tab a host's parameters are homed in, such as 0sfs's
+  Renderer → Instruments, so a host never builds a second copy of the tab.
+- Controls are drawn from the parameter's kind, and each has one
+  implementation: a switch is a pill with a checkbox; a choice is a heading and
+  pills; a number is a value track with its readout as a field, the default
+  ticked and any named values ("Off", "Normal") as pills; a range is a range
+  track; text is a field, never showing a secret. A note under a control says
+  what limits it, where its value came from when that is not the user, and
+  when it applies only after a restart.
 - A range is one track with two thumbs, never two sliders. Choosing an acceptable
   part of one continuous scale is one control: the thumbs are its ends, the part
   outside them stays visible but dimmed, and a default or a host's marker (such
   as 0sfs's flight minimum) sits on the same track. Detail tracks use the HUD
   rail's colours, green for finer through yellow to red for coarser, anchored to
-  the scale so a value has the same colour wherever it appears.
+  the scale so a value has the same colour wherever it appears. A host's marker
+  is a bar in its own colour, labelled under the track, hollow while waived; a
+  requirement stripes the part of the range it refuses. `createTrack` draws all
+  of them.
 - Every toolbar button is shown until the user hides it in Settings → Toolbar,
   because a first-time visitor does not know that + opens the same tabs. Hiding a
   button never hides what it opened; its tab stays under +.

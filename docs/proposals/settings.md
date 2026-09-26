@@ -1,6 +1,9 @@
 # Settings: every choice named, visible and changeable
 
-Status: Proposal (2026-09-25). Nothing here is implemented yet except where marked.
+Status: Stage 1 implemented (2026-09-25): the registry, the record, migration,
+export and import, URL values, the section controls and host markers. Stages 2
+to 5 are not yet implemented except where marked. [Implementation](#implementation)
+says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
 [`0sfs/docs/proposals/flight-settings.md`](../../../0sfs/docs/proposals/flight-settings.md).
@@ -360,6 +363,85 @@ file they came from.
   frame work it bounds, recorded before and after.
 - The automatic controller moves only enabled parameters, only inside their
   ranges, and its decisions are visible in the UI and the log.
+
+## Implementation
+
+### Stage 1 (2026-09-25)
+
+The registry is `foss-earth/settings` (`src/settings/`); the controls are in
+`foss-earth/shell` (`src/shell/settings/`).
+
+- `getAppSettings()` is the page's registry with FOSS Earth's catalogue
+  (`src/settings/catalogue/`) registered and its legacy keys migrated. It reads
+  the page's query once, for `?set.<id>=` and the older parameters mapped onto
+  ids (`mapSource`, `tiles`, `elevationSource`, `terrainSource`, `renderer`,
+  `rasterImagery`, `key`, `googleKey`), and follows the record when another
+  tab saves it. `createSettingsRegistry` makes an isolated one.
+- The record is `foss-earth.settings.v1`: `values` (only values that differ
+  from their default), `presets` (which preset set a value), `migrated` (legacy
+  keys already read) and `userPresets`.
+- Layers, lowest to highest: the registered default, a host default
+  (`setHostDefault`), the saved value (the user's or a preset's), a URL value
+  for this visit, and a host-forced value (`force`, which returns a release).
+  `get` reads a cache, so it is cheap every frame; `watch` fires when the
+  effective value changes through any layer or a device change.
+- Values are checked, never repaired: `set` refuses one outside its bounds. A
+  saved value outside static bounds is dropped with a note; one outside bounds
+  a device sets (a reason is given) is kept and limited, with a note saying
+  what limited it. `setNote` adds a host's explanation, such as which renderer
+  an instrument fell back to.
+- Every valid migrated value is saved as the user's, even one equal to a
+  default, so a host default set later does not replace an old choice.
+- Units are the built-in ones (`fraction` is stored 0 to 1 and shown as a
+  percentage) or a host's own `{ id, text }`.
+- `createParameterSection(settings, { tab, section, main?, covers?, footer? })`
+  is one section of a tab: the section's own controls, a control for every
+  main-level parameter homed there that they don't cover (hosts' included,
+  registered at any time), and **Show all parameters**, which lists every
+  parameter of the section with its control, value, default and what that was
+  derived from, where the value came from, a reset, its id and a link to the
+  code that reads it, and exports, imports and resets the section.
+  `createSavedSettingsSection` does the same for the whole record and offers
+  **Keep these values** for URL values; FOSS Earth shows it in Settings →
+  Saved settings.
+- The Map and Renderer tabs are collapsible sections, and each appends a
+  section for every section of its tab that a host's parameters are homed in
+  (`appendHostSections`), titled by `setSectionTitle`.
+- One track implementation (`createTrack`) draws value tracks, range tracks and
+  the Map → Detail track. `MapDetailController.setTrackMarker` puts a host's
+  marker on the detail track: its colour, label, whether it can be dragged
+  (`onChange` gets the value; it is not clamped into the range), whether it is
+  hollow, whether it is a requirement (the part of the range coarser than it is
+  striped), and whether the HUD rail shows it.
+- The runtime reads `renderer.backend`, `map.source.*`,
+  `map.detail.imageryPath` and `map.focus.refineFrom` from the registry it is
+  given (the app's by default), and follows changes to the basemap, elevation,
+  CARTO key and refinement point wherever they are made.
+- The HTTP map cache moved to Map → Loading and memory
+  (`createMapCacheSection`). `MapCachePanel` is deprecated.
+
+Where stage 1 differs from this spec:
+
+- `map.detail.*` holds one policy per kind: one for every 2D basemap (offsets
+  are relative to Normal, so they mean the same on any source) and one for
+  Google. The legacy record kept one per source; migration takes the default
+  basemap's, or the first 2D one saved.
+- `foss-earth:renderer-preference` is not migrated into `renderer.backend`: it
+  is the renderer that last started, written by auto-detect, not a choice the
+  user made. It stays as what auto-detect starts from, and choosing
+  Auto-detect clears it.
+- `foss-earth.panelSectionsOpen` stays its own key: which sections are open is
+  the panel's memory, not a setting.
+- `map.focus.refineFrom` (camera or focus point) exists now, ahead of the rest
+  of `map.focus.*`: the focus point is the simulation origin in simulation mode
+  and the orbit target otherwise. It replaces
+  `setGoogleTerrainDetailAnchor`, which remains for existing callers.
+- `map.source.cartoKey` is added to CARTO requests as `?api_key=`. That query
+  name has not been checked against a working key.
+- `?terrainQuality` and the quality profiles are unchanged until stages 2 and
+  4 replace them.
+- The Toolbar, Camera and Performance debug sections stay in the Settings tab,
+  as the spec allows, until the Interface and Renderer tabs take them.
 
 ## Sequence
 

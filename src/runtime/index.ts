@@ -32,6 +32,8 @@ export {
   type RasterImageryMode,
   type ResolveMapRuntimeConfigOptions,
 } from "../engine/babylon/resolveMapRuntimeConfig";
+export { applyRendererChoice, RENDERER_PREFERENCE_STORAGE_KEY } from "../engine/babylon/rendererPreference";
+export { withSourceKey } from "../engine/babylon/rasterBaseMaps";
 export {
   MAPTERHORN,
   AWS_TERRARIUM,

@@ -12,6 +12,9 @@ export { createMapSourceHud, type MapSourceHudHandle, type MapSourceHudOptions, 
 export { createMapDetailSlider, describeDetailStatus, type MapDetailSliderHandle, type MapDetailSliderOptions } from "./mapDetailSlider";
 export {
   createMapDetailController,
+  detailPolicyFromValues,
+  detailPolicyValues,
+  MAP_DETAIL_PARAMETER_IDS,
   MAP_DETAIL_STORAGE_KEY,
   type MapDetailActiveSource,
   type MapDetailController,
@@ -21,7 +24,23 @@ export {
   type MapDetailSeedResult,
   type MapDetailStorage,
 } from "./mapDetailController";
-export { createMapDetailPanel, type MapDetailPanelHandle } from "./mapDetailPanel";
+export { createMapDetailPanel, type MapDetailPanelHandle, type MapDetailPanelOptions } from "./mapDetailPanel";
+export type { DetailTrackMarker } from "../terrain/mapDetailPolicy";
+export {
+  appendHostSections,
+  createParameterSection,
+  createSectionsElement,
+  type HostSectionsHandle,
+  type ParameterSectionHandle,
+  type ParameterSectionOptions,
+  type SectionsElementEntry,
+  type SectionsElementHandle,
+} from "./settings/parameterSection";
+export { createParameterControl, describeProvenance, type ParameterControlHandle } from "./settings/controls";
+export { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./settings/parameterList";
+export { createTrack, detailColour, type TrackFrame, type TrackHandle, type TrackOptions, type TrackRamp, type TrackThumb } from "./settings/track";
+export { createMapCacheSection, type MapCacheSectionHandle } from "./mapCacheSection";
+export { createSavedSettingsSection, type SavedSettingsSectionHandle } from "./settings/savedSettings";
 export { connectMapDetailRuntime, type MapDetailRuntime } from "./connectMapDetailRuntime";
 export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from "./WindowOverlay";
 export { SectionsPanel, type PanelSection } from "./SectionsPanel";
@@ -36,6 +55,7 @@ export { attachRendererActivity, attachTileStreamingActivity, type RenderActivit
 export { attachMapDownloadSpeed, setMapSourceLabel, type MapDownloadSource } from "./mapDownloadHud";
 
 export { searchLocations, nearbyAirports } from "../search/locationSearch";
+/** @deprecated The Map tab's Loading and memory section shows the cache; see createMapCacheSection. */
 export { MapCachePanel } from "./MapCachePanel";
 export { inspectMapCache, clearMapCache, type MapCacheSnapshot, type MapCacheEntry } from "../terrain/mapCache";
 export {

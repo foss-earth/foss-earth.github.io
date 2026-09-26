@@ -153,6 +153,22 @@ describe("map detail rail", () => {
     expect(marker.hidden).toBe(true);
   });
 
+  it("draws a host's marker on the rail only when the host asks, hollow while waived", () => {
+    const { controller, rail } = google();
+    const ticks = () => [...rail.element.querySelectorAll<HTMLElement>(".map-detail-control__marker")];
+    const marker = { id: "flight", kind: "google" as const, value: 256, colour: "#ef4444", label: "Flight minimum", ariaLabel: "Flight minimum", draggable: true };
+    controller.setTrackMarker(marker);
+    expect(ticks()).toHaveLength(0);
+    controller.setTrackMarker({ ...marker, onRail: true });
+    expect(ticks()).toHaveLength(1);
+    expect(ticks()[0].style.left).toBe("50%");
+    expect(rail.element.title).toContain("Flight minimum: 256 px.");
+    controller.setTrackMarker({ ...marker, onRail: true, hollow: true });
+    expect(ticks()[0].classList.contains("is-hollow")).toBe(true);
+    controller.removeTrackMarker("flight");
+    expect(ticks()).toHaveLength(0);
+  });
+
   it("keeps a single-value range readable but still", () => {
     const { controller, slider } = google();
     controller.updatePolicy({ kind: "google", finestErrorPx: 32, coarsestErrorPx: 32, defaultValue: 32 });
