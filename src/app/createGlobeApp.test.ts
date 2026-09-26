@@ -415,9 +415,9 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.querySelector("#settingsRendererLine")).toBeNull();
   });
 
-  it("toggles globe anchor rotation pan from settings", async () => {
+  it("toggles globe anchor rotation pan from Controls → Camera", async () => {
     const { app } = await createAppUnderTest();
-    const toggle = parameterInput(sectionElement(app.settingsSections, "camera"), "input.globeAnchorRotation");
+    const toggle = parameterInput(sectionElement(app.controlsSections, "camera"), "input.globeAnchorRotation");
     const setGlobeAnchorRotation = vi.mocked(app.runtime.setGlobeAnchorRotation);
 
     expect(toggle?.checked).toBe(true);
@@ -442,12 +442,23 @@ describe("createGlobeApp smoke behavior", () => {
 
     expect(app.controlsSections.map(({ id, title, defaultOpen }) => [id, title, defaultOpen])).toEqual([
       ["input-method", "Input method", true],
+      ["camera", "Camera", false],
       ["orbit", "Orbit", false],
+      ["mouse", "Mouse and trackpad", false],
+      ["touch", "Touch", false],
       ["controller", "Controller", false],
     ]);
+    // The camera's limits and each device's rates have their controls there.
+    const controls = (id: string) => [...sectionElement(app.controlsSections, id).querySelectorAll("[data-parameter]")]
+      .map(element => element.getAttribute("data-parameter"));
+    expect(controls("camera")).toEqual(expect.arrayContaining([
+      "camera.fieldOfView", "camera.pitchLimits", "camera.zoomLimits", "camera.inertiaDecay", "input.globeAnchorRotation", "visualization.compass.heightOffset",
+    ]));
+    expect(controls("mouse")).toEqual(expect.arrayContaining(["input.mouse.orbitRate", "input.mouse.dragThreshold", "input.wheel.zoomRate"]));
+    expect(controls("touch")).toEqual(expect.arrayContaining(["input.touch.orbitRate", "input.touch.panRate", "input.touch.zoomExponent"]));
+    expect(controls("controller")).toContain("input.gamepad.deadzone");
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
       ["toolbar", "Toolbar"],
-      ["camera", "Camera"],
       ["performance", "Performance debug"],
       ["saved-settings", "Saved settings"],
       ["about", "About"],
@@ -508,8 +519,10 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.querySelector(".gt-launcher")).toBeNull();
     expect(root.querySelector(".gt-host-panel")).toBeNull();
     const controller = app.controlsSections.find((section) => section.id === "controller")!.element!;
-    expect(controller.classList.contains("gt-root")).toBe(true);
-    expect(controller.childElementCount).toBeGreaterThan(0);
+    // The binding editor, then the section's own parameters.
+    const editor = controller.querySelector(".gt-root");
+    expect(editor).not.toBeNull();
+    expect(editor!.childElementCount).toBeGreaterThan(0);
 
     app.openControllerBindings();
     expect(overlay.current.openOrSelectTab).toHaveBeenCalledWith("controls");

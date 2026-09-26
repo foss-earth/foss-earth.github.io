@@ -4,7 +4,7 @@ Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
 markers, the Loading and memory and Imagery selection parameters, detail focus
 on both maps, terrain detail as a continuous target and the automatic
-adjustment. Stage 5 is not yet implemented except where marked. [Implementation](#implementation)
+adjustment. Stage 5 is in progress: camera and input parameters are done. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -601,6 +601,39 @@ Where stage 1 differs from this spec:
   the renderer idle with tiles still waiting to parse, or with children still
   being prepared, which is all Around's first seconds are. It now counts
   what the renderer's own idle test counts.
+
+### Stage 5 (2026-09-26, in progress)
+
+- **Camera** (Controls → Camera). `camera.fieldOfView` (°, 45.8: Babylon's
+  0.8 rad), `camera.pitchLimits` (range, 1–89°, also the bounds: a level view
+  can flip the camera and a vertical one loses its heading),
+  `camera.zoomLimits` (range, m, log2, 25 m to 25,512 km) and
+  `camera.inertiaDecay` (per 60 Hz frame, 0.82). New limits apply at once: a
+  view outside them moves inside. The table above gave 80,000 km as today's
+  far limit; that was the controller's clamp, but Babylon's camera stopped at
+  four Earth radii, so that is the default, and 80,000 km the bound. Grab the
+  globe (`input.globeAnchorRotation`) and the compass orbit height moved here
+  from Settings → Camera, which is gone; its line on pitch is the section's
+  note.
+- **Device rates**, at sensitivity 1, which multiplies them. Mouse and
+  trackpad: `input.mouse.orbitRate` (0.03 °/px), `input.mouse.dragThreshold`
+  (4 px), `input.wheel.zoomRate` (0.23% of the distance per notch),
+  `input.wheel.orbitRate` (0.015 °/px) and `input.trackpad.pinchZoomRate`
+  (0.1% per px). Touch: `input.touch.orbitRate` (0.1 °/px), `.panRate` (0.48×)
+  and `.zoomExponent` (0.24). Controller: `input.gamepad.deadzone` (15%),
+  applied to every stick bound to a navigation rate, the user's own bindings
+  included. The spec's 0.3 °/px for the mouse was a rate before a shared ×0.1;
+  each parameter is now the rate the view actually moves at, and the wheel
+  orbit and trackpad pinch, which the table left out, are parameters too.
+  Behaviour at the defaults is unchanged. The touch recognizer's jitter guards
+  stay constants: they filter the touch stream and decide nothing about the
+  camera.
+- **API.** `CameraController.setLimits` / `getLimits`,
+  `createInertialCameraController(target, { decayPerFrame })`,
+  `InputController.setRates` / `getRates`, `createStandardGlobeProfile(slot,
+  deadzone)` and `withStickDeadzone(profile, deadzone)`. The runtime applies
+  the camera and rate parameters itself and follows their changes, so a host's
+  globe camera gets them without wiring.
 
 ## Sequence
 

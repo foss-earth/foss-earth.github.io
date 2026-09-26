@@ -27,6 +27,7 @@ export type BuiltInParameterUnit =
   | "samples"
   | "per-frame"
   | "per-notch"
+  | "per-px"
   | "per-s"
   | "none";
 

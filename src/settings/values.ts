@@ -126,6 +126,7 @@ const UNIT_TEXT: Record<BuiltInParameterUnit, string> = {
   samples: "samples",
   "per-frame": "per frame",
   "per-notch": "per notch",
+  "per-px": "per px",
   "per-s": "per s",
   none: "",
 };

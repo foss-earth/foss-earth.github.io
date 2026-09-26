@@ -106,7 +106,9 @@ Every setting lives in exactly one place, a section of a tab.
   cover, hosts' included, then **Show all parameters**. The Map tab
   (`createMapSourcePanel`) is Source, Detail, Automatic adjustment, Loading
   and memory, Imagery selection and Terrain selection; the
-  Renderer tab (`createRendererPanel`) is Renderer. Both add a section for
+  Renderer tab (`createRendererPanel`) is Renderer; the Controls tab is Input
+  method, Camera, Orbit, Mouse and trackpad, Touch and Controller. Map and
+  Renderer add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.
 - Controls are drawn from the parameter's kind, and each has one
