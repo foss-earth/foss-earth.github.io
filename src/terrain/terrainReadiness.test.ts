@@ -46,6 +46,17 @@ describe("flight terrain readiness", () => {
     expect(readiness.result).toEqual({ groundHeightMeters: 300, altitudeMeters: 1300 });
   });
 
+  it("takes no Google surface as ground while the renderer is still loading what it chose", () => {
+    // A coarse tile kilometres above the real ground, as a Google start sees before refinement.
+    const coarse = Array.from({ length: 25 }, () => surface(4200, { geometricErrorMeters: 20_000 }));
+    const options = { latDeg: 45, lonDeg: -93, altitudeAboveGroundMeters: 1524 };
+    const loading = evaluateTerrainReadiness(options, coarse, true, false);
+    expect(loading.result).toBeNull();
+    expect(loading.progress).toMatchObject({ phase: "refining", message: expect.stringMatching(/Google tiles/) });
+    const settled = evaluateTerrainReadiness(options, coarse.map(() => surface(300)), true, true);
+    expect(settled.result).toEqual({ groundHeightMeters: 300, altitudeMeters: 1824 });
+  });
+
   it("validates geographic and distance inputs before starting any tile work", () => {
     expect(() => validateTerrainPreparation({ latDeg: 91, lonDeg: 0 })).toThrow("latitude");
     expect(() => validateTerrainPreparation({ latDeg: 0, lonDeg: 181 })).toThrow("latitude");
