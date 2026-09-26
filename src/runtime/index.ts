@@ -4,6 +4,7 @@ export {
   type BabylonRuntimeOptions,
   type BabylonRuntimeStatus,
   type BabylonTileMetrics,
+  type FocusPoint,
   type GoogleTerrainDetailAnchor,
   type GoogleTerrainDetailState,
   type RendererMode,

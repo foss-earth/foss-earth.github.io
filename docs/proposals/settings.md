@@ -1,9 +1,9 @@
 # Settings: every choice named, visible and changeable
 
-Status: Stages 1 and 2 implemented (2026-09-25): the registry, the record,
-migration, export and import, URL values, the section controls, host markers,
-and the Loading and memory and Imagery selection parameters. Stages 3 to 5 are
-not yet implemented except where marked. [Implementation](#implementation)
+Status: Stages 1 to 3 implemented (2026-09-25 and 26): the registry, the
+record, migration, export and import, URL values, the section controls, host
+markers, the Loading and memory and Imagery selection parameters, and detail
+focus on both maps. Stages 4 and 5 are not yet implemented except where marked. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -471,6 +471,54 @@ Where stage 1 differs from this spec:
 - The HTTP tile cache takes its limits from `map.cache.*`, applied by the
   runtime; until then it neither adds nor prunes, so a page that opens the
   cache panel before a map exists cannot empty it.
+
+### Stage 3 (2026-09-26)
+
+- Map → Detail holds `map.focus.mode` (View, Around focus, View and focus),
+  `map.focus.point`, `map.focus.radius`, `map.focus.horizonCull` and
+  `map.focus.refineFrom`. `map.focus.detailBelow` is two parameters,
+  `.imagery` (levels) and `.google` (px), because the two maps' detail scales
+  differ; each defaults to "As the detail setting".
+- **Focus points.** `BabylonRuntime.registerFocusPoint({ id, label,
+  getPosition })` adds a choice to `map.focus.point` and returns a function
+  that removes it; `getPosition` returns ECEF metres or null and is read once
+  per rendered frame, so both maps see one position. The built-in
+  `orbit-target` is the globe camera's target, or a simulation's floating
+  origin. A saved point that is not registered waits for it; until then the
+  orbit target is used. `getFocusPosition()` reads the selected one.
+- **2D imagery.** The selector measures each tile within the radius from the
+  focus point, facing it, at the view's pixel angle and never nearer than the
+  camera is to the point, so the region's detail does not depend on where the
+  camera looks. Around focus selects only the region: turning the camera
+  selects nothing again, and only a move of the point over 0.5 m, a change of
+  more than 2% in the camera's distance to it, or a parameter change does.
+  View and focus adds the region to the view and never asks for less than the
+  view does. With `horizonCull`, tiles below the horizon of a viewer raised
+  above the point by the camera's distance are left out.
+- **Terrain mesh.** The ring of terrain tiles stays centred on the view's
+  anchor, the orbit target or the host's simulation view, which orbiting does
+  not move; its heading corridor is off while a region is loaded, since it
+  follows the camera's heading. Stage 4 replaces both.
+- **Google 3D Tiles.** Not a plugin: the runtime already replaces the
+  renderer's `calculateTileViewError`. Around focus makes every tile the point
+  can see take part and refines only those within the radius, by distance from
+  the point; the rest of the globe stays coarse. View and focus marks tiles
+  within the radius as seen and takes the larger error. Babylon still culls
+  what is drawn by the real camera. `map.focus.refineFrom` = focus now measures
+  the view's detail from the selected focus point, and
+  `GoogleTerrainDetailAnchor` is `"camera" | "focus-point"`.
+- **Cost.** The radius's reading gives the pages the region holds and about
+  how many the current radius needs from this view,
+  2π/(W·α·t)² · (1 + 2 ln(R/D)) for page width W, pixel angle α, target t and
+  camera distance D, with R cut at the horizon when that is culled. It is
+  shown while a region is loaded, and for 2D imagery only: Google tiles have no
+  size before they load, so their cost shows in the Loading and memory
+  readings. When the GPU budget is what limits the region, the reading says so.
+- **Acceptance.** `createRasterTilesRuntime.atlas.test.ts` orbits a fixed
+  focus point through six headings and asserts zero new image and elevation
+  requests after settling, with View as the control that does request. The
+  Google measure is unit-tested in `createTilesRuntime.test.ts`; the headless
+  check against real Google tiles is 0sfs's `scripts/validation/map-focus/`.
 
 ## Sequence
 
