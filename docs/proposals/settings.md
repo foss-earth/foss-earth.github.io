@@ -4,7 +4,7 @@ Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
 markers, the Loading and memory and Imagery selection parameters, detail focus
 on both maps, terrain detail as a continuous target and the automatic
-adjustment. Stage 5 is in progress: camera and input parameters are done. [Implementation](#implementation)
+adjustment. Stage 5 is in progress: camera, input and renderer parameters are done. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -634,6 +634,18 @@ Where stage 1 differs from this spec:
   deadzone)` and `withStickDeadzone(profile, deadzone)`. The runtime applies
   the camera and rate parameters itself and follows their changes, so a host's
   globe camera gets them without wiring.
+- **Renderer** (Renderer → Resolution and frame rate, and Depth range).
+  `renderer.resolutionScale` (pixels drawn per device pixel, 0.25–2×): 1, or
+  what the safe WebGPU fallback draws, a pixel per CSS pixel, which is
+  derived from a new `DeviceContext.rendererDevicePixels`; it follows changes
+  in the device pixel ratio on resize. `renderer.antialias` (on) applies on the
+  next start, and says so when WebGPU could only start without it.
+  `renderer.frameRateCap` (10–240 fps, or Off): the scheduler waits out frames
+  due sooner, and automatic adjustment takes the cap's interval as its least
+  goal, so capped frames are not counted slow. `renderer.clipping`
+  (automatic or fixed) with `renderer.clipping.fixed` (a range in m, 1 m to
+  10,000 km) sets the globe camera's near and far planes; a host's own
+  cameras keep theirs.
 
 ## Sequence
 

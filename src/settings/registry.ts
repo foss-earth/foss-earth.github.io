@@ -160,6 +160,7 @@ const DEFAULT_CONTEXT: DeviceContext = {
   touch: false,
   frameTimeMs: null,
   refreshIntervalMs: null,
+  rendererDevicePixels: null,
 };
 
 function defaultStorage(): SettingsStorage | null {

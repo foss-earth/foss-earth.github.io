@@ -413,6 +413,10 @@ describe("createGlobeApp smoke behavior", () => {
     expect(app.rendererTab.textContent).toContain("Running on WebGL, chosen automatically.");
     expect(app.rendererTab.querySelector<HTMLInputElement>("input:checked")?.value).toBe("auto");
     expect(root.querySelector("#settingsRendererLine")).toBeNull();
+    // What the renderer draws, and how often, have their controls in the same tab.
+    for (const id of ["renderer.resolutionScale", "renderer.antialias", "renderer.frameRateCap", "renderer.clipping", "renderer.clipping.fixed"]) {
+      expect(app.rendererTab.querySelector(`[data-parameter="${id}"]`), id).not.toBeNull();
+    }
   });
 
   it("toggles globe anchor rotation pan from Controls → Camera", async () => {

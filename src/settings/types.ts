@@ -75,6 +75,8 @@ export interface DeviceContext {
   frameTimeMs: number | null;
   /** The display's measured refresh interval, in ms. */
   refreshIntervalMs: number | null;
+  /** Whether the renderer started drawing a pixel per device pixel; false on the safe WebGPU fallback. */
+  rendererDevicePixels: boolean | null;
 }
 
 export interface DerivedDefault<T> {
