@@ -468,7 +468,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(controls("mouse")).toEqual(expect.arrayContaining(["input.mouse.orbitRate", "input.mouse.dragThreshold", "input.wheel.zoomRate"]));
     expect(controls("touch")).toEqual(expect.arrayContaining(["input.touch.orbitRate", "input.touch.panRate", "input.touch.zoomExponent"]));
     expect(controls("controller")).toContain("input.gamepad.deadzone");
-    expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"]]);
+    expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"], ["log", "Log"], ["search", "Search"]]);
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
       ["presets", "Presets"],
       ["saved-settings", "Saved settings"],

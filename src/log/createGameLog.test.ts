@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createSettingsRegistry } from "../settings/registry";
+import { INTERFACE_PARAMETERS } from "../settings/catalogue/interface";
 import { createGameLog, GAME_LOG_FADE_MS, GAME_LOG_LINE_MS, GAME_LOG_SIZE_EVENT, type GameLog, type GameLogSizeChange } from "./createGameLog";
 
 let log: GameLog;
@@ -123,6 +125,26 @@ describe("game log", () => {
     lines.scrollTop = 0;
     log.print({ text: "Line 5" });
     expect(lines.scrollTop).toBe(0);
+  });
+
+  it("keeps each line interface.log.lineDuration, and interface.log.maxLines lines", () => {
+    vi.useFakeTimers();
+    const data = new Map<string, string>();
+    const settings = createSettingsRegistry({ storage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); } } });
+    settings.register(INTERFACE_PARAMETERS);
+    settings.set("interface.log.lineDuration", 2);
+    settings.set("interface.log.maxLines", 5);
+    log = createGameLog(settings);
+    log.print({ text: "Short" });
+    vi.advanceTimersByTime(2000 + GAME_LOG_FADE_MS);
+    expect(showing()).toHaveLength(0);
+
+    for (let i = 0; i < 8; i++) log.print({ text: `Line ${i}` });
+    expect(rows()).toHaveLength(5);
+    // A change applies to the next line printed.
+    settings.set("interface.log.maxLines", 6);
+    log.print({ text: "Line 8" });
+    expect(rows()).toHaveLength(6);
   });
 
   it("keeps a bounded history with the newest line first", () => {

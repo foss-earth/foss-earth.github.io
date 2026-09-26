@@ -11,6 +11,7 @@
     "map.terrain.",
     "map.google.",
     "map.cache.",
+    "map.retryDelay",
     "renderer.resolutionScale",
     "renderer.antialias",
     "renderer.frameRateCap"

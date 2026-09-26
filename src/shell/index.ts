@@ -70,6 +70,7 @@ export {
   createGameLog,
   GAME_LOG_FADE_MS,
   GAME_LOG_LINE_MS,
+  GAME_LOG_MAX_LINES,
   type GameLog,
   type GameLogAction,
   type GameLogEntry,

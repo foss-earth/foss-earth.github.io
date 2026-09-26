@@ -1,4 +1,7 @@
+import { getAppSettings } from "../settings/appSettings";
+import type { SettingsRegistry } from "../settings/registry";
 import { fitLogResize, LOG_DOCK_GAP } from "./fitLogResize";
+import { GAME_LOG_LINE_MS, GAME_LOG_MAX_LINES } from "./gameLogDefaults";
 
 export type GameLogTone = "info" | "progress" | "success" | "warning" | "error";
 
@@ -38,8 +41,7 @@ export interface GameLog {
   destroy(): void;
 }
 
-/** How long a finished line stays on screen after its last change. */
-export const GAME_LOG_LINE_MS = 8000;
+export { GAME_LOG_LINE_MS, GAME_LOG_MAX_LINES } from "./gameLogDefaults";
 export const GAME_LOG_FADE_MS = 500;
 /** Preferred log width, or null when the shell can use its natural width. */
 export const GAME_LOG_SIZE_EVENT = "foss-earth-game-log-size";
@@ -51,7 +53,6 @@ export interface GameLogSizeChange {
 
 /** Resizing remembers dimensions; the shell always owns placement. */
 interface LogSize { width: number; height: number }
-const MAX_LINES = 40;
 const PREVIEW_CHARS = 28;
 const RESIZE_CLICK_PX = 6;
 const MIN_WIDTH = 160;
@@ -70,12 +71,21 @@ function previewText(text: string): string {
   return `${flat.slice(0, PREVIEW_CHARS - 1)}…`;
 }
 
+function positive(settings: SettingsRegistry, id: string, fallback: number): number {
+  const value = settings.get(id);
+  return typeof value === "number" && value > 0 ? value : fallback;
+}
+
 /**
  * A chat-style log beside #root, so mounting the renderer cannot erase it.
  * Newest first. Each line fades on its own once finished, so a new message
  * appears alone rather than bringing the whole history back over the world.
+ * How long a line stays and how many are kept are `interface.log.*`, read
+ * from `settings` (the app's registry) each time they apply.
  */
-export function createGameLog(): GameLog {
+export function createGameLog(settings: SettingsRegistry = getAppSettings()): GameLog {
+  const lineMs = (): number => positive(settings, "interface.log.lineDuration", GAME_LOG_LINE_MS / 1000) * 1000;
+  const maxLines = (): number => Math.round(positive(settings, "interface.log.maxLines", GAME_LOG_MAX_LINES));
   const element = document.getElementById("app-log") ?? document.createElement("div");
   element.id = "app-log";
   element.className = "game-log";
@@ -193,7 +203,7 @@ export function createGameLog(): GameLog {
         syncScrollable();
         maybeMinimize();
       }, GAME_LOG_FADE_MS));
-    }, GAME_LOG_LINE_MS));
+    }, lineMs()));
   };
 
   const print = (entry: GameLogEntry): GameLogLine => {
@@ -256,7 +266,7 @@ export function createGameLog(): GameLog {
       lines.prepend(row);
       update(entry);
       if (readingHistory) lines.scrollTop += lines.scrollHeight - previousHeight;
-      while (lines.childElementCount > MAX_LINES) {
+      while (lines.childElementCount > maxLines()) {
         const oldest = lines.lastElementChild!;
         clearTimeout(timers.get(oldest));
         timers.delete(oldest);
