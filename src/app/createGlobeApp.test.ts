@@ -230,6 +230,7 @@ beforeEach(() => {
     onMapDownloadRateChange: vi.fn(() => vi.fn()),
     isStreamingTiles: vi.fn(() => false),
     onTilesStreamingChange: vi.fn(() => vi.fn()),
+    onDetailAdjusted: vi.fn(() => vi.fn()),
     setMapSource: vi.fn(),
     setTerrainSource: vi.fn(),
     getGoogleTerrainDetailState: vi.fn(() => null),
@@ -424,6 +425,16 @@ describe("createGlobeApp smoke behavior", () => {
     toggle?.dispatchEvent(new Event("change", { bubbles: true }));
 
     expect(setGlobeAnchorRotation).toHaveBeenCalledWith(false);
+  });
+
+  it("logs what automatic adjustment did and why", async () => {
+    const { app, root } = await createAppUnderTest();
+    const adjusted = vi.mocked(app.runtime.onDetailAdjusted).mock.calls[0][0];
+    adjusted({ at: 0, from: 0, to: 0.25, meanFrameMs: 23.14, goalMs: 16.7 });
+    adjusted({ at: 1, from: 0.25, to: 0, meanFrameMs: 12, goalMs: 16.7 });
+    const text = `${root.textContent ?? ""}${document.body.textContent ?? ""}`;
+    expect(text).toContain("Map detail coarsened 0.25 levels to hold the frame time: frames averaged 23.1 ms against a 16.7 ms goal.");
+    expect(text).toContain("Map detail returned 0.25 levels toward what you asked for");
   });
 
   it("splits its sections between a Controls tab and a Settings tab", async () => {

@@ -571,9 +571,11 @@ Where stage 1 differs from this spec:
 - **What it did** shows in readings on the auto switches, the goal and the
   terrain default: where each is, what was asked for, and the frame time that
   caused it. The rail lists "coarsened to hold the frame time" (`frame-time`,
-  a new `DetailLimit`). Each decision is logged to the console as
-  `[map auto]`, to the map debug log as `detail-adjusted`, and to hosts
-  through `BabylonRuntime.onDetailAdjusted(listener)`.
+  a new `DetailLimit`). Each decision goes to the app's log ("Map detail
+  coarsened 0.25 levels to hold the frame time: frames averaged 23.1 ms
+  against a 16.7 ms goal."), to the console as `[map auto]`, to the map debug
+  log as `detail-adjusted`, and to hosts through
+  `BabylonRuntime.onDetailAdjusted(listener)`.
 - **Differences from the spec.** How much of the goal the globe may use is
   not a parameter: the measure is the whole frame interval, and splitting out
   the globe's share needs GPU timer queries. No budget is auto-capable yet;
