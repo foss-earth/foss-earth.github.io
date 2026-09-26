@@ -1,11 +1,12 @@
 # Settings: every choice named, visible and changeable
 
-Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
+Status: Stages 1 to 5 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
 markers, the Loading and memory and Imagery selection parameters, detail focus
-on both maps, terrain detail as a continuous target and the automatic
-adjustment. Stage 5 is in progress: camera, input and renderer parameters and
-presets are done, and the Toolbar and Performance debug sections have moved. [Implementation](#implementation)
+on both maps, terrain detail as a continuous target, the automatic
+adjustment, the camera, input and renderer parameters, presets, the moved
+Toolbar and Performance debug sections, and a test that fails on a tuning
+constant outside the registry. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -602,7 +603,7 @@ Where stage 1 differs from this spec:
   being prepared, which is all Around's first seconds are. It now counts
   what the renderer's own idle test counts.
 
-### Stage 5 (2026-09-26, in progress)
+### Stage 5 (2026-09-26)
 
 - **Camera** (Controls → Camera). `camera.fieldOfView` (°, 45.8: Babylon's
   0.8 rad), `camera.pitchLimits` (range, 1–89°, also the bounds: a level view
@@ -624,7 +625,10 @@ Where stage 1 differs from this spec:
   applied to every stick bound to a navigation rate, the user's own bindings
   included. The spec's 0.3 °/px for the mouse was a rate before a shared ×0.1;
   each parameter is now the rate the view actually moves at, and the wheel
-  orbit and trackpad pinch, which the table left out, are parameters too.
+  orbit and trackpad pinch, which the table left out, are parameters too, as
+  are the four rates still on that shared ×0.1: `input.mouse.panRate` (a
+  drag with Grab the globe off), `input.trackpad.panRate`, and Safari's
+  `input.trackpad.rotateRate` and `.gestureZoomExponent` (0.1 each).
   Behaviour at the defaults is unchanged. The touch recognizer's jitter guards
   stay constants: they filter the touch stream and decide nothing about the
   camera.
@@ -675,6 +679,38 @@ Where stage 1 differs from this spec:
   Presets section. `subscribe` listeners are called with no ids when the
   saved presets change. `createPresetsSection`, `createPresetStatus` and
   `createSavePresetControl` are exported for hosts.
+- **The constants test** (`src/settings/tuningConstants.test.ts`) parses the
+  source and finds every `const NAME = …` holding a number, at any depth, and
+  every number given as a default (`?? n`, `|| n`, `name = n`), other than 0,
+  1 and -1 and outside `src/settings/`. Each must be in its ledger with a kind
+  and a reason: a parameter's default or bound (the parameter must exist), a
+  fact (WGS84, tile sizes, a source's description, a service's usage
+  policy), structure (a grid, a root level, a sort key), a guard (tolerances
+  and filters against float error, jitter and stalls), layout (where panels
+  sit and how overlays look), a host's argument (the start view, a readiness
+  request's defaults), or a tool's (the profiler, test views). A new number
+  fails the test until it is one of those or a parameter, and so does an
+  entry whose constant is gone. A number written inline in an expression
+  is out of its reach, so tuning values are named. Layout counts as outside
+  the registry: pixel geometry and colours are the theme's and the UI spec's,
+  not a spend of the machine; say if that line should move.
+- **What the test found**, now parameters, at the values they had:
+  `camera.surfaceFollowSpeed` (160 m/s, the orbit target and the compass),
+  `camera.orbitTargetZoomStep` (750 m per e-fold of zoom) and
+  `camera.surfaceRetry` (1,500 ms), all under Show all parameters in
+  Controls → Camera; `map.imagery.missingRetryAfter` (600 s) and
+  `map.retryDelay` (2–30 s, one range for failed terrain and 2D imagery
+  downloads, which This device resets) in Map → Loading and memory;
+  `interface.log.lineDuration` (8 s) and `.maxLines` (40) in a new
+  Interface → Log; and `search.cacheDuration` (24 h), `.cacheEntries` and
+  `.timeout` (20 s), for place and airport lookups, in a new Interface →
+  Search. Two differ at their defaults: the airport lookup keeps 64 answers
+  as the place lookup did, not 32; and a mouse press selects a point of
+  interest only while it moves less than `input.mouse.dragThreshold` (4 px,
+  not 5), so a press the map took as a drag no longer also selects. New API:
+  `CameraController.setGroundFollow`, `AnchorHeightResolver.setTuning`,
+  `createPoiTracking(scene, camera, { dragThresholdPx })`,
+  `createGameLog(settings)`, and the `m/s` and `h` units.
 
 ## Sequence
 
