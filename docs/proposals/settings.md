@@ -4,7 +4,8 @@ Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
 markers, the Loading and memory and Imagery selection parameters, detail focus
 on both maps, terrain detail as a continuous target and the automatic
-adjustment. Stage 5 is in progress: camera, input and renderer parameters are done. [Implementation](#implementation)
+adjustment. Stage 5 is in progress: camera, input and renderer parameters are
+done, and the Toolbar and Performance debug sections have moved. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -312,9 +313,8 @@ Today's sensitivities exist; their curves do not.
 ### Interface
 
 HUD buttons, theme, the performance HUD metrics, and the compass and POI tuners
-exist and keep their homes in Settings → Toolbar and Settings → Performance
-debug until those sections move to the tabs they affect: Toolbar to an
-**Interface** tab, Performance debug to **Renderer**.
+exist. Their sections move to the tabs they affect: Toolbar to an
+**Interface** tab, Performance debug to **Renderer**. *Moved on 2026-09-26.*
 
 ## Presets
 
@@ -646,6 +646,11 @@ Where stage 1 differs from this spec:
   (automatic or fixed) with `renderer.clipping.fixed` (a range in m, 1 m to
   10,000 km) sets the globe camera's near and far planes; a host's own
   cameras keep theirs.
+- **Tabs.** Toolbar moved to a new Interface tab (`WindowOverlay`'s
+  `interfaceSections`, the app's `interfaceSections`), and Performance debug to
+  the end of the Renderer tab (`createRendererPanel`'s `sections`, for a
+  section the app draws itself). The Settings tab keeps Saved settings and
+  About.
 
 ## Sequence
 

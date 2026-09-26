@@ -128,6 +128,13 @@ function parameterInput(section: HTMLElement | undefined, id: string): HTMLInput
   return input;
 }
 
+/** Performance debug, a section of the Renderer tab. */
+function performanceSection(app: { rendererTab: HTMLElement }): HTMLElement {
+  const element = app.rendererTab.querySelector<HTMLElement>('[data-section="renderer.performance"]');
+  if (!element) throw new Error("No Performance debug section in the Renderer tab");
+  return element;
+}
+
 function sectionElement(sections: readonly { id: string; element?: HTMLElement }[], id: string): HTMLElement {
   const element = sections.find(section => section.id === id)?.element;
   if (!element) throw new Error(`No section ${id}`);
@@ -312,7 +319,7 @@ describe("createGlobeApp smoke behavior", () => {
 
   it("toggles hidden performance metrics from settings", async () => {
     const { root, app } = await createAppUnderTest();
-    const performance = sectionElement(app.settingsSections, "performance");
+    const performance = performanceSection(app);
     const activeMeshesInput = parameterInput(performance, "interface.performanceHud.activeMeshes");
     const tilesInput = parameterInput(performance, "interface.performanceHud.tiles");
 
@@ -441,7 +448,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(text).toContain("Map detail returned 0.25 levels toward what you asked for");
   });
 
-  it("splits its sections between a Controls tab and a Settings tab", async () => {
+  it("splits its sections between the Controls, Interface, Renderer and Settings tabs", async () => {
     const { app } = await createAppUnderTest();
 
     expect(app.controlsSections.map(({ id, title, defaultOpen }) => [id, title, defaultOpen])).toEqual([
@@ -461,19 +468,21 @@ describe("createGlobeApp smoke behavior", () => {
     expect(controls("mouse")).toEqual(expect.arrayContaining(["input.mouse.orbitRate", "input.mouse.dragThreshold", "input.wheel.zoomRate"]));
     expect(controls("touch")).toEqual(expect.arrayContaining(["input.touch.orbitRate", "input.touch.panRate", "input.touch.zoomExponent"]));
     expect(controls("controller")).toContain("input.gamepad.deadzone");
+    expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"]]);
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
-      ["toolbar", "Toolbar"],
-      ["performance", "Performance debug"],
       ["saved-settings", "Saved settings"],
       ["about", "About"],
     ]);
-    const performance = sectionElement(app.settingsSections, "performance");
+    // The Renderer tab ends with Performance debug.
+    const rendererSections = [...app.rendererTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
+    expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.clipping", "renderer.performance"]);
+    const performance = performanceSection(app);
     expect(performance.querySelector('[data-parameter="interface.performanceHud.fps"]')).not.toBeNull();
     // Every section can list all its parameters.
     expect(performance.querySelector(".foss-earth-parameter-section__toggle")).not.toBeNull();
   });
 
-  it("shows every toolbar button until one is hidden in Settings, and remembers it", async () => {
+  it("shows every toolbar button until one is hidden in Interface → Toolbar, and remembers it", async () => {
     const first = await createAppUnderTest();
     for (const id of ["helpButton", "settingsButton", "themeButton"]) {
       expect(first.root.querySelector<HTMLElement>(`#${id}`)!.hidden).toBe(false);
@@ -481,8 +490,8 @@ describe("createGlobeApp smoke behavior", () => {
     expect(first.root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(false);
 
     // A checkbox only reports a change while it is in the document, as it is once the tab is open.
-    document.body.append(sectionElement(first.app.settingsSections, "toolbar"));
-    const help = parameterInput(sectionElement(first.app.settingsSections, "toolbar"), "interface.toolbar.help");
+    document.body.append(sectionElement(first.app.interfaceSections, "toolbar"));
+    const help = parameterInput(sectionElement(first.app.interfaceSections, "toolbar"), "interface.toolbar.help");
     expect(help.checked).toBe(true);
     help.click();
     expect(first.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
@@ -493,7 +502,7 @@ describe("createGlobeApp smoke behavior", () => {
     resetAppSettings();
     const second = await createAppUnderTest();
     expect(second.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
-    expect(parameterInput(sectionElement(second.app.settingsSections, "toolbar"), "interface.toolbar.help").checked).toBe(false);
+    expect(parameterInput(sectionElement(second.app.interfaceSections, "toolbar"), "interface.toolbar.help").checked).toBe(false);
     expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
   });
 
@@ -507,8 +516,8 @@ describe("createGlobeApp smoke behavior", () => {
     expect(inputMethod.querySelectorAll(".input-mode-inline")).toHaveLength(1);
     expect(root.querySelectorAll(".input-mode-inline")).toHaveLength(0);
 
-    document.body.append(sectionElement(app.settingsSections, "toolbar"));
-    parameterInput(sectionElement(app.settingsSections, "toolbar"), "interface.toolbar.inputMode").click();
+    document.body.append(sectionElement(app.interfaceSections, "toolbar"));
+    parameterInput(sectionElement(app.interfaceSections, "toolbar"), "interface.toolbar.inputMode").click();
     expect(root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(true);
     // jsdom reports a fine pointer and no touch: a desktop, so the choice is there.
     const pointer = inputMethod.querySelector<HTMLButtonElement>(".input-mode-toggle-option:not(.is-active)")!;
@@ -541,7 +550,7 @@ describe("createGlobeApp smoke behavior", () => {
 
   it("shows and applies the compass scale tuner from settings", async () => {
     const { root, app } = await createAppUnderTest();
-    const toggle = parameterInput(sectionElement(app.settingsSections, "performance"), "interface.compassScaleTuner");
+    const toggle = parameterInput(performanceSection(app), "interface.compassScaleTuner");
     const tuner = root.querySelector<HTMLElement>(".compass-scale-tuner");
 
     expect(toggle?.checked).toBe(false);

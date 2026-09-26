@@ -58,8 +58,8 @@ paragraph.
 
 The HUD bar is the reference (`.hud-bar` in `src/styles/hud.css`): north, help,
 settings, theme, input method, renderer and position sit side by side at their
-own widths and wrap on a narrow screen. In the Settings tab, `.settings-metric-menu`
-does the same for toggles.
+own widths and wrap on a narrow screen. In Renderer → Performance debug,
+`.settings-metric-menu` does the same for toggles.
 
 Do not lay a set of controls out in fixed columns: no `grid-template-columns:
 repeat(n, …)`, no row of `flex: 1` children stretched to equal widths, no table
@@ -107,8 +107,9 @@ Every setting lives in exactly one place, a section of a tab.
   (`createMapSourcePanel`) is Source, Detail, Automatic adjustment, Loading
   and memory, Imagery selection and Terrain selection; the
   Renderer tab (`createRendererPanel`) is Renderer, Resolution and frame
-  rate, and Depth range; the Controls tab is Input
-  method, Camera, Orbit, Mouse and trackpad, Touch and Controller. Map and
+  rate, Depth range and Performance debug; the Controls tab is Input method,
+  Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
+  is Toolbar; and the Settings tab is Saved settings and About. Map and
   Renderer add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.
@@ -128,7 +129,7 @@ Every setting lives in exactly one place, a section of a tab.
   is a bar in its own colour, labelled under the track, hollow while waived; a
   requirement stripes the part of the range it refuses. `createTrack` draws all
   of them.
-- Every toolbar button is shown until the user hides it in Settings → Toolbar,
+- Every toolbar button is shown until the user hides it in Interface → Toolbar,
   because a first-time visitor does not know that + opens the same tabs. Hiding a
   button never hides what it opened; its tab stays under +.
 

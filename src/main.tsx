@@ -29,6 +29,7 @@ void createGlobeApp(rootElement, { overlayApiRef: overlayApi }).then((globeApp) 
       getViewState={globeApp.getViewState}
       setViewState={(location) => globeApp.setViewState(location)}
       controlsSections={globeApp.controlsSections}
+      interfaceSections={globeApp.interfaceSections}
       settingsSections={globeApp.settingsSections}
       mapTab={globeApp.mapTab}
       rendererTab={globeApp.rendererTab}

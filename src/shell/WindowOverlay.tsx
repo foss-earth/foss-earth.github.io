@@ -24,7 +24,7 @@ import {
 } from "../windowing/core/workspaceState";
 
 /** Tabs the overlay builds from a host's sections. */
-type SectionTabId = "controls" | "settings";
+type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
 type ElementTabId = "map" | "renderer";
 /** Every tab the overlay can offer without the host defining it. */
@@ -62,6 +62,8 @@ export interface WindowOverlayProps<TabId extends string = never> {
   controlsSections?: readonly PanelSection[];
   /** Adds the shared Settings tab, the same way. */
   settingsSections?: readonly PanelSection[];
+  /** The toolbar, theme and what the interface shows, in an Interface tab. */
+  interfaceSections?: readonly PanelSection[];
   /** Adds the shared Map tab showing this element, from `createMapSourcePanel`. */
   mapTab?: HTMLElement;
   /** Adds the shared Renderer tab showing this element, from `createRendererPanel`. */
@@ -79,6 +81,7 @@ export function WindowOverlay<TabId extends string = never>({
   additionalTabs = [],
   renderAdditionalTab,
   controlsSections,
+  interfaceSections,
   settingsSections,
   mapTab,
   rendererTab,
@@ -90,13 +93,14 @@ export function WindowOverlay<TabId extends string = never>({
   type OverlayTabId = BuiltInTabId | TabId;
   const sectionTabs: Partial<Record<SectionTabId, readonly PanelSection[]>> = {
     ...(controlsSections ? { controls: controlsSections } : {}),
+    ...(interfaceSections ? { interface: interfaceSections } : {}),
     ...(settingsSections ? { settings: settingsSections } : {}),
   };
   const elementTabs: Partial<Record<ElementTabId, HTMLElement>> = {
     ...(mapTab ? { map: mapTab } : {}),
     ...(rendererTab ? { renderer: rendererTab } : {}),
   };
-  const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", settings: "Settings" };
+  const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
   const elementTabLabels: Record<ElementTabId, string> = { map: "Map", renderer: "Renderer" };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);
