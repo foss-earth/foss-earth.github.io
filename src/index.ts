@@ -6,7 +6,6 @@ import type { PoiSpriteSizeParams } from "./hud/poiSpriteSizeTuner";
 import type { OrbitCompassScaleParams } from "./visualization/orbitCompass";
 import type { RasterBaseMapSource } from "./engine/babylon/rasterBaseMaps";
 import type { TerrainSource } from "./terrain/terrainTiles";
-import type { RasterQualitySetting } from "./engine/babylon/rasterQuality";
 
 export type { GlobeHandle, GlobeLayer, GlobeLayerContext, GlobeLayerState, GlobeViewState, GlobeTheme, GlobeInputModePreference, GlobeInputSensitivitySettings } from "./engine/types";
 export type { InputModeHudHandle } from "./hud/inputModeHud";
@@ -17,7 +16,6 @@ export { DEFAULT_RASTER_BASE_MAP_ID, RASTER_BASE_MAP_SOURCES, resolveRasterBaseM
 export type { RasterBaseMapProtocol, RasterBaseMapSource } from "./engine/babylon/rasterBaseMaps";
 export { MAPTERHORN, AWS_TERRARIUM, TERRAIN_SOURCES, resolveTerrainSource } from "./terrain/terrainTiles";
 export type { TerrainSource } from "./terrain/terrainTiles";
-export type { RasterQualitySetting, RasterQualityState } from "./engine/babylon/rasterQuality";
 export type { BabylonLayerContext, BabylonLayerState, PoiDescriptor } from "./layers/types";
 export { smoothSurfaceHeightMeters, smoothSurfaceEcef } from "./terrain/smoothElevation";
 export type { PoiSpriteSizeParams } from "./hud/poiSpriteSizeTuner";
@@ -76,7 +74,8 @@ export interface GlobeOptions {
   preferGoogleTiles?: boolean;
   getSurfaceHeightMeters?: (latDeg: number, lonDeg: number) => number | null;
   terrainSource?: string | TerrainSource | null;
-  rasterQuality?: RasterQualitySetting;
+  /** @deprecated Ignored: terrain detail is `map.detail.terrain.*`, adjusted by `map.auto.*`. */
+  rasterQuality?: unknown;
   onPoiSpriteSizeChange?: (params: PoiSpriteSizeParams) => void;
   onCompassScaleChange?: (params: OrbitCompassScaleParams) => void;
 }
@@ -94,7 +93,6 @@ export async function createGlobe(options: GlobeOptions = {}): Promise<GlobeAppH
     preferGoogleTiles: options.preferGoogleTiles,
     getSurfaceHeightMeters: options.getSurfaceHeightMeters,
     terrainSource: options.terrainSource,
-    rasterQuality: options.rasterQuality,
     onPoiSpriteSizeChange: options.onPoiSpriteSizeChange,
     onCompassScaleChange: options.onCompassScaleChange,
   });

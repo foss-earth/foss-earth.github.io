@@ -380,7 +380,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(app.mapTab.querySelector('[data-parameter="map.source.googleKey"]')).not.toBeNull();
     expect(app.mapTab.querySelector(".foss-earth-map-cache-section")).not.toBeNull();
     expect([...app.mapTab.querySelectorAll(".foss-earth-panel-section__title")].map(title => title.textContent)).toEqual([
-      "Source", "Detail", "Loading and memory", "Imagery selection",
+      "Source", "Detail", "Automatic adjustment", "Loading and memory", "Imagery selection", "Terrain selection",
     ]);
   });
 

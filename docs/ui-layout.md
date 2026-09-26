@@ -104,7 +104,8 @@ Every setting lives in exactly one place, a section of a tab.
   [settings spec](proposals/settings.md#implementation)): its own controls,
   then a control for every main-level parameter homed in it that those don't
   cover, hosts' included, then **Show all parameters**. The Map tab
-  (`createMapSourcePanel`) is Source, Detail and Loading and memory; the
+  (`createMapSourcePanel`) is Source, Detail, Automatic adjustment, Loading
+  and memory, Imagery selection and Terrain selection; the
   Renderer tab (`createRendererPanel`) is Renderer. Both add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.

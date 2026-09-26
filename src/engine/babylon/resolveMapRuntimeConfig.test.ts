@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { FOSS_EARTH_PARAMETERS, fossEarthUrlAliases } from "../../settings/catalogue";
+import { createSettingsRegistry } from "../../settings/registry";
 import { DEFAULT_RASTER_IMAGERY, resolveMapRuntimeConfig } from "./resolveMapRuntimeConfig";
 
 describe("resolveMapRuntimeConfig", () => {
@@ -37,13 +39,30 @@ describe("resolveMapRuntimeConfig", () => {
     expect(config.rasterBaseMap.id).toBe("usgs-imagery-topo");
   });
 
-  it("restores independent elevation and quality selections", () => {
+  it("restores independent elevation and basemap selections", () => {
     const config = resolveMapRuntimeConfig({
-      searchParams: new URLSearchParams("mapSource=usgs-topo&elevationSource=aws-terrarium&terrainQuality=high"),
+      searchParams: new URLSearchParams("mapSource=usgs-topo&elevationSource=aws-terrarium"),
     });
     expect(config.rasterBaseMap.id).toBe("usgs-topo");
     expect(config.terrainSource.id).toBe("aws-terrarium");
-    expect(config.rasterQuality).toBe("high");
+  });
+
+  it("turns the retired ?terrainQuality into terrain detail for the visit, and says so", () => {
+    const settings = createSettingsRegistry({
+      storage: null, searchParams: new URLSearchParams("terrainQuality=high"), urlAliases: fossEarthUrlAliases,
+    });
+    settings.register(FOSS_EARTH_PARAMETERS);
+    const config = resolveMapRuntimeConfig({ settings });
+    expect(config.rasterQuality).toBeUndefined();
+    expect(settings.inspect("map.detail.terrain.default")).toMatchObject({ value: 2, provenance: "url" });
+    expect(settings.inspect("map.detail.terrain.default")?.note).toMatch(/terrainQuality=high is retired/);
+    expect(settings.get("map.auto.terrainDetail")).toBe(false);
+    // Only for the visit: nothing is saved.
+    expect(settings.sessionValueIds().sort()).toEqual(["map.auto.terrainDetail", "map.detail.terrain.default"]);
+    const auto = createSettingsRegistry({ storage: null, searchParams: new URLSearchParams("terrainQuality=auto"), urlAliases: fossEarthUrlAliases });
+    auto.register(FOSS_EARTH_PARAMETERS);
+    expect(auto.get("map.auto.terrainDetail")).toBe(true);
+    expect(auto.get("map.detail.terrain.default")).toBe(4);
   });
 
   it("draws 2D imagery from the projected atlas unless the URL rolls back to legacy", () => {

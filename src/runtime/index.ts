@@ -22,13 +22,11 @@ export {
   getGoogleApiKeyFromSearchParams,
   getMapSourcePreferenceFromSearchParams,
   getTerrainSourcePreferenceFromSearchParams,
-  getRasterQualityPreferenceFromSearchParams,
   getRasterImageryPreferenceFromSearchParams,
   DEFAULT_RASTER_IMAGERY,
   resolveMapRuntimeConfig,
   setMapSourcePreference,
   setTerrainSourcePreference,
-  setRasterQualityPreference,
   type MapRuntimeConfig,
   type RasterImageryMode,
   type ResolveMapRuntimeConfigOptions,
@@ -44,7 +42,6 @@ export {
   type TerrainSource,
   type TerrainGrid,
 } from "../terrain/terrainTiles";
-export type { RasterQualitySetting, RasterQualityState } from "../engine/babylon/rasterQuality";
 export type { RasterDetailFeedback } from "../engine/babylon/createRasterTilesRuntime";
 export {
   chooseDeviceHintErrorTarget,

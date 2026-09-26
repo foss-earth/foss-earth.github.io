@@ -1,9 +1,10 @@
 # Settings: every choice named, visible and changeable
 
-Status: Stages 1 to 3 implemented (2026-09-25 and 26): the registry, the
+Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
-markers, the Loading and memory and Imagery selection parameters, and detail
-focus on both maps. Stages 4 and 5 are not yet implemented except where marked. [Implementation](#implementation)
+markers, the Loading and memory and Imagery selection parameters, detail focus
+on both maps, terrain detail as a continuous target and the automatic
+adjustment. Stage 5 is not yet implemented except where marked. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -252,7 +253,7 @@ size. The focus ring (`ringRadius`, `corridorSteps`) is replaced by
 | `map.imagery.reselectWhileMoving` | ms between traversals | 100, hardcoded |
 | `map.imagery.anisotropy` | samples | 4, hardcoded |
 | `map.terrain.cachedTiles` | count | 96 / 160 / 256 by profile |
-| `map.terrain.requestDebounce` | m of camera travel | 5, hardcoded |
+| `map.terrain.reselectWhileMoving` | ms between selections | 100, as imagery (was `requestDebounce`, 5 m of the view anchor's travel, until terrain followed the camera) |
 | `map.terrain.maxLevel` | levels | 16 with the atlas, hardcoded |
 | `map.google.cacheTiles` | range, count | 6,000 – 8,000, library default |
 | `map.google.cacheBytes` | range, MiB | 300 – 400 MB, library default |
@@ -519,6 +520,69 @@ Where stage 1 differs from this spec:
   requests after settling, with View as the control that does request. The
   Google measure is unit-tested in `createTilesRuntime.test.ts`; the headless
   check against real Google tiles is 0sfs's `scripts/validation/map-focus/`.
+
+### Stage 4 (2026-09-26)
+
+- **Terrain selection** (`src/terrain/terrainSelector.ts`). From the 16 tiles
+  of level 2, a tile splits while its geometric error, projected from the
+  active camera, exceeds `map.detail.terrain`'s target in px. Its error is
+  `map.terrain.errorPerSpacing` (0.25, Cesium's share for heightmaps) times
+  its vertex spacing: its width at its centre's latitude over
+  `map.terrain.tileSegments` (64). Tiles outside the view or below the horizon
+  stay as coarse as the root, so turning the camera in View loads what it
+  reveals. Around a focus point, tiles within the radius are measured from the
+  point, as imagery is. `map.terrain.refineAbove` / `.coarsenBelow` (1.2 /
+  0.8) keep a level at the threshold, and `map.terrain.maxTiles` (512) bounds
+  a selection. These are in Map → Terrain selection. Where the coarse heights
+  put the ground above the camera, in a valley the coarse grid fills in, the
+  ground is taken to reach below the camera by the relief's span, so it still
+  refines.
+- **Terrain follows the camera.** `getViewState` and `setSimViewState` no
+  longer decide terrain. With no active camera only the root level is kept. A
+  host that needs ground refined in every direction, such as a flight for its
+  collision surface, sets `map.focus.mode` to Around or View and focus with its
+  focus point. `map.terrain.requestDebounce` (m of the anchor's travel) became
+  `map.terrain.reselectWhileMoving` (ms, 100): the view it stops at is always
+  selected.
+- **Map → Detail** adds `map.detail.terrain.range` (2–16 px) and `.default`
+  (4 px, about what terrain showed before) on log2 tracks, and
+  `map.detail.linkTerrainToImagery` (on): each level the rail moves finer
+  halves the terrain's target, within its range.
+- **Retired:** `RASTER_QUALITY_PROFILES` and its controller, the focus ring
+  and heading corridor, `setRasterQuality` / `getRasterQuality`,
+  `status.rasterQuality`, `getRasterQualityPreferenceFromSearchParams` and
+  `setRasterQualityPreference`. The `rasterQuality` options of
+  `createGlobe`, `createGlobeApp`, `resolveMapRuntimeConfig` and
+  `createBabylonRuntime` remain as deprecated fields that are ignored, so hosts
+  compile until they drop them. `?terrainQuality` sets, for the visit only,
+  `map.detail.terrain.default` to 8, 4 or 2 px with `map.auto.terrainDetail`
+  off for low, balanced and high, or turns the adjustment on for auto, and
+  the Detail section says the parameter is retired.
+- **Automatic adjustment** (`src/terrain/autoDetail.ts`, Map → Automatic
+  adjustment). One adjustment in levels applies to every detail allowed to
+  move: `map.auto.terrainDetail` multiplies the terrain target by 2 to its
+  power, up to the range's coarse end, and `map.auto.imageryDetail` lowers the
+  imagery offset by it, down to its range's coarse end. It never goes finer
+  than asked. The goal, `map.auto.frameTimeGoal`, is the display's refresh
+  interval by default, measured as the shortest interval between frames. The
+  thresholds are multiples of it (1.2 and 0.84: 20 and 14 ms at 60 Hz),
+  with 1 s windows, 2 slow or 10 fast windows, quarter-level steps and 5 s
+  between steps: today's values, as parameters.
+- **What it did** shows in readings on the auto switches, the goal and the
+  terrain default: where each is, what was asked for, and the frame time that
+  caused it. The rail lists "coarsened to hold the frame time" (`frame-time`,
+  a new `DetailLimit`). Each decision is logged to the console as
+  `[map auto]`, to the map debug log as `detail-adjusted`, and to hosts
+  through `BabylonRuntime.onDetailAdjusted(listener)`.
+- **Differences from the spec.** How much of the goal the globe may use is
+  not a parameter: the measure is the whole frame interval, and splitting out
+  the globe's share needs GPU timer queries. No budget is auto-capable yet;
+  none moves at run time. Google detail is not adjusted: its renderer keeps
+  its own target.
+- **Found on the way.** With 64 segments, the fast surface sampler and the
+  ray-cast reference differ by about 5 cm at a stitched dateline seam; the
+  sampler test pins the 128 segments it was written for. `vite.config.ts` now
+  keeps `build/` out of test discovery, since bisect worktrees live there.
 
 ## Sequence
 
