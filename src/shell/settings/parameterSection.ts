@@ -95,6 +95,20 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
 
   syncMain();
   showAll(loadPanelSectionsOpen()[allKey] ?? false);
+  // Readings change without the registry knowing: read them again every
+  // second, and only while the section can be seen.
+  // A reading whose source went away is cleared on the next tick.
+  let shownReadings = new Set<string>();
+  const readingTimer = window.setInterval(() => {
+    if (!element.isConnected || element.closest("details")?.open === false) return;
+    const ids = new Set<string>();
+    for (const id of controls.keys()) if (settings.hasReading(id)) ids.add(id);
+    if (list) for (const spec of settings.list({ tab, section })) if (settings.hasReading(spec.id)) ids.add(spec.id);
+    const refresh = new Set([...ids, ...shownReadings]);
+    shownReadings = ids;
+    for (const id of refresh) controls.get(id)?.update();
+    if (refresh.size > 0) list?.update(refresh);
+  }, 1000);
   const unsubscribe = settings.subscribe(changed => {
     let registered = false;
     for (const id of changed) {
@@ -112,6 +126,7 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
     element,
     destroy() {
       unsubscribe();
+      window.clearInterval(readingTimer);
       toggle.removeEventListener("change", onToggle);
       for (const control of controls.values()) control.destroy();
       controls.clear();

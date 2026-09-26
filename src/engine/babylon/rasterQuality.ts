@@ -9,7 +9,6 @@ export interface RasterQualityProfile {
   corridorSteps: number;
   minSegments: number;
   maxSegments: number;
-  maxCachedTiles: number;
 }
 
 export interface RasterQualityState {
@@ -18,9 +17,9 @@ export interface RasterQualityState {
 }
 
 export const RASTER_QUALITY_PROFILES: Readonly<Record<RasterQualityProfileId, RasterQualityProfile>> = {
-  low: { id: "low", zoomBias: -2, baseZoom: 1, ringRadius: 1, corridorSteps: 0, minSegments: 16, maxSegments: 32, maxCachedTiles: 96 },
-  balanced: { id: "balanced", zoomBias: -1, baseZoom: 1, ringRadius: 2, corridorSteps: 1, minSegments: 16, maxSegments: 64, maxCachedTiles: 160 },
-  high: { id: "high", zoomBias: 0, baseZoom: 2, ringRadius: 3, corridorSteps: 2, minSegments: 32, maxSegments: 128, maxCachedTiles: 256 },
+  low: { id: "low", zoomBias: -2, baseZoom: 1, ringRadius: 1, corridorSteps: 0, minSegments: 16, maxSegments: 32 },
+  balanced: { id: "balanced", zoomBias: -1, baseZoom: 1, ringRadius: 2, corridorSteps: 1, minSegments: 16, maxSegments: 64 },
+  high: { id: "high", zoomBias: 0, baseZoom: 2, ringRadius: 3, corridorSteps: 2, minSegments: 32, maxSegments: 128 },
 };
 
 function initialAutoProfile(): RasterQualityProfileId {

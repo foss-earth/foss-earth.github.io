@@ -1,8 +1,9 @@
 # Settings: every choice named, visible and changeable
 
-Status: Stage 1 implemented (2026-09-25): the registry, the record, migration,
-export and import, URL values, the section controls and host markers. Stages 2
-to 5 are not yet implemented except where marked. [Implementation](#implementation)
+Status: Stages 1 and 2 implemented (2026-09-25): the registry, the record,
+migration, export and import, URL values, the section controls, host markers,
+and the Loading and memory and Imagery selection parameters. Stages 3 to 5 are
+not yet implemented except where marked. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -442,6 +443,34 @@ Where stage 1 differs from this spec:
   4 replace them.
 - The Toolbar, Camera and Performance debug sections stay in the Settings tab,
   as the spec allows, until the Interface and Renderer tabs take them.
+
+### Stage 2 (2026-09-25)
+
+- Map → Loading and memory holds every budget in the catalogue's table plus
+  `map.imagery.pageTablePatches` (the patches that can each have their own
+  page table, 256, which also sizes the atlas). Map → Imagery selection holds
+  the selector's calibration. `IMAGERY_RESOURCE_PROFILES` is gone, the quality
+  profiles no longer carry a terrain cache size, and the automatic quality
+  controller no longer changes any budget.
+- The raster, imagery and Google runtimes read these parameters from the
+  registry they are given and follow changes live. A new
+  `map.imagery.gpuBudget` or page-table count reallocates the atlas; the old
+  atlas keeps drawing, with its pages and tables, until the new one's fallback
+  coverage is resident, so there is no blank frame. If the renderer cannot
+  create the new atlas, the old one stays and the budget's note says why.
+- `map.imagery.gpuBudget` defaults to 1/32 of the memory the browser reports
+  (256 MiB for the 8 GiB Chrome reports on most desktops), or 128 MiB where
+  the browser reports none, and is bounded by the largest atlas the
+  renderer's texture limit allows (the 8192 px cap is gone; WebGL 1 keeps
+  4096 px). Before the renderer starts the bound is unknown, so saved values
+  are kept and limited later rather than dropped.
+- A budget shows what it bounds beside it (`setReadingSource`): atlas pages in
+  use, bytes waiting, requests in flight and queued, upload rate, the last
+  selection's time and regions, terrain and Google tiles kept, bytes held and
+  jobs running. Sections read them once a second, only while shown.
+- The HTTP tile cache takes its limits from `map.cache.*`, applied by the
+  runtime; until then it neither adds nor prunes, so a page that opens the
+  cache panel before a map exists cannot empty it.
 
 ## Sequence
 

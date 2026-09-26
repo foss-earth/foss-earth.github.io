@@ -97,6 +97,15 @@ export interface SettingsRegistry {
   setChoices(id: string, choices: readonly ParameterChoice[]): void;
   /** Explains what limits a parameter now, shown under its control; null clears it. */
   setNote(id: string, note: string | null): void;
+  /**
+   * The live measurement a budget bounds, such as "118 MiB in use", read
+   * beside its control while it is shown. Null removes it. Returns a function
+   * that removes this source.
+   */
+  setReadingSource(id: string, read: (() => string | null) | null): () => void;
+  /** The current reading, or null when there is no source or nothing to say. */
+  getReading(id: string): string | null;
+  hasReading(id: string): boolean;
   setDeviceContext(context: Partial<DeviceContext>): void;
   getDeviceContext(): DeviceContext;
   /** Called with the ids whose state changed, or that were just registered. Returns an unsubscribe function. */
@@ -138,6 +147,9 @@ export interface SettingsRegistry {
   /** Null after a storage failure: settings still apply but will not survive a reload. */
   getStorageError(): string | null;
 }
+
+/** Shared, so an unchanged parameter compares equal to itself. */
+const NO_CHOICES: readonly ParameterChoice[] = Object.freeze([]);
 
 const DEFAULT_CONTEXT: DeviceContext = {
   rendererMode: null,
@@ -209,6 +221,7 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
   const hostDefaults = new Map<string, { value: ParameterValue; derivedFrom: string }>();
   const choices = new Map<string, readonly ParameterChoice[]>();
   const notes = new Map<string, string>();
+  const readings = new Map<string, () => string | null>();
   const droppedNotes = new Map<string, string>();
   const presets = new Map<string, SettingsPreset>();
   const sourceBases = new Map<string, string>(options.sourceBase ? [["", options.sourceBase]] : []);
@@ -281,7 +294,7 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
   }
 
   function choicesOf(spec: ParameterSpec): readonly ParameterChoice[] {
-    return choices.get(spec.id) ?? spec.choices ?? [];
+    return choices.get(spec.id) ?? spec.choices ?? NO_CHOICES;
   }
 
   function registeredDefault(spec: ParameterSpec): { value: ParameterValue; derivedFrom: string } {
@@ -591,6 +604,16 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
         if (note) notes.set(id, note); else notes.delete(id);
       });
     },
+    setReadingSource(id, read) {
+      if (read) readings.set(id, read); else readings.delete(id);
+      return () => { if (readings.get(id) === read) readings.delete(id); };
+    },
+    getReading(id) {
+      const read = readings.get(id);
+      if (!read) return null;
+      try { return read(); } catch { return null; }
+    },
+    hasReading: (id) => readings.has(id),
     setDeviceContext(partial) {
       const next = { ...context, ...partial };
       if (JSON.stringify(next) === JSON.stringify(context)) return;

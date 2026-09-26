@@ -188,7 +188,7 @@ function fromField(spec: ParameterSpec, text: string): number | null {
   return spec.unit === "fraction" ? value / 100 : value;
 }
 
-function createHeader(spec: ParameterSpec): { header: HTMLElement; readout: HTMLElement } {
+function createHeader(spec: ParameterSpec): { header: HTMLElement; readout: HTMLElement; reading: HTMLElement } {
   const header = document.createElement("div");
   header.className = "foss-earth-parameter__header";
   const label = document.createElement("span");
@@ -197,8 +197,18 @@ function createHeader(spec: ParameterSpec): { header: HTMLElement; readout: HTML
   label.title = describeTitle(spec);
   const readout = document.createElement("span");
   readout.className = "foss-earth-parameter__readout";
-  header.append(label, readout);
-  return { header, readout };
+  // What the budget bounds right now, beside it, in the same unit.
+  const reading = document.createElement("span");
+  reading.className = "foss-earth-parameter__reading";
+  reading.hidden = true;
+  header.append(label, readout, reading);
+  return { header, readout, reading };
+}
+
+function showReading(settings: SettingsRegistry, id: string, element: HTMLElement): void {
+  const text = settings.getReading(id);
+  element.hidden = text === null;
+  if (text !== null && element.textContent !== text) element.textContent = text;
 }
 
 /** A value track: one thumb, the default ticked, named values as pills beside it. */
@@ -207,7 +217,7 @@ function createValueTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
   const element = document.createElement("div");
   element.className = "foss-earth-parameter foss-earth-parameter--line";
   element.dataset.parameter = spec.id;
-  const { header, readout } = createHeader(spec);
+  const { header, readout, reading } = createHeader(spec);
   const field = document.createElement("input");
   field.type = "number";
   field.className = "foss-earth-parameter__field";
@@ -289,6 +299,7 @@ function createValueTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
     field.disabled = locked;
     if (document.activeElement !== field && number !== null) field.value = fieldNumber(spec, number);
     unit.textContent = number === null ? formatValue(spec, value, state.choices) : spec.unit === "fraction" ? "%" : formatQuantity(spec.unit, 1).replace(/^1\s?/, "");
+    showReading(settings, spec.id, reading);
     setNote(note, noteFor(state, start));
   };
   update();
@@ -309,7 +320,7 @@ function createRangeTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
   const element = document.createElement("div");
   element.className = "foss-earth-parameter foss-earth-parameter--line";
   element.dataset.parameter = spec.id;
-  const { header, readout } = createHeader(spec);
+  const { header, readout, reading } = createHeader(spec);
   const note = createNote();
   const start = settings.get(spec.id);
   // Left and right thumbs; on a reversed track the left one is the range's max.
@@ -354,6 +365,7 @@ function createRangeTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
       disabled: locked,
     });
     readout.textContent = formatValue(spec, value);
+    showReading(settings, spec.id, reading);
     setNote(note, noteFor(state, start));
   };
   update();

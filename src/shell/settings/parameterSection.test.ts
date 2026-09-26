@@ -115,6 +115,26 @@ describe("parameter section", () => {
     expect(input(control("t.flag"), "input").disabled).toBe(false);
   });
 
+  it("shows what a budget bounds beside it, read again every second while it is shown", () => {
+    vi.useFakeTimers();
+    try {
+      const { settings, control } = setup();
+      let used = 100;
+      const remove = settings.setReadingSource("t.budget", () => `${used} MiB in use`);
+      settings.set("t.budget", 256);
+      const reading = control("t.budget").querySelector<HTMLElement>(".foss-earth-parameter__reading")!;
+      expect(reading.textContent).toBe("100 MiB in use");
+      used = 180;
+      vi.advanceTimersByTime(1000);
+      expect(reading.textContent).toBe("180 MiB in use");
+      remove();
+      vi.advanceTimersByTime(1000);
+      expect(reading.hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("draws a host's parameter registered after the section exists", () => {
     const { settings, control } = setup();
     settings.register([{ ...base, id: "host.waiver", label: "Waiver", description: "A host switch.", unit: "none", kind: "boolean", default: false, session: true, home: { tab: "map", section: "loading", level: "main" } }]);
