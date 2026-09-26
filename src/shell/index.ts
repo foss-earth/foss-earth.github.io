@@ -41,6 +41,14 @@ export { createParameterList, createSettingsTransfer, type ParameterListHandle, 
 export { createTrack, detailColour, type TrackFrame, type TrackHandle, type TrackOptions, type TrackRamp, type TrackThumb } from "./settings/track";
 export { createMapCacheSection, type MapCacheSectionHandle } from "./mapCacheSection";
 export { createSavedSettingsSection, type SavedSettingsSectionHandle } from "./settings/savedSettings";
+export {
+  createPresetStatus,
+  createPresetsSection,
+  createSavePresetControl,
+  type PresetStatusHandle,
+  type PresetsSectionHandle,
+  type SavePresetHandle,
+} from "./settings/presetsSection";
 export { connectMapDetailRuntime, type MapDetailRuntime } from "./connectMapDetailRuntime";
 export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from "./WindowOverlay";
 export { SectionsPanel, type PanelSection } from "./SectionsPanel";

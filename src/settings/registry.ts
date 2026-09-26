@@ -108,7 +108,10 @@ export interface SettingsRegistry {
   hasReading(id: string): boolean;
   setDeviceContext(context: Partial<DeviceContext>): void;
   getDeviceContext(): DeviceContext;
-  /** Called with the ids whose state changed, or that were just registered. Returns an unsubscribe function. */
+  /**
+   * Called with the ids whose state changed, or that were just registered, or
+   * with none when the saved presets changed. Returns an unsubscribe function.
+   */
   subscribe(listener: (changed: ReadonlySet<string>) => void): () => void;
   /** Called when the effective value of `id` changes, through any layer. */
   watch<T extends ParameterValue = ParameterValue>(id: string, listener: (value: T) => void): () => void;
@@ -131,7 +134,11 @@ export interface SettingsRegistry {
   diffPreset(preset: SettingsPreset, filter?: SettingsFilter): { changes: PresetChange[]; rejected: PresetRejection[] };
   /** Copies a preset's values; nothing keeps a link to the preset afterwards. */
   applyPreset(preset: SettingsPreset, filter?: SettingsFilter): ImportResult;
-  /** The first preset whose values in `filter` all match the effective values, or null: "Custom". */
+  /**
+   * The preset whose values in `filter` all match the effective values, or
+   * null: "Custom". Of several, the one with the most values in `filter`, so a
+   * preset saved from one section does not stand for everything.
+   */
   matchingPreset(filter?: SettingsFilter): SettingsPreset | null;
   /** Saves the current values of `filter` as a preset of the user's. */
   savePreset(name: string, filter?: SettingsFilter): SettingsPreset;
@@ -177,7 +184,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPreset(value: unknown): value is SettingsPreset {
   return isRecord(value) && typeof value.id === "string" && typeof value.name === "string"
-    && typeof value.description === "string" && isRecord(value.values);
+    && typeof value.description === "string" && isRecord(value.values)
+    && (value.reset === undefined || (Array.isArray(value.reset) && value.reset.every(entry => typeof entry === "string")));
 }
 
 function matches(spec: ParameterSpec, filter: SettingsFilter | undefined): boolean {
@@ -507,6 +515,22 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     return { applied: Object.keys(accepted), rejected };
   }
 
+  /** The saved presets changed: subscribers hear of it with no parameter changed, so a list of presets redraws. */
+  function presetsChanged(): void {
+    const none = new Set<string>();
+    for (const listener of [...listeners]) listener(none);
+  }
+
+  /** The parameters a preset returns to their defaults, in `filter`: its `reset` entries less the values it sets. */
+  function presetResetIds(preset: SettingsPreset, filter?: SettingsFilter): string[] {
+    const entries = preset.reset ?? [];
+    if (entries.length === 0) return [];
+    return [...specs.values()]
+      .filter(spec => !spec.sensitive && !spec.readOnly && !spec.session && !(spec.id in preset.values) && matches(spec, filter)
+        && entries.some(entry => (entry.endsWith(".") ? spec.id.startsWith(entry) : spec.id === entry)))
+      .map(spec => spec.id);
+  }
+
   const registry: SettingsRegistry = {
     register(newSpecs) {
       for (const spec of newSpecs) {
@@ -703,12 +727,39 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
         const from = stateOf(id).value;
         if (!sameValue(from, value)) changes.push({ id, label: spec.label, from, to: copyValue(value) });
       }
+      for (const id of presetResetIds(preset, filter)) {
+        const state = stateOf(id);
+        if (sameValue(state.value, state.defaultValue)) continue;
+        if (state.provenance === "host") { rejected.push({ id, reason: "The app holds this value." }); continue; }
+        changes.push({ id, label: state.spec.label, from: state.value, to: copyValue(state.defaultValue) });
+      }
       return { changes, rejected };
     },
     applyPreset(preset, filter) {
-      return applyEntries(Object.entries(preset.values), preset.name, filter);
+      const result = applyEntries(Object.entries(preset.values), preset.name, filter);
+      const reset: string[] = [];
+      const rejected = [...result.rejected];
+      for (const id of presetResetIds(preset, filter)) {
+        if (stateOf(id).provenance === "host") rejected.push({ id, reason: "The app holds this value." });
+        else reset.push(id);
+      }
+      if (reset.length > 0) {
+        mutate(reset, () => {
+          for (const id of reset) {
+            urlValues.delete(id);
+            urlNotes.delete(id);
+            droppedNotes.delete(id);
+            delete record.values[id];
+            if (record.presets) delete record.presets[id];
+          }
+          writeRecord();
+        });
+      }
+      return { applied: [...result.applied, ...reset], rejected };
     },
     matchingPreset(filter) {
+      let best: SettingsPreset | null = null;
+      let bestRelevant = 0;
       for (const preset of registry.listPresets()) {
         let relevant = 0;
         let all = true;
@@ -718,9 +769,14 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
           relevant += 1;
           if (!sameValue(stateOf(id).value, value)) { all = false; break; }
         }
-        if (relevant > 0 && all) return preset;
+        for (const id of all ? presetResetIds(preset, filter) : []) {
+          relevant += 1;
+          const state = stateOf(id);
+          if (!sameValue(state.value, state.defaultValue)) { all = false; break; }
+        }
+        if (all && relevant > bestRelevant) { best = preset; bestRelevant = relevant; }
       }
-      return null;
+      return best;
     },
     savePreset(name, filter) {
       const values: Record<string, ParameterValue> = {};
@@ -734,6 +790,7 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
       const preset: SettingsPreset = { id, name, description: "Saved from this device's values.", values };
       record.userPresets = [...(record.userPresets ?? []), preset];
       writeRecord();
+      presetsChanged();
       return preset;
     },
     renamePreset(id, name) {
@@ -742,6 +799,7 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
       if (index < 0 || !name.trim()) return false;
       record.userPresets = list.map((preset, i) => i === index ? { ...preset, name: name.trim() } : preset);
       writeRecord();
+      presetsChanged();
       return true;
     },
     deletePreset(id) {
@@ -750,6 +808,7 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
       record.userPresets = list.filter(preset => preset.id !== id);
       if (record.userPresets.length === 0) record.userPresets = undefined;
       writeRecord();
+      presetsChanged();
       return true;
     },
     isUserPreset: (id) => (record.userPresets ?? []).some(preset => preset.id === id),

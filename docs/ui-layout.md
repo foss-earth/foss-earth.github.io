@@ -109,7 +109,7 @@ Every setting lives in exactly one place, a section of a tab.
   Renderer tab (`createRendererPanel`) is Renderer, Resolution and frame
   rate, Depth range and Performance debug; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
-  is Toolbar; and the Settings tab is Saved settings and About. Map and
+  is Toolbar; and the Settings tab is Presets, Saved settings and About. Map and
   Renderer add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.

@@ -316,6 +316,42 @@ describe("settings registry", () => {
     expect(reloaded.listPresets()).toEqual([]);
   });
 
+  it("returns a preset's reset list to defaults, matches the preset with the most values, and says when saved presets change", () => {
+    const settings = registry();
+    const device = { id: "device", name: "This device", description: "Defaults.", values: {}, reset: ["test.", "test.cap"] };
+    const budgetOnly = { id: "budget", name: "Budget only", description: "One value.", values: { "test.budget": 128 } };
+    settings.registerPresets([budgetOnly, device]);
+    // Both match; the one that covers more values stands for the whole.
+    expect(settings.matchingPreset()?.id).toBe("device");
+
+    settings.set("test.budget", 512);
+    settings.set("test.cap", 60);
+    const release = settings.force("test.range", { min: 2, max: 8 }, "The app draws a fixed range here.");
+    const diff = settings.diffPreset(device);
+    expect(diff.changes.map(change => [change.id, change.from, change.to])).toEqual([
+      ["test.budget", 512, 128],
+      ["test.cap", 60, "off"],
+    ]);
+    expect(diff.rejected).toEqual([{ id: "test.range", reason: "The app holds this value." }]);
+    // Every value under its reset list, the secret and the held value aside.
+    expect(settings.applyPreset(device)).toEqual({
+      applied: ["test.budget", "test.mode", "test.cap"],
+      rejected: [{ id: "test.range", reason: "The app holds this value." }],
+    });
+    expect(settings.inspect("test.budget").provenance).toBe("default");
+    expect(settings.inspect("test.cap").provenance).toBe("default");
+    release();
+    expect(settings.matchingPreset()?.id).toBe("device");
+
+    const listener = vi.fn();
+    settings.subscribe(listener);
+    const saved = settings.savePreset("Mine");
+    settings.renamePreset(saved.id, "Mine, renamed");
+    settings.deletePreset(saved.id);
+    expect(listener).toHaveBeenCalledTimes(3);
+    for (const [changed] of listener.mock.calls) expect(changed.size).toBe(0);
+  });
+
   it("notifies subscribers of changed ids and reloads another tab's record", () => {
     const storage = memoryStorage();
     const settings = registry(storage);

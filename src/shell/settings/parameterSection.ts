@@ -3,6 +3,7 @@ import type { SettingsRegistry } from "../../settings/registry";
 import { loadPanelSectionsOpen, savePanelSectionsOpen } from "../panelSectionsOpen";
 import { createParameterControl, type ParameterControlHandle } from "./controls";
 import { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./parameterList";
+import { createPresetStatus, createSavePresetControl } from "./presetsSection";
 
 export interface ParameterSectionOptions {
   tab: string;
@@ -25,11 +26,11 @@ export interface ParameterSectionHandle {
 let sectionCount = 0;
 
 /**
- * One section of a tab: its own controls, a control for each main-level
- * parameter homed here that they don't cover (hosts' included), and the Show
- * all parameters toggle, which lists every parameter of the section with its
- * value, default, provenance, reset and source, and exports, imports and resets
- * the section.
+ * One section of a tab: whether its values match a preset, its own controls,
+ * a control for each main-level parameter homed here that they don't cover
+ * (hosts' included), Save as preset, and the Show all parameters toggle, which
+ * lists every parameter of the section with its value, default, provenance,
+ * reset and source, and exports, imports and resets the section.
  */
 export function createParameterSection(settings: SettingsRegistry = getAppSettings(), options: ParameterSectionOptions): ParameterSectionHandle {
   const { tab, section } = options;
@@ -37,6 +38,9 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
   const element = document.createElement("div");
   element.className = "foss-earth-parameter-section";
   element.dataset.settingsSection = `${tab}/${section}`;
+  // "Matches Sharpest", or "Custom", where a preset has values in this section.
+  const presetStatus = createPresetStatus(settings, { tab, section });
+  element.append(presetStatus.element);
   if (options.main) element.append(options.main);
   const auto = document.createElement("div");
   auto.className = "foss-earth-choices foss-earth-parameter-section__main";
@@ -55,8 +59,10 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
   toggleLabel.append(toggle, toggleText);
   const toggleRow = document.createElement("div");
   toggleRow.className = "foss-earth-choices foss-earth-parameter-section__footer";
-  toggleRow.append(toggleLabel);
-  if (options.showAll !== false) element.append(toggleRow);
+  if (options.showAll !== false) toggleRow.append(toggleLabel);
+  const savePreset = createSavePresetControl(settings, { tab, section }, settings.getSectionTitle(tab, section));
+  toggleRow.append(savePreset.element);
+  element.append(toggleRow);
   let list: ParameterListHandle | null = null;
   let transfer: SettingsTransferHandle | null = null;
 
@@ -72,6 +78,11 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
       auto.append(control.element);
     }
     auto.hidden = controls.size === 0;
+    // Secrets, read-only and URL-only values are never saved in a preset.
+    const saveable = settings.list({ tab, section }).some(spec => !spec.session && !spec.sensitive && !spec.readOnly);
+    savePreset.element.hidden = !saveable;
+    toggleRow.hidden = !saveable && options.showAll === false;
+    presetStatus.update();
   };
 
   const showAll = (open: boolean): void => {
@@ -111,14 +122,18 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
   }, 1000);
   const unsubscribe = settings.subscribe(changed => {
     let registered = false;
+    // No ids: the saved presets changed.
+    let touched = changed.size === 0;
     for (const id of changed) {
       const spec = settings.spec(id);
       if (!spec || spec.home.tab !== tab || spec.home.section !== section) continue;
+      touched = true;
       const control = controls.get(id);
       if (control) control.update();
       else registered = true;
     }
     if (registered) syncMain();
+    else if (touched) presetStatus.update();
     list?.update(changed);
   });
 
@@ -128,6 +143,7 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
       unsubscribe();
       window.clearInterval(readingTimer);
       toggle.removeEventListener("change", onToggle);
+      savePreset.destroy();
       for (const control of controls.values()) control.destroy();
       controls.clear();
       list?.destroy();

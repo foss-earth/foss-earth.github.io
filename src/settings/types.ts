@@ -196,6 +196,12 @@ export interface SettingsPreset {
   /** What it trades, in a sentence. */
   description: string;
   values: Readonly<Record<string, ParameterValue>>;
+  /**
+   * Parameters it returns to their defaults, which may depend on the device:
+   * an id, or a prefix ending in "." for every parameter under it. Secrets,
+   * read-only and URL-only values are never reset.
+   */
+  reset?: readonly string[];
 }
 
 export interface PresetChange {

@@ -4,8 +4,8 @@ Status: Stages 1 to 4 implemented (2026-09-25 and 26): the registry, the
 record, migration, export and import, URL values, the section controls, host
 markers, the Loading and memory and Imagery selection parameters, detail focus
 on both maps, terrain detail as a continuous target and the automatic
-adjustment. Stage 5 is in progress: camera, input and renderer parameters are
-done, and the Toolbar and Performance debug sections have moved. [Implementation](#implementation)
+adjustment. Stage 5 is in progress: camera, input and renderer parameters and
+presets are done, and the Toolbar and Performance debug sections have moved. [Implementation](#implementation)
 says what exists, how a host uses it, and where it differs from this spec.
 Owner: FOSS Earth. Applications built on it, 0sfs included, register their own
 settings through the same system. 0sfs's catalogue:
@@ -650,7 +650,31 @@ Where stage 1 differs from this spec:
   `interfaceSections`, the app's `interfaceSections`), and Performance debug to
   the end of the Renderer tab (`createRendererPanel`'s `sections`, for a
   section the app draws itself). The Settings tab keeps Saved settings and
-  About.
+  About, after a new Presets section.
+- **Presets** (Settings → Presets). The four built-in ones are
+  `src/settings/presets/*.json`, in file-name order. A preset may list
+  `reset`: ids, or prefixes ending in ".", that it returns to their defaults.
+  This device is nothing but a reset list (the map's detail, automatic
+  adjustment, focus, imagery, terrain, Google and cache parameters, and the
+  renderer's resolution scale, antialiasing and frame-rate cap), so it follows
+  the device, where a list of values could not. Secrets, read-only and
+  URL-only values are never reset, and a value the app holds is listed as left
+  as it is. Two differences from the text above: Sharpest sets a 512 MiB GPU
+  budget, not the largest the backend allows, since that bound depends on the
+  device and a value beyond it would be refused; and its focus is View and
+  around (`both`) within 5 km, so the view still loads as before.
+  Each preset shows every value it sets or resets. Apply lists every change,
+  from and to, and the values it cannot apply, and asks once. A status line
+  at the top of the Presets section, and of each section a preset has values
+  in, says "Matches *name*" or "Custom"; of several matching presets it names
+  the one with the most values in that section, so This device is not
+  outranked by a preset saved from one section. Every parameter section ends
+  with Save as preset (its values, secrets, read-only and URL-only values
+  aside), and the Presets section with one for everything; saved presets are
+  renamed, exported as JSON and deleted (a second click confirms) in the
+  Presets section. `subscribe` listeners are called with no ids when the
+  saved presets change. `createPresetsSection`, `createPresetStatus` and
+  `createSavePresetControl` are exported for hosts.
 
 ## Sequence
 

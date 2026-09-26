@@ -470,6 +470,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(controls("controller")).toContain("input.gamepad.deadzone");
     expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"]]);
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
+      ["presets", "Presets"],
       ["saved-settings", "Saved settings"],
       ["about", "About"],
     ]);

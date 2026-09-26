@@ -1,0 +1,18 @@
+{
+  "id": "this-device",
+  "name": "This device",
+  "description": "Every detail, loading and drawing value back at what this device and renderer start with.",
+  "values": {},
+  "reset": [
+    "map.detail.",
+    "map.auto.",
+    "map.focus.",
+    "map.imagery.",
+    "map.terrain.",
+    "map.google.",
+    "map.cache.",
+    "renderer.resolutionScale",
+    "renderer.antialias",
+    "renderer.frameRateCap"
+  ]
+}

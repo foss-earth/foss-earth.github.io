@@ -1,0 +1,18 @@
+{
+  "id": "save-battery",
+  "name": "Save battery and data",
+  "description": "Coarser detail, a smaller GPU budget, 30 frames a second at most and fewer downloads at once: less power, heat and data for a softer map.",
+  "values": {
+    "map.detail.imagery.range": { "min": -3, "max": -1 },
+    "map.detail.imagery.default": -1,
+    "map.detail.google.range": { "min": 8, "max": 64 },
+    "map.detail.google.default": 16,
+    "map.detail.terrain.range": { "min": 4, "max": 32 },
+    "map.detail.terrain.default": 8,
+    "map.imagery.gpuBudget": 64,
+    "map.imagery.concurrentRequests": 3,
+    "map.google.downloads": 8,
+    "map.google.cacheBytes": { "min": 128, "max": 192 },
+    "renderer.frameRateCap": 30
+  }
+}
