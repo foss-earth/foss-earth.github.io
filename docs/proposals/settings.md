@@ -585,6 +585,22 @@ Where stage 1 differs from this spec:
   ray-cast reference differ by about 5 cm at a stitched dateline seam; the
   sampler test pins the 128 segments it was written for. `vite.config.ts` now
   keeps `build/` out of test discovery, since bisect worktrees live there.
+- **Fixed after stage 4** (0sfs's orbit check). Around the aircraft on the 2D
+  map, one turn of the chase camera requested elevation. Anything that
+  reselected, such as automatic adjustment, chose tiles the still view had not:
+  a split tile whose children were on screen was measured with the
+  −500–9,000 m fallback instead of its own heights, and a still view never
+  reselected after heights arrived, so its selection rested on its ancestors'
+  coarser heights. Terrain is now measured with the nearest heights known for
+  a tile, its own or an ancestor's, and heights arriving reselect like a moving
+  view, at most every `map.terrain.reselectWhileMoving`. A test around a low
+  focus point beside a peak that only fine tiles show now counts 0 requests
+  where it counted 112. The atlas tests had counted elevation requests after
+  answering them, so they always read 0; they now count every request. On
+  Google, a start could take coarse tiles for the ground: preparation counted
+  the renderer idle with tiles still waiting to parse, or with children still
+  being prepared, which is all Around's first seconds are. It now counts
+  what the renderer's own idle test counts.
 
 ## Sequence
 
