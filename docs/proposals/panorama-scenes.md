@@ -1060,8 +1060,9 @@ work.
   close button where the rail sat. While a panorama is prepared or entered, the
   map still shows, and the close button cancels before the map's group.
 - **The input check:** [`scripts/validation/panorama-input.mjs`](../../scripts/validation/panorama-input.mjs)
-  checks all of this with real mouse and wheel events from headless Chrome, on the
-  GPU.
+  checks all of this with real mouse, wheel and key events from headless Chrome,
+  on the GPU. Its retained run passed:
+  [input-2026-09-27](../../validation/evidence/panorama-scenes/input-2026-09-27/README.md).
 
 **Not covered.**
 
