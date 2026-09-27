@@ -1,6 +1,10 @@
 # Custom scenes and panorama navigation
 
-Status: staged implementation proposal, 2026-09-26. Owner: FOSS Earth.
+Status: stage 1 implemented, 2026-09-27. On one desktop configuration, every orb
+check of the automated campus check passes, but the globe alone misses the frame
+budget at the map detail asked for, so the check as a whole does not pass. Manual
+acceptance is pending (see [Stage 1 as built](#stage-1-as-built)).
+Stages 2–5 remain proposals. Owner: FOSS Earth.
 
 This consolidates the [initial review](../360-images-virtual-tour-review.md),
 [research](research/panorama-scenes-research.md) and
@@ -949,6 +953,89 @@ disposed scenes; reservations/listeners/holds return to baseline and static view
 idle. Unsupported-backend state remains usable. Build a public consumer fixture and
 0sfs without panorama activation, including its existing simulation checks. This
 proves the generic lifecycle/integration, not large scenes or phone FPS.
+
+#### Stage 1 as built
+
+**Where the code is.**
+
+| Part | Code |
+| --- | --- |
+| Format and validation | [`src/scenes/`](../../src/scenes/): `format.ts`, `validateScene.ts` and the JSON Schema, published as `foss-earth/scenes/schema.json`; the reference is [docs/scenes/format.md](../scenes/format.md) |
+| Loading and navigation | `loadScene.ts`, with `panoramaResources.ts`, `panoramaInput.ts`, `sceneHistory.ts` and `sceneController.ts` |
+| Rendering | [`src/engine/babylon/panorama/`](../../src/engine/babylon/panorama/) |
+| Navigation lease, input and terrain suspension | [`navigationLease.ts`](../../src/engine/babylon/navigationLease.ts) and the runtime |
+| Scenes tab | [`src/shell/scenesPanel.ts`](../../src/shell/scenesPanel.ts) |
+| Frame budget | `createFrameProfileSession` in `foss-earth/perf` and `createFrameBudgetPanel` in `foss-earth/shell`. The globe shows it in Renderer → Performance debug and 0SFS in Debug → Frame budget. |
+| Preparation | [`scripts/prepare-panorama.mjs`](../../scripts/prepare-panorama.mjs); the examples come from [`scripts/build-panorama-examples.mjs`](../../scripts/build-panorama-examples.mjs) |
+
+**The campus check.** [`scripts/validation/panorama-campus.mjs`](../../scripts/validation/panorama-campus.mjs)
+runs the gate below in headless Chrome, on the machine's own GPU. Its retained run
+is in [campus-2026-09-27](../../validation/evidence/panorama-scenes/campus-2026-09-27/README.md).
+It measures directions three ways, kept separate:
+
+- **Mapping:** does the shader implement the CPU contract? The CPU window and
+  pose are applied to each pixel's GPU ray and compared with the direction the
+  GPU sampled. The 0.01° tolerance applies here.
+- **Rays:** where did the rasteriser put each pixel's ray, compared with the
+  CPU's pixel-centre ray?
+- **End to end:** how far is the displayed content from the CPU's? The flat
+  window magnifies ray differences by tan β / tan α, which is about 50 for a 2 m
+  orb at 100 m. A ray difference of 1/40 of a pixel can therefore become 0.009°
+  of content, while still being under 1% of what one pixel shows. The first runs
+  compared end to end only, and so came within 11% of the tolerance.
+
+In the retained run, every check of the orb passes: directions, draws, the
+negative control, colour and orientation, entering, links, Back and Exit. The
+frame intervals do not. With the map at the detail asked for, the globe alone
+has p95 66.7 ms and p99 83.4 ms during the trace, against 20 and 33.3 ms. The
+orb adds nothing measurable: −0.1 ms at p95 and 0 at p99. The time is in the
+map's raster-tile update, 7.4 ms a frame on average and 28 ms at p95. As the
+acceptance gate asks, this is reported as the globe's miss, with the orb's
+increment. Whether to change the targets, the default map detail or the globe's
+tile work is the user's decision.
+
+**Found and fixed by running it.**
+
+- **Stale camera:** the orb's camera frame was cached per engine frame. Code that
+  read it before the camera moved in the same frame (the check's own agent did)
+  froze the old eye for that frame's draws: the orb then drew one frame late. The
+  cache is now keyed to the camera's matrices and the presented view, and the eye
+  is read after the view matrix is brought up to date. A regression test covers
+  it.
+- **Probe clearing:** the probe's render target was not cleared to zero coverage.
+- **Exit chip:** the chip's own display rule overrode the `hidden` attribute, so
+  the Exit chip showed as Cancel in the overview. The check now looks at the
+  chip as the browser lays it out.
+- **Timing on a lighter map:** automatic detail adjustment coarsened the map
+  after the check's slow screenshot frames, by up to 1.75 levels. At a
+  frame-rate cap it does not refine again, so the first timing runs passed on a
+  map lighter than the one asked for. The check now holds the detail asked for
+  while it times frames.
+- **Machine sleep:** two runs stopped when the unattended Mac went to sleep
+  mid-trace. On macOS the check now holds off idle sleep, and stops with that
+  reason if a step was slept through.
+- **Frame timing:** frame intervals are measured on the animation frame's own
+  time. Measured inside the render, they include the raster-tile update that runs
+  first, whose length varies from frame to frame. That work shifts when the
+  render starts, not when the frame is shown.
+
+**Known behaviour, not yet changed.** A ground-relative marker follows the terrain
+the map displays, and that includes tiles drawn flat until their elevation
+arrives. While terrain streams in, the orb can drop by hundreds of metres for a
+moment. In the retained run it travelled 105 m while the campus loaded, and one
+earlier run saw 71 m during the fast near/far sweep. Holding
+the marker until the terrain under it is final belongs with stage 2's placement
+work.
+
+**Not covered.**
+
+- The check runs on one desktop GPU in headless Chrome, not on a phone, and says
+  nothing about the mesh, cache or appearance alternatives of stage 3.
+- These are covered by unit tests with fake GPUs and inputs, not on a GPU:
+  keyboard and gamepad look, reduced motion, device loss, cancellation, and late
+  decodes after disposal.
+- The public consumer fixture is 0SFS itself: it imports FOSS Earth's public
+  exports without activating panoramas, and its checks pass.
 
 ### Required acceptance gate: one 360° orb above UMN, then user testing
 
