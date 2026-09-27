@@ -22,7 +22,8 @@
  *     image, each pixel held against the source sampled at the CPU direction,
  *     and against the same sampled mirrored or turned.
  *  6. Timing: the same trace without readbacks, with the orb shown, hidden
- *     (scene unloaded), and shown with profiling off, at a 60 fps cap.
+ *     (scene unloaded), and shown with profiling off, at a 60 fps cap, the
+ *     map held at the detail asked for.
  *  7. Entering: the orb's immersion read back against the CPU rays, and Exit
  *     restoring the camera; then the linked pair: enter, follow, Back, Exit.
  *
@@ -438,11 +439,25 @@ try {
         await setViewport(viewport);
         await sleep(400);
         for (const view of VIEWS) {
-          await page(`window.__campus.apply(${JSON.stringify(view.pose)})`);
-          await job("window.__campus.frames(4)", 10_000, 100);
-          const samples = await page(`window.__campus.colourSamples(${config.colourStepCssPx})`);
+          // The orb follows the displayed ground, which refines after a viewport change or a
+          // new pose. The reference is taken a moment before the screenshot, so both need the
+          // marker to hold still: wait for it, pose, and take the pair again if it moved.
+          const markerNow = () => page(`window.__fossEarthPanoramaTest.renderer.inspectOrb(${JSON.stringify(current.entity.id)}).marker`);
+          let samples, shot, markerMovedM;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            await page(`window.__campus.apply(${JSON.stringify(view.pose)})`);
+            await job("window.__campus.settleMarker(1000, 0.05, 30000)", 40_000, 250);
+            await page(`window.__campus.apply(${JSON.stringify(view.pose)})`);
+            await job("window.__campus.frames(4)", 10_000, 100);
+            const markerBefore = await markerNow();
+            samples = await page(`window.__campus.colourSamples(${config.colourStepCssPx})`);
+            shot = await send("Page.captureScreenshot", { format: "png" });
+            const markerAfter = await markerNow();
+            markerMovedM = Math.hypot(...markerAfter.map((value, i) => value - markerBefore[i]));
+            if (markerMovedM <= 0.05) break;
+          }
+          if (markerMovedM > 0.05) fail(`${source.name} looking ${view.name} (${orientation}): the marker kept moving, ${markerMovedM.toFixed(2)} m between the reference and the screenshot.`);
           const detail = await page(`window.__campus.status().scene.entries.find(e => e.id === ${JSON.stringify(current.entity.id)}).previewDetail`);
-          const shot = await send("Page.captureScreenshot", { format: "png" });
           const name = `${source.name}-${view.name}-${orientation}.png`;
           const png = Buffer.from(shot.data, "base64");
           await writeFile(path.join(out, "screenshots", name), png);
@@ -471,7 +486,7 @@ try {
           const passed = rows.length >= 50 && accepted.length === 0 && alternatives.mirrored?.distinguishable === true;
           const nearestName = accepted[0] ?? untested[0] ?? "none";
           report.colour.push({ source: source.name, view: view.name, note: view.note, orientation, viewport, screenshot: `screenshots/${name}`, representation: detail.representation,
-            samples: rows.length, orbDiameterCssPx: samples.radiusCss * 2, meanAbsoluteError: overall, alternatives, notRejected: accepted, indistinguishable: untested, passed });
+            samples: rows.length, orbDiameterCssPx: samples.radiusCss * 2, markerMovedM, meanAbsoluteError: overall, alternatives, notRejected: accepted, indistinguishable: untested, passed });
           const worstRatio = Math.max(...Object.values(alternatives).filter(entry => entry.distinguishable).map(entry => entry.correctError / Math.max(1e-9, entry.alternativeError)));
           console.log(`  ${source.name} ${view.name} ${orientation}: ${rows.length} samples, error ${overall.toFixed(1)}; worst correct/alternative ratio ${worstRatio.toFixed(2)}${untested.length ? `; cannot tell from ${untested.join(", ")}` : ""} ${passed ? "✓" : "✗"}`);
           if (!passed) fail(`${source.name} looking ${view.name} (${orientation}) is not told apart from ${nearestName}.`);
@@ -514,17 +529,25 @@ try {
   };
   const within = s => s && s.p95Ms <= config.budget.p95Ms && s.p99Ms <= config.budget.p99Ms && s.maxMs <= config.budget.maxIntervalMs;
   if (!flag("skip-timing")) {
-    console.log("Timing: warm-up pass…");
+    // The map stays at the detail asked for while frames are timed. Automatic detail would
+    // lighten it after slow frames, such as the screenshots', and held at the cap it never
+    // returns, so the runs would not draw the same map, nor the one asked for.
+    const coarserBefore = await page("window.__campus.detail.hold()");
+    console.log(`Timing: automatic map detail off, the map at the detail asked for (it had been ${coarserBefore} levels coarser); warm-up pass…`);
     requests.phase = "timing warm-up";
     await runTrace(WARMUP_TRACE, { correlate: false });
     const traceFrames = Math.ceil(traceSeconds(trace) * config.fps * 1.25);
     const timed = async (name, { profiled, correlate }) => {
       requests.phase = `timing ${name}`;
+      // Timed once the map has stopped streaming: the warm-up loaded what the trace shows.
+      const settle = await job("window.__campus.settleMarker(2000, 0.05, 90000)", 100_000, 250);
+      const startedAt = await page("performance.now()");
       const streamingBefore = await page("window.__campus.streaming()");
       if (profiled) await page(`window.__campus.profile.start(${traceFrames})`);
       const run = await runTrace(trace, { correlate });
       const profile = profiled ? await page("window.__campus.profile.stop()") : null;
       const streamingAfter = await page("window.__campus.streaming()");
+      const detailChanges = await page(`window.__campus.detail.changes(${startedAt})`);
       const { motion, byName, resumes, renderStartDelays } = intervalsOf(run);
       const result = {
         profiled, motion: stats(motion),
@@ -532,15 +555,18 @@ try {
         renderStartDelay: stats(renderStartDelays), bySegment: Object.fromEntries(Object.entries(byName).map(([key, values]) => [key, stats(values)])),
         firstFrameAfterResume: resumes, resumeLatency: run.resumes, correlation: correlate ? run.correlation : null,
         streaming: { before: streamingBefore, after: streamingAfter }, requests: requests.byPhase[requests.phase] ?? null,
+        mapDetail: { streamingStoppedBefore: settle.settled, waitedSeconds: settle.seconds, changesDuring: detailChanges },
         profiler: profile ? { gpu: profile.gpu, frames: profile.summary.frames, frame: profile.summary.frame, measuredMeanMs: profile.summary.measuredMeanMs, sections: profile.summary.sections } : null,
       };
       await writeFile(path.join(out, "traces", `timing-${name}-frames.json`), JSON.stringify({ segments: run.segments, frames: run.frames }));
       if (profile) await writeFile(path.join(out, "traces", `timing-${name}-profile.json`), JSON.stringify(profile.trace));
       const m = result.motion;
       console.log(`  ${name}: ${m.frames} motion frames, p50 ${m.p50Ms.toFixed(2)} p95 ${m.p95Ms.toFixed(2)} p99 ${m.p99Ms.toFixed(2)} max ${m.maxMs.toFixed(1)} ms; >100 ms: ${m.over100Ms}; ${within(m) ? "within" : "OUTSIDE"} the budget`);
+      if (!settle.settled) console.log(`    the map was still streaming when this run started, after ${settle.seconds.toFixed(0)} s`);
+      if (detailChanges.length > 0) fail(`Map detail changed during the ${name} run although automatic adjustment was off.`);
       return result;
     };
-    report.timing = {};
+    report.timing = { mapDetail: { automatic: "off while timing", levelsCoarserBefore: coarserBefore } };
     report.timing.shown = await timed("shown", { profiled: true, correlate: true });
     console.log("  hiding the orb: unloading the scene…");
     await page("window.__fossEarthPanoramaTest.scenes.unload()");
@@ -549,6 +575,7 @@ try {
     current = await loadSource(SOURCES[0]);
     await runTrace(WARMUP_TRACE.slice(0, 1), { correlate: false });
     report.timing.shownUnprofiled = await timed("shown-unprofiled", { profiled: false, correlate: true });
+    await page("window.__campus.detail.release()");
     const { shown, hidden, shownUnprofiled } = report.timing;
     report.timing.orbIncrement = {
       p50Ms: shown.motion.p50Ms - hidden.motion.p50Ms, p95Ms: shown.motion.p95Ms - hidden.motion.p95Ms, p99Ms: shown.motion.p99Ms - hidden.motion.p99Ms,
@@ -589,13 +616,24 @@ try {
     await page(`window.__campus.apply({ bearingDeg: 180, distanceM: 100, heightM: 3 })`);
     await job("window.__campus.frames(3)", 10_000, 100);
     let before = await snapshot();
+    const chips = () => page("window.__campus.hudChips()");
+    const chipsInOverview = await chips();
     await act("enter", `enter(${JSON.stringify(current.entity.id)})`);
     navigation.single = { immersion: await immersion(current.entity, "umn-single entered") };
+    const chipsInside = await chips();
     await act("exit", "exit()");
     await job(`window.__campus.until(s => s.phase === "overview", 30000)`, 40_000, 100);
     navigation.single.cameraAfterExit = await page(`window.__campus.cameraDifference(${JSON.stringify(before)})`);
     console.log(`  exit restores the camera: ${JSON.stringify(navigation.single.cameraAfterExit)}`);
     if (!restored(navigation.single.cameraAfterExit)) fail("Exit did not restore the globe camera the panorama was entered from.");
+    // The Exit chip and the credit are there only while a panorama is entered.
+    navigation.single.hudChips = { overview: chipsInOverview, immersive: chipsInside, afterExit: await chips() };
+    const { overview: o, immersive: i, afterExit: x } = navigation.single.hudChips;
+    console.log(`  HUD: overview exit ${o.exit}; entered exit ${i.exit} ("${i.exitText}"), credits ${i.credits}; after Exit exit ${x.exit}, credits ${x.credits}`);
+    if (o.exit || x.exit) fail("The Exit chip shows in the overview, where there is nothing to exit.");
+    if (!i.exit) fail("The Exit chip is missing while a panorama is entered.");
+    if (i.credits < 1) fail("The photograph's credit is missing while it is on screen.");
+    if (o.credits > 0 || x.credits > 0) fail("A panorama credit shows in the overview.");
 
     // The pair: enter A, follow its link to B, Back to A, Exit to the overview.
     const pair = await loadSource(PAIR);
@@ -630,6 +668,7 @@ try {
 } finally {
   report.requests = requests.byPhase;
   report.exceptions = exceptions;
+  try { report.mapDetailChanges = await page("window.__campus?.detail.changes() ?? null"); } catch { /* the page is gone */ }
   await chrome.close();
 }
 
@@ -683,6 +722,8 @@ if (report.timing) {
     const m = run.motion;
     lines.push(`| ${name} | ${m.frames} | ${fmt(m.p50Ms)} | ${fmt(m.p95Ms)} | ${fmt(m.p99Ms)} | ${fmt(m.maxMs, 1)} | ${m.over100Ms} |`);
   }
+  const runs = [report.timing.shown, report.timing.hidden, report.timing.shownUnprofiled];
+  lines.push("", `Every run drew the map at the detail asked for, with automatic adjustment off; before timing, the slow screenshot frames had led it to coarsen the map ${report.timing.mapDetail.levelsCoarserBefore} levels, which it does not undo while frames are held at the cap. Each run started once the map had stopped streaming${runs.every(run => run.mapDetail.streamingStoppedBefore) ? "" : " (except where the report says otherwise)"}.`);
   lines.push("", `Budget: p95 ≤ ${config.budget.p95Ms} ms, p99 ≤ ${config.budget.p99Ms} ms, none over ${config.budget.maxIntervalMs} ms. First frames after the stop: ${report.timing.shown.firstFrameAfterResume.map(entry => `${fmt(entry.intervalMs, 1)} ms`).join(", ")} (excluded from motion).`, "");
 }
 if (report.navigation) {
@@ -690,7 +731,8 @@ if (report.navigation) {
   const camera = d => (d ? `centre ${d.centerM.toExponential(1)} m, yaw ${d.yawRad.toExponential(1)} rad, pitch ${d.pitchRad.toExponential(1)} rad` : "not measured");
   lines.push("## Entering, links, Back and Exit", "",
     `- The entered photograph's immersion differs from the CPU rays by up to ${n.single?.immersion.maxDeg.toExponential(3)}°; after Exit the globe camera is back within ${camera(n.single?.cameraAfterExit)}.`,
-    `- The pair: A entered ${n.pair?.a.maxDeg.toExponential(3)}°, B after the link ${n.pair?.b.maxDeg.toExponential(3)}°; Back returned to A: ${n.pair?.backReturnsToA ? "yes" : "no"}; after Exit the camera is back within ${camera(n.pair?.cameraAfterExit)}.`, "");
+    `- The pair: A entered ${n.pair?.a.maxDeg.toExponential(3)}°, B after the link ${n.pair?.b.maxDeg.toExponential(3)}°; Back returned to A: ${n.pair?.backReturnsToA ? "yes" : "no"}; after Exit the camera is back within ${camera(n.pair?.cameraAfterExit)}.`,
+    `- The Exit chip, as laid out: ${n.single?.hudChips ? `hidden in the overview ${!n.single.hudChips.overview.exit ? "yes" : "no"}, shown while entered ${n.single.hudChips.immersive.exit ? "yes" : "no"}, hidden after Exit ${!n.single.hudChips.afterExit.exit ? "yes" : "no"}; credits while entered: ${n.single.hudChips.immersive.credits}` : "not checked"}.`, "");
 }
 if (failures.length) lines.push("## Failures", "", ...failures.map(entry => `- ${entry}`), "");
 await writeFile(path.join(out, "summary.md"), lines.join("\n"));

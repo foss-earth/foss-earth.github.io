@@ -20,6 +20,12 @@
 
   let ctx = null;
 
+  // Every automatic map-detail change, on the page's clock, and the two switches that give it room.
+  const detailChanges = [];
+  runtime.onDetailAdjusted(decision => { detailChanges.push({ ...decision, pageMs: performance.now() }); });
+  const AUTO_DETAIL_IDS = ["map.auto.terrainDetail", "map.auto.imageryDetail"];
+  let heldDetailSwitches = null;
+
   function status() {
     const handle = T.scenes.handle();
     const s = handle?.status;
@@ -536,6 +542,33 @@
       },
     },
     streaming: () => ({ streaming: runtime.isStreamingTiles?.() ?? null, tiles: runtime.getTileMetrics?.() ?? null }),
+    /** The panorama's HUD chips as the browser lays them out, style sheets included. */
+    hudChips() {
+      const shown = element => Boolean(element) && getComputedStyle(element).display !== "none";
+      const exit = document.querySelector("#sceneExitButton");
+      const credits = document.querySelector("#sceneCreditsSlot");
+      return { exit: shown(exit), exitText: exit?.textContent ?? null, credits: shown(credits) ? credits.querySelectorAll(".scene-credit-chip").length : 0 };
+    },
+    // Automatic map detail: what it changed, and holding the map at the detail asked for.
+    detail: {
+      changes: (sinceMs = 0) => detailChanges.filter(change => change.pageMs >= sinceMs),
+      /**
+       * With both switches off, automatic adjustment has no room, which returns
+       * the map to the detail asked for at once. Returns how many levels coarser
+       * it had made it.
+       */
+      hold() {
+        const before = detailChanges.at(-1)?.to ?? 0;
+        heldDetailSwitches ??= AUTO_DETAIL_IDS.map(id => T.settings.get(id));
+        for (const id of AUTO_DETAIL_IDS) T.settings.set(id, false);
+        if ((detailChanges.at(-1)?.to ?? 0) !== 0) throw new Error("Map detail did not return to the detail asked for.");
+        return before;
+      },
+      release() {
+        if (heldDetailSwitches) AUTO_DETAIL_IDS.forEach((id, i) => T.settings.set(id, heldDetailSwitches[i]));
+        heldDetailSwitches = null;
+      },
+    },
   };
   return true;
 })();
