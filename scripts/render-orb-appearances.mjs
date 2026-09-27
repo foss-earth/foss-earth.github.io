@@ -3,7 +3,7 @@
  * Renders the candidate appearances of a panorama "orb" so they can be compared
  * by eye and by number. Research tooling for docs/proposals/research/panorama-scenes-research.md.
  *
- * Run: node scripts/render-orb-appearances.mjs [--panorama equirect.png] [--out dir]
+ * Run: node scripts/render-orb-appearances.mjs [--contract] [--panorama equirect.png] [--out dir]
  *
  * Without --panorama it draws a synthetic fixture: sky and ground, a 30° grid and
  * the letters N, E and S on the horizon, which read backwards wherever a mapping
@@ -18,6 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateSync, inflateSync } from "node:zlib";
+import { createHash } from "node:crypto";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -42,6 +43,9 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const length = (a) => Math.sqrt(dot(a, a));
 const normalize = (a) => scale(a, 1 / length(a));
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const smoothstep = (v) => v * v * (3 - 2 * v);
+const angleDeg = (a, b) => Math.atan2(length(cross(a, b)), dot(a, b)) / DEG;
 /** Heading clockwise from north and pitch above the horizon, both in radians. */
 const direction = (heading, pitch) => [Math.sin(heading) * Math.cos(pitch), Math.cos(heading) * Math.cos(pitch), Math.sin(pitch)];
 
@@ -215,9 +219,39 @@ function hits(origin, ray) {
   const b = dot(origin, ray);
   const c = dot(origin, origin) - 1;
   const disc = b * b - c;
-  if (disc < 0) return null;
-  const root = Math.sqrt(disc);
+  if (disc < -1e-12) return null;
+  const root = Math.sqrt(Math.max(0, disc));
   return { near: -b - root, far: -b + root, inside: c < 0 };
+}
+
+function validateWindowOptions({ previewHalfAngleDeg = 45, projection = "rectilinear",
+  fisheyeHalfAngleDeg = 90, blendStartHalfAngleDeg = 20, blendEndHalfAngleDeg = previewHalfAngleDeg } = {}) {
+  if (!(previewHalfAngleDeg > 0 && previewHalfAngleDeg < 90) && projection !== "orthographic")
+    throw new RangeError("rectilinear preview half angle must be in (0, 90) degrees");
+  if (!["rectilinear", "orthographic", "orthographic-blend"].includes(projection)) throw new RangeError("unknown projection");
+  if (projection === "orthographic" && !(previewHalfAngleDeg > 0 && previewHalfAngleDeg <= 90))
+    throw new RangeError("orthographic half angle must be in (0, 90] degrees");
+  if (projection === "orthographic-blend" && (!(fisheyeHalfAngleDeg > 0 && fisheyeHalfAngleDeg <= 90)
+    || !(blendStartHalfAngleDeg > 0 && blendStartHalfAngleDeg < blendEndHalfAngleDeg && blendEndHalfAngleDeg <= previewHalfAngleDeg)))
+    throw new RangeError("blend needs 0 < start < end <= rectilinear half angle and 0 < fisheye half angle <= 90");
+}
+
+// Pure radial mapping. rho is the projected disc radius, not angular radius.
+// The legacy orthographic branch is retained to reproduce the old figures; it is
+// intentionally NOT the validated entry blend.
+function windowTheta(delta, alpha, { previewHalfAngleDeg = 45, projection = "rectilinear",
+  fisheyeHalfAngleDeg = 90, blendStartHalfAngleDeg = 20, blendEndHalfAngleDeg = previewHalfAngleDeg } = {}) {
+  const beta = previewHalfAngleDeg * DEG;
+  const weight = projection === "orthographic-blend"
+    ? smoothstep(clamp((alpha / DEG - blendStartHalfAngleDeg) / (blendEndHalfAngleDeg - blendStartHalfAngleDeg), 0, 1)) : 1;
+  // This branch is essential: neither tan(pi/2) nor 0 * an invalid fisheye is evaluated.
+  if (projection !== "orthographic" && weight === 1 && alpha >= beta) return delta;
+  const rho = clamp(Math.sin(delta) * Math.cos(alpha) / (Math.cos(delta) * Math.sin(alpha)), 0, 1);
+  if (projection === "orthographic") return Math.asin(clamp(rho * Math.sin(Math.max(alpha, beta)), 0, 1));
+  const rectilinear = alpha >= beta ? delta : Math.atan2(rho * Math.sin(beta), Math.cos(beta));
+  if (weight === 1) return rectilinear;
+  const fisheye = Math.asin(clamp(rho * Math.sin(fisheyeHalfAngleDeg * DEG), 0, 1));
+  return (1 - weight) * fisheye + weight * rectilinear;
 }
 
 const MAPPINGS = {
@@ -232,24 +266,27 @@ const MAPPINGS = {
    * preview angle. `projection` spreads that view over the disc: "rectilinear" as a
    * camera would, or "orthographic" as a fisheye, which at 90° is the far bubble.
    */
-  window(origin, ray, { previewHalfAngleDeg = 45, projection = "rectilinear" } = {}) {
-    const h = hits(origin, ray);
-    if (!h || h.far < 0) return null;
-    if (h.inside) return ray;
+  window(origin, ray, options = {}) {
+    const { projection = "rectilinear" } = options;
+    validateWindowOptions(options);
     const distance = length(origin);
-    const alpha = Math.asin(1 / distance);
-    const beta = Math.max(alpha, previewHalfAngleDeg * DEG);
+    if (distance < 1) return ray;
     const axis = scale(origin, -1 / distance);
-    const off = sub(scale(ray, 1 / dot(ray, axis)), axis);
-    if (projection === "orthographic") {
-      // Radius on the disc, 0 at its centre and 1 at the silhouette.
-      const rho = Math.min(1, length(off) / Math.tan(alpha));
-      const theta = Math.asin(Math.min(1, rho * Math.sin(beta)));
-      const sideways = length(off) > 0 ? normalize(off) : [0, 0, 0];
-      return add(scale(axis, Math.cos(theta)), scale(sideways, Math.sin(theta)));
-    }
-    if (beta === alpha) return ray;
-    return normalize(add(axis, scale(off, Math.tan(beta) / Math.tan(alpha))));
+    const cosine = dot(ray, axis);
+    const cosineAlpha = Math.sqrt(Math.max(0, distance * distance - 1)) / distance;
+    // At the surface only the inward hemisphere belongs to the exterior limit.
+    if (cosine < cosineAlpha - 1e-12) return null;
+    if (distance === 1 && projection !== "orthographic") return ray;
+    const alpha = Math.asin(1 / distance);
+    // Exact identity is also a numerical branch, not a reconstructed direction.
+    // Validated blended options require blendEnd <= previewHalfAngle.
+    if (projection !== "orthographic" && distance <= 1 / Math.sin((options.previewHalfAngleDeg ?? 45) * DEG)) return ray;
+    const off = sub(ray, scale(axis, cosine));
+    const sine = length(off);
+    if (sine < 1e-15) return axis;
+    const delta = Math.atan2(sine, cosine);
+    const theta = windowTheta(delta, alpha, options);
+    return add(scale(axis, Math.cos(theta)), scale(off, Math.sin(theta) / sine));
   },
   /** The far inside wall of a transparent ball painted inside with the panorama. */
   bubble(origin, ray) {
@@ -288,30 +325,38 @@ const MAPPINGS = {
 };
 
 // ---------- camera ----------
-function render(pano, { position, target, verticalFovDeg, size = TILE, mapping, mappingOptions }) {
+function cameraRays({ position, target, verticalFovDeg, size = TILE, width = size, height = size, rollDeg = 0 }) {
+  if (!(verticalFovDeg > 0 && verticalFovDeg < 180) || !(width > 0 && height > 0)) throw new RangeError("perspective viewport needs 0 < vertical FOV < 180 and positive dimensions");
   const forward = normalize(sub(target, position));
-  const right = normalize(cross(forward, [0, 0, 1]));
+  const baseRight = normalize(cross(forward, Math.abs(forward[2]) > 0.9999 ? [0, 1, 0] : [0, 0, 1]));
+  const baseUp = cross(baseRight, forward);
+  const right = add(scale(baseRight, Math.cos(rollDeg * DEG)), scale(baseUp, Math.sin(rollDeg * DEG)));
   const up = cross(right, forward);
   const tanHalf = Math.tan((verticalFovDeg * DEG) / 2);
-  const rgb = Buffer.alloc(size * size * 3);
-  for (let j = 0; j < size; j++) {
-    for (let i = 0; i < size; i++) {
+  return (x, y) => normalize(add(forward, add(scale(right, (x * 2 - 1) * tanHalf * width / height), scale(up, (1 - y * 2) * tanHalf))));
+}
+
+function render(pano, config) {
+  const { position, size = TILE, width = size, height = size, mapping, mappingOptions, markerPosition = [0, 0, 0] } = config;
+  const rayAt = cameraRays(config);
+  const relativePosition = sub(position, markerPosition);
+  const rgb = Buffer.alloc(width * height * 3);
+  for (let j = 0; j < height; j++) {
+    for (let i = 0; i < width; i++) {
       const sum = [0, 0, 0];
       for (let sj = 0; sj < SUPERSAMPLE; sj++) {
         for (let si = 0; si < SUPERSAMPLE; si++) {
-          const sx = (((i + (si + 0.5) / SUPERSAMPLE) / size) * 2 - 1) * tanHalf;
-          const sy = (1 - ((j + (sj + 0.5) / SUPERSAMPLE) / size) * 2) * tanHalf;
-          const ray = normalize(add(forward, add(scale(right, sx), scale(up, sy))));
-          const d = mapping ? MAPPINGS[mapping](position, ray, mappingOptions) : ray;
+          const ray = rayAt((i + (si + 0.5) / SUPERSAMPLE) / width, (j + (sj + 0.5) / SUPERSAMPLE) / height);
+          const d = mapping ? MAPPINGS[mapping](relativePosition, ray, mappingOptions) : ray;
           const colour = d ? samplePanorama(pano, normalize(d)) : BACKGROUND;
           sum[0] += colour[0]; sum[1] += colour[1]; sum[2] += colour[2];
         }
       }
       const n = SUPERSAMPLE * SUPERSAMPLE;
-      rgb.set(sum.map(c => Math.round(c / n)), (j * size + i) * 3);
+      rgb.set(sum.map(c => Math.round(c / n)), (j * width + i) * 3);
     }
   }
-  return { width: size, height: size, rgb };
+  return { width, height, rgb };
 }
 
 function strip(images, gap = 4) {
@@ -332,18 +377,191 @@ function meanAbsoluteDifference(a, b) {
   return total / a.rgb.length;
 }
 
-// ---------- the comparison ----------
-const panoramaFile = option("--panorama");
-const pano = panoramaFile ? readPng(path.resolve(panoramaFile)) : makeFixture();
-if (!panoramaFile) {
-  const small = makeFixture(1024, 512);
-  writePng(path.join(outDir, "fixture.png"), small);
-}
-
-/** Camera placed at `distance` orb radii, seen from compass `bearingDeg` toward the orb, raised by `elevationDeg`. */
+// ---------- visual-contract checks (CPU mathematics, not GPU or usability) ----------
+/** Camera at `distance` radii, viewing compass bearing, raised by elevation. */
 function orbit(distance, bearingDeg, elevationDeg) {
   const from = direction(bearingDeg * DEG + Math.PI, elevationDeg * DEG);
   return scale(from, distance);
+}
+
+function requireCheck(condition, message) {
+  if (!condition) throw new Error(`Visual contract failed: ${message}`);
+}
+
+function coverage(config) {
+  const relative = sub(config.position, config.markerPosition ?? [0, 0, 0]);
+  const distance = length(relative);
+  if (distance < 1) return { full: true, minimumCornerCosine: null, cosineAlpha: null };
+  const axis = scale(relative, -1 / distance);
+  const rayAt = cameraRays(config);
+  const minimumCornerCosine = Math.min(...[[0, 0], [0, 1], [1, 0], [1, 1]].map(([x, y]) => dot(axis, rayAt(x, y))));
+  const cosineAlpha = Math.sqrt(Math.max(0, distance * distance - 1)) / distance;
+  return { full: minimumCornerCosine >= cosineAlpha - 1e-12, minimumCornerCosine, cosineAlpha };
+}
+
+function contractMetrics(pano, config, mappingOptions) {
+  const rayAt = cameraRays(config);
+  const relative = sub(config.position, config.markerPosition ?? [0, 0, 0]);
+  let covered = 0, errorSum = 0, maximumRayErrorDeg = 0, imageErrorSum = 0, maximumImageChannelError = 0;
+  // Fixed quadrature points include all four true viewport corners and boundaries.
+  const nx = 49, ny = 37;
+  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+    const ray = rayAt(x / (nx - 1), y / (ny - 1));
+    const mapped = MAPPINGS.window(relative, ray, mappingOptions);
+    if (!mapped) continue;
+    requireCheck(mapped.every(Number.isFinite) && Math.abs(length(mapped) - 1) < 1e-10, "finite unit direction");
+    const error = angleDeg(mapped, ray);
+    maximumRayErrorDeg = Math.max(maximumRayErrorDeg, error);
+    errorSum += error;
+    const actual = samplePanorama(pano, mapped), expected = samplePanorama(pano, ray);
+    for (let channel = 0; channel < 3; channel++) {
+      const channelError = Math.abs(actual[channel] - expected[channel]);
+      imageErrorSum += channelError;
+      maximumImageChannelError = Math.max(maximumImageChannelError, channelError);
+    }
+    covered++;
+  }
+  const frameCoverage = coverage(config);
+  const distance = length(relative);
+  const fullRayIdentity = distance < 1 || distance <= 1 / Math.sin(mappingOptions.previewHalfAngleDeg * DEG) + 1e-12;
+  const handoff = frameCoverage.full && fullRayIdentity;
+  if (handoff) requireCheck(covered === nx * ny && maximumRayErrorDeg < 1e-9 && maximumImageChannelError < 1e-7, "handoff rays and same-source samples agree");
+  return { samples: nx * ny, covered, ...frameCoverage, fullRayIdentity, handoff,
+    maximumRayErrorDeg, meanCoveredRayErrorDeg: covered ? errorSum / covered : null,
+    meanCoveredImageChannelError: covered ? imageErrorSum / (covered * 3) : null, maximumImageChannelError };
+}
+
+function runContract(pano, panoramaFile) {
+  const flat = { projection: "rectilinear", previewHalfAngleDeg: 45 };
+  const blend = { projection: "orthographic-blend", previewHalfAngleDeg: 45, fisheyeHalfAngleDeg: 90,
+    blendStartHalfAngleDeg: 20, blendEndHalfAngleDeg: 45 };
+  const distanceThreshold = 1 / Math.sin(45 * DEG);
+  const distances = [8, 3, 1.58, 1.5, distanceThreshold + 0.01, distanceThreshold + 0.000001,
+    distanceThreshold, distanceThreshold - 0.000001, 1.25, 1.000001, 1, 0.999999, 0.6, 0];
+  const viewports = [{ name: "square", width: 112, height: 112 }, { name: "landscape", width: 160, height: 90 }, { name: "portrait", width: 90, height: 160 }];
+  const poses = [{ name: "center", markerPosition: [0, 0, 0], yaw: 0, pitch: 0, roll: 0 },
+    { name: "turning", markerPosition: [0, 0, 0], yaw: 18, pitch: -7, roll: 11 },
+    { name: "raised-offset", markerPosition: [0.25, 0, 0.5], yaw: 12, pitch: 8, roll: -9 }];
+  const report = { schemaVersion: 1, scriptSha256: createHash("sha256").update(readFileSync(fileURLToPath(import.meta.url))).digest("hex"),
+    input: panoramaFile ? { file: path.basename(panoramaFile), sha256: createHash("sha256").update(readFileSync(panoramaFile)).digest("hex") } : { fixture: "N/E/S/W cardinal text, 30-degree grid, sky/ground, polar details" },
+    sampling: { width: pano.width, height: pano.height, rayGrid: [49, 37], includesViewportBoundary: true, imageMetric: "bilinear encoded RGB byte difference on covered rays only; not colorimetric or a GPU filtering test", figureSupersample: SUPERSAMPLE },
+    config: { radius: 1, verticalFovDeg: 60, flat, blend, distances, viewports, poses }, rows: [] };
+  for (const viewport of viewports) for (const pose of poses) for (const distance of distances) {
+    // Rotate while approaching, with a fixed overview position saved independently.
+    const progress = clamp((8 - distance) / 8, 0, 1);
+    const position = add(pose.markerPosition, [0, -distance, 0]);
+    // The offset pose retains a world target so its clipping axis and optical axis differ.
+    const look = pose.name === "raised-offset"
+      ? normalize(sub([0, 3, 0], position)) : direction(pose.yaw * progress * DEG, pose.pitch * progress * DEG);
+    const config = { ...viewport, position, markerPosition: pose.markerPosition,
+      target: add(position, look), rollDeg: pose.roll * progress, verticalFovDeg: 60 };
+    for (const [appearance, options] of [["flat", flat], ["blend", blend]]) report.rows.push({ viewport: viewport.name, pose: pose.name, distance, appearance, ...contractMetrics(pano, config, options) });
+  }
+  const alpha = Math.asin(1 / 1.5);
+  const counterexample = { distance: 1.5, verticalFovDeg: 60, aspect: 1, alphaDeg: alpha / DEG,
+    cornerDeg: Math.atan(Math.sqrt(2) * Math.tan(30 * DEG)) / DEG,
+    rayDeg: 30, sampledDeg: windowTheta(30 * DEG, alpha, flat) / DEG };
+  requireCheck(counterexample.alphaDeg > counterexample.cornerDeg && counterexample.sampledDeg > 32.8, "coverage is not identity counterexample");
+  report.counterexample = counterexample;
+
+  let radialSamples = 0, minimumRadialIncrementDeg = Infinity, maximumEndpointErrorDeg = 0;
+  for (const previewHalfAngleDeg of [0.01, 45, 89.9999]) for (const fisheyeHalfAngleDeg of [0.01, 45, 90]) {
+    const options = { ...blend, previewHalfAngleDeg, fisheyeHalfAngleDeg, blendStartHalfAngleDeg: previewHalfAngleDeg * 0.4, blendEndHalfAngleDeg: previewHalfAngleDeg };
+    validateWindowOptions(options);
+    for (const alphaDeg of [0.000001, 0.001, 10, 20, 30, 44.999999, 45, 60, 89.999999]) {
+      let previous = -1;
+      for (let i = 0; i <= 1024; i++) {
+        const delta = alphaDeg * DEG * i / 1024;
+        const theta = windowTheta(delta, alphaDeg * DEG, options);
+        requireCheck(Number.isFinite(theta) && theta >= previous && theta >= 0 && theta <= Math.PI / 2 + 1e-12, "monotone finite radial blend");
+        if (i > 0) minimumRadialIncrementDeg = Math.min(minimumRadialIncrementDeg, (theta - previous) / DEG);
+        previous = theta;
+        radialSamples++;
+        if (alphaDeg <= options.blendStartHalfAngleDeg) {
+          const rho = Math.sin(delta) * Math.cos(alphaDeg * DEG) / (Math.cos(delta) * Math.sin(alphaDeg * DEG));
+          maximumEndpointErrorDeg = Math.max(maximumEndpointErrorDeg, Math.abs(theta - Math.asin(clamp(rho * Math.sin(fisheyeHalfAngleDeg * DEG), 0, 1))) / DEG);
+        } else if (alphaDeg >= options.blendEndHalfAngleDeg) maximumEndpointErrorDeg = Math.max(maximumEndpointErrorDeg, Math.abs(theta - delta) / DEG);
+      }
+    }
+  }
+  const rejected = [{ previewHalfAngleDeg: 0 }, { previewHalfAngleDeg: 90 }, { previewHalfAngleDeg: 180 },
+    { ...blend, fisheyeHalfAngleDeg: 91 }, { ...blend, blendStartHalfAngleDeg: 46 }, { projection: "orthographic", previewHalfAngleDeg: 91 }];
+  for (const options of rejected) {
+    let didReject = false;
+    try { validateWindowOptions(options); } catch { didReject = true; }
+    requireCheck(didReject, "invalid projection FOV rejected");
+  }
+  let viewportFovRejections = 0;
+  for (const verticalFovDeg of [0, 180, 181]) {
+    try { cameraRays({ position: [0, -2, 0], target: [0, 0, 0], verticalFovDeg }); } catch { viewportFovRejections++; }
+  }
+  requireCheck(viewportFovRejections === 3, "invalid viewport FOV rejected");
+  let acceptedViewportBoundaryRays = 0;
+  for (const verticalFovDeg of [0.01, 60, 179.999]) for (const viewport of viewports) {
+    const rayAt = cameraRays({ ...viewport, position: [0, -2, 0], target: [0, 0, 0], verticalFovDeg });
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]]) {
+      const ray = rayAt(x, y);
+      requireCheck(ray.every(Number.isFinite) && Math.abs(length(ray) - 1) < 1e-10, "accepted perspective FOV finite");
+      acceptedViewportBoundaryRays++;
+    }
+  }
+  const boundary = [0.01, 0.0001, 0.000001].map(epsilonDeg => ({ epsilonDeg,
+    maximumInteriorStepDeg: Math.max(...[0, 10, 20, 30, 40].map(delta =>
+      Math.abs(windowTheta(delta * DEG, (45 - epsilonDeg) * DEG, blend) - windowTheta(delta * DEG, (45 + epsilonDeg) * DEG, blend)) / DEG)) }));
+  report.radial = { radialSamples, minimumRadialIncrementDeg, maximumEndpointErrorDeg, rejectedConfigurations: rejected.length + viewportFovRejections, acceptedViewportBoundaryRays, handoffBoundarySteps: boundary };
+  report.legacyFisheyeFailure = [1.0001, 1.000001, 1, 0.999999].map(distance => {
+    const mapped = MAPPINGS.window([0, -distance, 0], direction(30 * DEG, 0), { projection: "orthographic", previewHalfAngleDeg: 90 });
+    return { distance, sampledDeg: angleDeg(mapped, [0, 1, 0]) };
+  });
+  const observer = [0, -10, 0], capturePosition = [0, 0, 0], markerPosition = [0, 0, 1];
+  report.offset = { observer, capturePosition, markerPosition, axisChangeDeg: angleDeg(normalize(sub(capturePosition, observer)), normalize(sub(markerPosition, observer))) };
+  const outward = [0, -1, 0];
+  requireCheck(MAPPINGS.window([0, -1, 0], outward, flat) === null, "outward surface ray excluded");
+  requireCheck(MAPPINGS.window([0, -0.999999, 0], outward, flat) !== null, "inside ray included");
+  requireCheck(MAPPINGS.window([0, 0, 0], outward, blend) === outward, "center has no axis division");
+  report.surface = { outwardAtSurfaceCovered: false, outwardJustInsideCovered: true, centerFinite: true,
+    caveat: "A trajectory crossing the surface while looking outward has a coverage discontinuity. Complete identity + full-coverage handoff before crossing; inside identity alone cannot repair earlier missing coverage." };
+
+  const figureCases = [
+    { label: "square, 1.5 radii: covers but differs", width: 112, height: 112, distance: 1.5, yaw: 0 },
+    { label: "landscape, 1.5 radii: uncovered corners", width: 160, height: 90, distance: 1.5, yaw: 0 },
+    { label: "portrait, 1.42 radii: near equality", width: 90, height: 160, distance: 1.42, yaw: 0 },
+    { label: "landscape, turning 18 degrees at 1.25 radii", width: 160, height: 90, distance: 1.25, yaw: 18 },
+    { label: "square, east at 3 radii: active blend", width: 112, height: 112, distance: 3, yaw: 0, bearing: 90 },
+    { label: "square, west at 1.000001 radii", width: 112, height: 112, distance: 1.000001, yaw: 0, bearing: 270 },
+  ];
+  const rows = [];
+  for (const fixture of figureCases) {
+    const position = orbit(fixture.distance, fixture.bearing ?? 0, 0);
+    const config = { ...fixture, position, target: add(position, direction(((fixture.bearing ?? 0) + fixture.yaw) * DEG, 0)), verticalFovDeg: 60 };
+    rows.push(strip([render(pano, { ...config, mapping: "window", mappingOptions: flat }), render(pano, { ...config, mapping: "window", mappingOptions: blend }), render(pano, config)]));
+  }
+  const width = Math.max(...rows.map(row => row.width)), height = rows.reduce((sum, row) => sum + row.height + 4, 0) - 4;
+  const rgb = Buffer.alloc(width * height * 3, 24);
+  let y0 = 0;
+  for (const row of rows) {
+    for (let y = 0; y < row.height; y++) row.rgb.copy(rgb, ((y0 + y) * width) * 3, y * row.width * 3, (y + 1) * row.width * 3);
+    y0 += row.height + 4;
+  }
+  writePng(path.join(outDir, "contract.png"), { width, height, rgb });
+  report.figure = { file: "contract.png", columns: ["flat", "continuous fisheye blend", "immersive rays"], rows: figureCases.map(row => row.label) };
+  report.summary = { configurations: report.rows.length, handoffs: report.rows.filter(row => row.handoff).length,
+    maximumHandoffRayErrorDeg: Math.max(...report.rows.filter(row => row.handoff).map(row => row.maximumRayErrorDeg)),
+    maximumHandoffImageChannelError: Math.max(...report.rows.filter(row => row.handoff).map(row => row.maximumImageChannelError)),
+    allAssertionsPassed: true };
+  writeFileSync(path.join(outDir, "contract.json"), `${JSON.stringify(report, null, 2)}\n`);
+  console.log(JSON.stringify({ outDir, counterexample, radial: report.radial, summary: report.summary }, null, 2));
+}
+
+// ---------- the comparison ----------
+const panoramaFile = option("--panorama");
+const pano = panoramaFile ? readPng(path.resolve(panoramaFile)) : makeFixture();
+if (args.includes("--contract")) {
+  runContract(pano, panoramaFile);
+} else {
+if (!panoramaFile) {
+  const small = makeFixture(1024, 512);
+  writePng(path.join(outDir, "fixture.png"), small);
 }
 
 // Columns of the appearance strips. Each tile is framed to the orb, so a far orb is
@@ -399,3 +617,4 @@ for (const [mapping, mappingOptions] of STRIPS.slice(0, 4)) {
 writeFileSync(path.join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`Wrote ${outDir}`);
 console.log(JSON.stringify(report.entry, null, 2));
+}
