@@ -14,7 +14,7 @@
  *  4. A mouse drag turns the view while the button is held, not only on
  *     release, and hovering after the release turns nothing.
  *  5. In trackpad mode a two-finger swipe looks around and a pinch zooms;
- *     in mouse mode the wheel zooms.
+ *     in mouse mode the wheel zooms. A held arrow key turns the view.
  *  6. The close button leaves, and the map's group returns.
  *
  * It builds the app and serves the build through request interception (no
@@ -56,7 +56,10 @@ const config = {
   ringSlackPx: 1,
   dragStepPx: 20,
   dragSteps: 10,
+  // Longer than the look model's release window, so the drag ends without a glide.
+  stillBeforeReleaseMs: 250,
   swipeDeltaPx: 20,
+  keyHoldMs: 500,
   angleToleranceDeg: 0.01,
 };
 
@@ -346,8 +349,10 @@ try {
     during.push(angleDiff(await heading(), h0));
   }
   const xEnd = x0 - config.dragSteps * config.dragStepPx;
+  // Held still before the release, the drag has no glide to wait for.
+  await sleep(config.stillBeforeReleaseMs);
   await release(xEnd, y0);
-  await sleep(1500);
+  await sleep(500);
   const afterRelease = angleDiff(await heading(), h0);
   for (let step = 1; step <= config.dragSteps; step++) await mouse("mouseMoved", xEnd + step * config.dragStepPx, y0);
   await sleep(500);
@@ -355,6 +360,7 @@ try {
   const expected = during.map((_, index) => (index + 1) * config.dragStepPx * dragSensitivity);
   report.drag = { startHeadingDeg: h0, dragSensitivity, duringDeg: during, expectedDeg: expected, afterReleaseDeg: afterRelease, afterHoverDeg: afterHover };
   check(during.every((value, index) => Math.abs(value - expected[index]) <= config.angleToleranceDeg), `while held, the view turned with every move: ${during.map(v => v.toFixed(2)).join(", ")}°`);
+  check(Math.abs(afterRelease - expected.at(-1)) <= config.angleToleranceDeg, `held still before the release, it did not glide (${(afterRelease - expected.at(-1)).toFixed(3)}°)`);
   check(Math.abs(afterHover - afterRelease) <= config.angleToleranceDeg, `after the release, hovering turned ${(afterHover - afterRelease).toFixed(3)}°`);
 
   // ─── 5. Trackpad swipe and pinch; mouse wheel ───────────────────────
@@ -386,6 +392,24 @@ try {
     `a pinch out narrowed the view from ${v1.verticalFovDeg.toFixed(2)}° to ${v2.verticalFovDeg.toFixed(2)}°`);
   check(Math.abs(v3.verticalFovDeg - zoomFov(v2.verticalFovDeg, zoom.zoomPerNotch)) <= config.angleToleranceDeg && v3.headingDeg === v2.headingDeg,
     `in mouse mode a wheel notch zoomed from ${v2.verticalFovDeg.toFixed(2)}° to ${v3.verticalFovDeg.toFixed(2)}°, without turning`);
+
+  // ─── Keys ───────────────────────────────────────────────────────────
+  console.log("Keys");
+  const lookRate = await page("window.__fossEarthPanoramaTest.settings.get('scene.panorama.lookRate')");
+  const key = type => send("Input.dispatchKeyEvent", { type, key: "ArrowRight", code: "ArrowRight", windowsVirtualKeyCode: 39 });
+  const k0 = await heading();
+  const pressedAt = performance.now();
+  await key("keyDown");
+  await sleep(config.keyHoldMs);
+  await key("keyUp");
+  const heldMs = performance.now() - pressedAt;
+  const turned = angleDiff(await heading(), k0);
+  await sleep(300);
+  const settled = angleDiff(await heading(), k0);
+  report.keys = { lookRate, heldMs, turnedDeg: turned, afterKeyUpDeg: settled };
+  // The page's frames and the key events' delivery bound how exactly a wall-clock hold turns.
+  check(turned >= 0.5 * lookRate * (config.keyHoldMs / 1000) && turned <= lookRate * (heldMs / 1000) + 1, `a held arrow key turned ${turned.toFixed(1)}° in ${heldMs.toFixed(0)} ms, at ${lookRate}°/s`);
+  check(Math.abs(settled - turned) <= config.angleToleranceDeg, `and stopped when released (${(settled - turned).toFixed(3)}° after)`);
 
   // ─── 6. Close ───────────────────────────────────────────────────────
   console.log("Close");

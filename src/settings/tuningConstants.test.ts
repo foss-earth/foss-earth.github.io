@@ -132,6 +132,7 @@ const LEDGER: Record<string, [Kind, string]> = {
   "src/scenes/budget.ts#CUBE_LAYERS": ["fact", "A cube has six faces."],
   "src/scenes/budget.ts#MIB": ["fact", "Bytes in a mebibyte."],
   "src/scenes/format.ts#SCENE_FORMAT_VERSION": ["fact", "The version of the scene format this loader reads."],
+  "src/scenes/panoramaInput.ts#GLIDE_RELEASE_WINDOW_MS": ["guard", "A drag held still this long before its release was not a flick; its last move's speed is stale."],
   "src/scenes/panoramaInput.ts#INERTIA_STOP_DEG_PER_S": ["guard", "A look glide slower than this has stopped."],
   "src/scenes/panoramaInput.ts#PINCH_WHEEL_PX_PER_LOG_SCALE": ["fact", "Browsers report a trackpad pinch as ctrl+wheel with deltaY = -100 ln(scale); `pinchGain` applies to the scale."],
   "src/scenes/panoramaInput.ts#WHEEL_LINE_PX": ["structure", "How a wheel reporting lines is counted in pixels, so every wheel zooms by notches alike."],

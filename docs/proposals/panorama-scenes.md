@@ -1040,6 +1040,12 @@ work.
   panorama's moves, its release and every wheel event. They are now detached
   while a lease holds navigation and attached again afterwards. A unit test
   drives a drag through both, on the capture-first order browsers use.
+- **Keys, sticks and glide:** nothing in the app stepped the look model, so held
+  arrow keys and controller sticks did not turn the view, and a drag never
+  glided; the unit tests had stepped the model themselves. The loader now steps
+  it every frame while anything moves, holding rendering only meanwhile. A drag's
+  speed waits for its release, and a drag held still for more than 80 ms before
+  it has none.
 - **Trackpad:** in trackpad mode a two-finger swipe looks around
   (`scene.panorama.swipeSensitivity`) and a pinch zooms, and in mouse mode the
   wheel zooms, as the globe classifies the same events. Safari's gesture events
@@ -1062,8 +1068,8 @@ work.
 - The check runs on one desktop GPU in headless Chrome, not on a phone, and says
   nothing about the mesh, cache or appearance alternatives of stage 3.
 - These are covered by unit tests with fake GPUs and inputs, not on a GPU:
-  keyboard and gamepad look, reduced motion, device loss, cancellation, and late
-  decodes after disposal.
+  gamepad look, reduced motion, device loss, cancellation, and late decodes after
+  disposal. The input check covers mouse, wheel, trackpad and arrow keys.
 - The public consumer fixture is 0SFS itself: it imports FOSS Earth's public
   exports without activating panoramas, and its checks pass.
 
