@@ -615,7 +615,9 @@ behavior. Controller handling remains gamepad-tools' responsibility. Do not add
 a second poller or map panorama look to globe pan behind the immersive camera.
 Look inertia, if enabled, belongs to this context and is cancelled on every transfer.
 Dragging the image right looks left; dragging it down looks up. Wheel-up/pinch-out
-narrows vertical FOV. Arrow keys and gamepad look turn in the named direction;
+narrows vertical FOV. Wheel events are read as the globe reads them, by `input.mode`
+and the globe's own gesture classifier: in trackpad mode a two-finger swipe moves
+the image as a drag does and a pinch zooms; in mouse mode the wheel zooms. Arrow keys and gamepad look turn in the named direction;
 translation is disabled. Enter/Space activates focused destinations, Tab navigates
 DOM controls, and Escape cancels preparation/entry or exits. Pointer look during
 expansion cancels the expansion to its prior usable state; during arrival leveling
@@ -881,9 +883,11 @@ rendered device pixels are different units. A range means one two-thumb control.
 | `expandDuration` | ms, 0–2000 | 350; short reveal prototype | Navigation; phase/progress; motion trial |
 | `orientDuration` | ms, 0–2000 | 250; separate leveling phase | Navigation; current/target orientation |
 | `fadeDuration` | ms, 0–1000 | 150; exit/LOD/fallback blend | Navigation; overlap/phase; visual check |
+| `hoverDuration` | ms, 0–1000 | 120; growth under the pointer, when the scene's style asks | Navigation; visual check |
 | `reducedMotion` | system / reduce | system; respect OS, allow stricter user choice | Navigation; effective state |
 | `reducedFadeDuration` | ms, 0–250 | 0; cut avoids animation | Navigation; effective duration |
 | `dragSensitivity` | deg/CSS px, 0.01–2 | 0.15; starting pointer gain | Navigation; angular response; user trial |
+| `swipeSensitivity` | deg/CSS px of scroll, 0.01–2 | 0.15; as dragging, in trackpad mode | Navigation; angular response; user trial |
 | `lookRate` | deg/s, 1–360 | 90; key/full gamepad rate | Navigation; actual rate |
 | `zoomPerNotch` | log-tangent-FOV fraction/notch, 0.01–1 | 0.1; multiplicative wheel change | Navigation; actual FOV |
 | `zoomRate` | log-tangent-FOV fraction/s, 0.01–4 | 0.5; held key/gamepad zoom | Navigation; rate |
@@ -1026,6 +1030,32 @@ moment. In the retained run it travelled 105 m while the campus loaded, and one
 earlier run saw 71 m during the fast near/far sweep. Holding
 the marker until the terrain under it is final belongs with stage 2's placement
 work.
+
+**After the first user trial.**
+
+- **Drag inside a panorama:** the view moved only on release, jumped there, and
+  then kept turning with the pointer. The globe's mouse, wheel, touch and Safari
+  gesture controllers listen in the capture phase and stop the events they use.
+  Suspension gated only their effect on the camera, so they still stopped the
+  panorama's moves, its release and every wheel event. They are now detached
+  while a lease holds navigation and attached again afterwards. A unit test
+  drives a drag through both, on the capture-first order browsers use.
+- **Trackpad:** in trackpad mode a two-finger swipe looks around
+  (`scene.panorama.swipeSensitivity`) and a pinch zooms, and in mouse mode the
+  wheel zooms, as the globe classifies the same events. Safari's gesture events
+  pinch too.
+- **Orb style:** a scene's `markerStyle`, or a marker's own `style`, gives orbs an
+  outline in a colour and a width in CSS px, and growth under the pointer
+  (docs/scenes/format.md). The outline is drawn by the orb's shader, measured in
+  rendered pixels, and left out of the probes' outputs. The linked pair example
+  uses both.
+- **The bar while entered:** the map's detail rail and basemap chip are hidden,
+  since the map is not drawn. The panorama's credit takes the chip's place, with a
+  close button where the rail sat. While a panorama is prepared or entered, the
+  map still shows, and the close button cancels before the map's group.
+- **The input check:** [`scripts/validation/panorama-input.mjs`](../../scripts/validation/panorama-input.mjs)
+  checks all of this with real mouse and wheel events from headless Chrome, on the
+  GPU.
 
 **Not covered.**
 
