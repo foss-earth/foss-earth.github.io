@@ -82,6 +82,19 @@ describe("frame budget panel", () => {
     session.dispose();
   });
 
+  it("shows a value set elsewhere, such as by a script", () => {
+    const { session, settings, unbind } = setup();
+    const panel = createFrameBudgetPanel({ session, settings });
+    document.body.append(panel.element);
+    const measure = panel.element.querySelector<HTMLInputElement>(`[data-parameter="${FRAME_PROFILING_IDS.enabled}"] input`)!;
+    expect(measure.checked).toBe(false);
+    settings.set(FRAME_PROFILING_IDS.enabled, true);
+    expect(measure.checked).toBe(true);
+    panel.destroy();
+    unbind();
+    session.dispose();
+  });
+
   it("stops summarising when measuring stops or the panel goes", () => {
     vi.useFakeTimers();
     const { session, settings, unbind } = setup();

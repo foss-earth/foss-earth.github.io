@@ -69,12 +69,16 @@ export function createFrameBudgetPanel(options: FrameBudgetPanelOptions): FrameB
   const { session } = options;
   const element = el("div", `foss-earth-frame-budget-panel${options.className ? ` ${options.className}` : ""}`);
   const controlsRow = el("div", "foss-earth-choices");
-  const controls: ParameterControlHandle[] = [];
+  const controls = new Map<string, ParameterControlHandle>();
   for (const id of Object.values(FRAME_PROFILING_IDS)) {
     const control = createParameterControl(settings, id);
-    controls.push(control);
+    controls.set(id, control);
     controlsRow.append(control.element);
   }
+  // A value set elsewhere, such as a URL switch or a script, shows here too.
+  const offControls = settings.subscribe(changed => {
+    for (const id of changed) controls.get(id)?.update();
+  });
   const status = el("p", "foss-earth-choices__note foss-earth-frame-budget__status");
   const overview = el("p", "foss-earth-choices__note");
   const table = el("table", "foss-earth-frame-budget");
@@ -201,9 +205,10 @@ export function createFrameBudgetPanel(options: FrameBudgetPanelOptions): FrameB
       timer = null;
       offSession();
       offRefresh();
+      offControls();
       copy.removeEventListener("click", onCopy);
       save.removeEventListener("click", onSave);
-      for (const control of controls) control.destroy();
+      for (const control of controls.values()) control.destroy();
       element.remove();
     },
   };
