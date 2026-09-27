@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GlobeViewState } from "../engine/types";
+import { createFrameProfileSession } from "../perf/frameProfileSession";
 
 // Node 26+ ships an experimental localStorage global that is undefined when
 // --localStorage-file is not provided, shadowing jsdom's own implementation.
@@ -225,6 +226,8 @@ beforeEach(() => {
     setOrbitMode: mockState.setOrbitMode,
     onNavigationChange: vi.fn(() => vi.fn()),
     getNavigationState: vi.fn(() => null),
+    // Off, a session attaches nothing to the scene.
+    frameProfile: createFrameProfileSession({ scene: {} as never, engine: { getCaps: () => ({}) } as never }),
     setInputMode: mockState.setInputMode,
     setInputSensitivity: mockState.setInputSensitivity,
     configureOrbitTargetHeight: mockState.configureOrbitTargetHeight,

@@ -113,6 +113,71 @@ describe("frame profiler", () => {
     expect(profiler.summary().frames).toBe(1);
   });
 
+  it("reports the 99th percentile of the frame interval", () => {
+    const t = manual(200);
+    let time = 0;
+    for (let frame = 0; frame <= 200; frame++) {
+      // Three intervals in two hundred are long: past the 95th percentile, inside the 99th.
+      time += frame % 50 === 0 && frame > 0 && frame < 200 ? 50 : 10;
+      t.at(time);
+      t.profiler.frame();
+    }
+    const summary = t.profiler.summary().frame;
+    expect(summary.p95Ms).toBe(10);
+    expect(summary.maxMs).toBe(50);
+    expect(summary.p99Ms).toBe(50);
+  });
+
+  it("keeps no trace unless asked, then each of the last frames whole with its tags", () => {
+    const t = manual();
+    t.at(0);
+    t.profiler.frame();
+    t.work("render", 4);
+    t.at(16);
+    t.profiler.frame();
+    expect(t.profiler.trace()).toEqual({ capacity: 0, frames: [], bytes: 0 });
+
+    t.profiler.configure({ traceFrames: 2 });
+    for (let frame = 0; frame <= 3; frame++) {
+      t.at(100 + frame * 16);
+      t.profiler.frame();
+      t.profiler.tag("engine frame", 40 + frame);
+      t.work("render", frame);
+    }
+    const trace = t.profiler.trace();
+    expect(trace.capacity).toBe(2);
+    expect(trace.frames.map(frame => [frame.index, frame.intervalMs, frame.sections.render ?? 0, frame.tags["engine frame"]])).toEqual([
+      [1, 16, 1, 41],
+      [2, 16, 2, 42],
+    ]);
+    expect(trace.bytes).toBeGreaterThan(0);
+  });
+
+  it("starts afresh when the window or the trace changes size", () => {
+    const t = manual(10);
+    for (let frame = 0; frame <= 3; frame++) {
+      t.at(frame * 10);
+      t.profiler.frame();
+    }
+    expect(t.profiler.summary().frames).toBe(3);
+    t.profiler.configure({ windowFrames: 10 });
+    expect(t.profiler.summary().frames).toBe(3);
+    t.profiler.configure({ windowFrames: 2 });
+    expect(t.profiler.windowFrames).toBe(2);
+    expect(t.profiler.summary().frames).toBe(0);
+  });
+
+  it("never adds background work to the frame, which it runs alongside", () => {
+    const t = manual();
+    t.at(0);
+    t.profiler.frame();
+    t.work("render", 4);
+    t.profiler.addDuration("background/panorama decode", 30);
+    t.at(16);
+    t.profiler.frame();
+    expect(t.profiler.summary().measuredMeanMs).toBe(4);
+  });
+
   it("reads a WebGPU engine's render-pass GPU time, and hands the timing back when done", () => {
     const counter = { total: 0, count: 0 };
     let timing = false;

@@ -18,11 +18,19 @@ import { EngineInstrumentation, type AbstractEngine, type Observable, type Scene
  * sections are added up against the frame; nested ones break their parent
  * down. Time no section claims is reported as unmeasured: work nobody has
  * instrumented yet, the browser's own work, and idle time waiting for the
- * display. Concurrent sections, "gpu" by default, run alongside the frame
- * rather than in it and are never added to it.
+ * display. Concurrent sections, "gpu" and "background" by default, run
+ * alongside the frame rather than in it and are never added to it: GPU work,
+ * and work the browser does off the main thread, such as decoding an image.
+ *
+ * A trace, off by default, keeps each of the last `traceFrames` frames whole:
+ * its interval, every section's time and any tags, such as the engine frame
+ * the frame drew, for a script to line frames up with what they showed.
  */
 
 const DEFAULT_WINDOW_FRAMES = 600;
+/** What one retained trace frame costs: its three numbers and one per entry, name and value. */
+const TRACE_FRAME_BYTES = 24;
+const TRACE_ENTRY_BYTES = 16;
 
 export interface FrameProfiler {
   /** Switchable at any time; turning it on starts a fresh window. */
@@ -35,9 +43,17 @@ export interface FrameProfiler {
   addDuration(section: string, milliseconds: number): void;
   /** The section's time so far this frame. */
   current(section: string): number;
+  /** Labels this frame in the trace, such as `tag("engine frame", engine.frameId)`. */
+  tag(key: string, value: number): void;
   /** Closes the frame begun at the previous call and starts the next. */
   frame(now?: number): void;
   summary(): FrameProfileSummary;
+  /** The retained frames, oldest first; empty while `traceFrames` is 0. */
+  trace(): FrameTrace;
+  /** Frames the summary covers and frames the trace keeps. Changing either starts afresh. */
+  readonly windowFrames: number;
+  readonly traceFrames: number;
+  configure(options: { windowFrames?: number; traceFrames?: number }): void;
   reset(): void;
 }
 
@@ -45,7 +61,27 @@ export interface FrameTimeStats {
   meanMs: number;
   p50Ms: number;
   p95Ms: number;
+  p99Ms: number;
   maxMs: number;
+}
+
+export interface FrameTraceEntry {
+  /** Frames closed before this one since the profiler last started afresh. */
+  index: number;
+  /** When the frame closed, on the profiler's clock. */
+  endedAtMs: number;
+  intervalMs: number;
+  /** Every section that did work in the frame. */
+  sections: Record<string, number>;
+  tags: Record<string, number>;
+}
+
+export interface FrameTrace {
+  /** Frames the trace can hold. */
+  capacity: number;
+  frames: FrameTraceEntry[];
+  /** About what the retained frames take in memory. */
+  bytes: number;
 }
 
 export interface FrameSectionStats extends FrameTimeStats {
@@ -83,7 +119,7 @@ function percentile(sorted: Float64Array, rank: number): number {
 }
 
 function stats(values: Float64Array): FrameTimeStats {
-  if (values.length === 0) return { meanMs: 0, p50Ms: 0, p95Ms: 0, maxMs: 0 };
+  if (values.length === 0) return { meanMs: 0, p50Ms: 0, p95Ms: 0, p99Ms: 0, maxMs: 0 };
   const sorted = Float64Array.from(values).sort();
   let total = 0;
   for (const value of sorted) total += value;
@@ -91,6 +127,7 @@ function stats(values: Float64Array): FrameTimeStats {
     meanMs: total / sorted.length,
     p50Ms: percentile(sorted, 0.5),
     p95Ms: percentile(sorted, 0.95),
+    p99Ms: percentile(sorted, 0.99),
     maxMs: sorted[sorted.length - 1],
   };
 }
@@ -98,21 +135,27 @@ function stats(values: Float64Array): FrameTimeStats {
 export interface FrameProfilerOptions {
   /** Frames kept for the summary; 600 is ten seconds at 60 fps. */
   windowFrames?: number;
+  /** Frames kept whole for `trace()`; 0, the default, keeps none. */
+  traceFrames?: number;
   enabled?: boolean;
-  /** Top-level sections that run alongside the frame, such as GPU work. */
+  /** Top-level sections that run alongside the frame, such as GPU work; "gpu" and "background" when omitted. */
   concurrent?: readonly string[];
   now?: () => number;
 }
 
 export function createFrameProfiler(options: FrameProfilerOptions = {}): FrameProfiler {
-  const capacity = Math.max(1, Math.floor(options.windowFrames ?? DEFAULT_WINDOW_FRAMES));
+  let capacity = Math.max(1, Math.floor(options.windowFrames ?? DEFAULT_WINDOW_FRAMES));
+  let traceCapacity = Math.max(0, Math.floor(options.traceFrames ?? 0));
   const now = options.now ?? (() => performance.now());
   const tracks = new Map<string, SectionTrack>();
   let intervals = new Float64Array(capacity);
   let committed = 0;
   let lastFrameAt: number | null = null;
   let enabled = options.enabled ?? false;
-  const concurrent = new Set(options.concurrent ?? ["gpu"]);
+  const concurrent = new Set(options.concurrent ?? ["gpu", "background"]);
+  let tags: Record<string, number> = {};
+  let traced: FrameTraceEntry[] = [];
+  let tracedBytes = 0;
 
   const track = (section: string): SectionTrack => {
     let found = tracks.get(section);
@@ -138,6 +181,21 @@ export function createFrameProfiler(options: FrameProfilerOptions = {}): FramePr
     intervals = new Float64Array(capacity);
     committed = 0;
     lastFrameAt = null;
+    tags = {};
+    traced = [];
+    tracedBytes = 0;
+  };
+
+  const entryBytes = (entry: FrameTraceEntry): number =>
+    TRACE_FRAME_BYTES + TRACE_ENTRY_BYTES * (Object.keys(entry.sections).length + Object.keys(entry.tags).length);
+
+  const keepTrace = (at: number, interval: number): void => {
+    const sections: Record<string, number> = {};
+    for (const [section, entry] of tracks) if (entry.current > 0) sections[section] = entry.current;
+    const entry: FrameTraceEntry = { index: committed, endedAtMs: at, intervalMs: interval, sections, tags };
+    traced.push(entry);
+    tracedBytes += entryBytes(entry);
+    while (traced.length > traceCapacity) tracedBytes -= entryBytes(traced.shift()!);
   };
 
   return {
@@ -159,11 +217,15 @@ export function createFrameProfiler(options: FrameProfilerOptions = {}): FramePr
       track(section).current += milliseconds;
     },
     current: section => tracks.get(section)?.current ?? 0,
+    tag(key, value) {
+      if (enabled && traceCapacity > 0) tags[key] = value;
+    },
     frame(at = now()) {
       if (!enabled) return;
       if (lastFrameAt !== null) {
         const slot = committed % capacity;
         intervals[slot] = at - lastFrameAt;
+        if (traceCapacity > 0) keepTrace(at, at - lastFrameAt);
         for (const entry of tracks.values()) {
           entry.values[slot] = entry.current;
           entry.current = 0;
@@ -172,6 +234,7 @@ export function createFrameProfiler(options: FrameProfilerOptions = {}): FramePr
       } else {
         for (const entry of tracks.values()) entry.current = 0;
       }
+      tags = {};
       lastFrameAt = at;
     },
     summary() {
@@ -234,6 +297,21 @@ export function createFrameProfiler(options: FrameProfilerOptions = {}): FramePr
       };
       visit("");
       return { frames: Math.min(committed, capacity), frame, measuredMeanMs, sections };
+    },
+    trace: () => ({ capacity: traceCapacity, frames: [...traced], bytes: tracedBytes }),
+    get windowFrames() {
+      return capacity;
+    },
+    get traceFrames() {
+      return traceCapacity;
+    },
+    configure(next) {
+      const windowFrames = Math.max(1, Math.floor(next.windowFrames ?? capacity));
+      const traceFrames = Math.max(0, Math.floor(next.traceFrames ?? traceCapacity));
+      if (windowFrames === capacity && traceFrames === traceCapacity) return;
+      capacity = windowFrames;
+      traceCapacity = traceFrames;
+      reset();
     },
     reset,
   };

@@ -54,6 +54,7 @@ export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from
 export { SectionsPanel, type PanelSection } from "./SectionsPanel";
 export { createMapSourcePanel, type MapSourcePanelHandle, type MapSourcePanelOptions, type MapSourceStatus } from "./mapSourcePanel";
 export { createRendererPanel, getRendererLabel, type RendererPanelHandle, type RendererPanelOptions } from "./rendererPanel";
+export { createFrameBudgetPanel, type FrameBudgetPanelHandle, type FrameBudgetPanelOptions } from "./frameBudgetPanel";
 export { createSceneHotspots, createScenesPanel, type ScenesPanelHandle } from "./scenesPanel";
 export { PANEL_SECTIONS_OPEN_STORAGE_KEY } from "./panelSectionsOpen";
 export { trackViewportInsets, VIEWPORT_INSET_BOTTOM_PROPERTY, type ViewportInsetsHandle } from "./viewportInsets";
