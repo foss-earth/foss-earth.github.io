@@ -2,8 +2,9 @@
  * The globe app's one mounted scene: loading from a URL or a registered
  * example, replacing it, and entering an orb by clicking or tapping it. A
  * press that moves past the drag threshold, a second finger or a cancelled
- * pointer never activates. Shareable ids resolve through the registered
- * examples only, never as arbitrary URLs from the address bar.
+ * pointer never activates. A mouse or pen over an orb shows a pointer and
+ * grows the orb if its style asks. Shareable ids resolve through the
+ * registered examples only, never as arbitrary URLs from the address bar.
  */
 import { DEFAULT_INPUT_RATES } from "../input/inputRates";
 import type { SettingsRegistry } from "../settings/registry";
@@ -114,9 +115,20 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
     presses.set(event.pointerId, { x: event.clientX, y: event.clientY, moved: false });
     if (presses.size > 1) multiTouch = true;
   };
+  // Babylon sets the canvas cursor back on every move before this runs, so it is set on every move.
+  let pointerCursor = false;
+  const setHover = (hit: string | null): void => {
+    current?.hover(hit);
+    if (hit || pointerCursor) canvas.style.cursor = hit ? "pointer" : "";
+    pointerCursor = hit !== null;
+  };
   const onPointerMove = (event: PointerEvent): void => {
     const press = presses.get(event.pointerId);
     if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) >= threshold()) press.moved = true;
+    if (event.pointerType !== "touch" && event.buttons === 0) setHover(current?.pick(event.clientX, event.clientY)[0] ?? null);
+  };
+  const onPointerLeave = (event: PointerEvent): void => {
+    if (event.pointerType !== "touch") setHover(null);
   };
   const onPointerUp = (event: PointerEvent): void => {
     const press = presses.get(event.pointerId);
@@ -137,6 +149,7 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("pointercancel", onPointerCancel);
+  canvas.addEventListener("pointerleave", onPointerLeave);
 
   return {
     examples: options.examples,
@@ -154,6 +167,8 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
+      if (pointerCursor) canvas.style.cursor = "";
       unload();
       listeners.clear();
     },

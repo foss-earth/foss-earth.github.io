@@ -3,12 +3,14 @@
  * scene, the examples, its panoramas and their details), Appearance,
  * Loading and memory, Navigation, and Credits. Also the pieces a scene
  * needs on the map: link buttons anchored to their directions while a
- * panorama is entered.
+ * panorama is entered, and the bar's right end while it is: a close button
+ * and the panorama's credit, in place of the map's.
  */
 import type { SettingsRegistry } from "../settings/registry";
 import { SCENES_TAB } from "../settings/catalogue/scenes";
 import type { SceneController, SceneControllerState } from "../scenes/sceneController";
 import type { SceneEntryStatus, SceneStatus } from "../scenes/loadScene";
+import { createExternalLinkIcon } from "./externalLinkIcon";
 import { createParameterSection, createSectionsElement, type ParameterSectionHandle } from "./settings/parameterSection";
 
 export interface ScenesPanelHandle {
@@ -273,6 +275,73 @@ export function createSceneHotspots(options: { controller: SceneController; cont
       offFrame?.();
       layer.remove();
       buttons.clear();
+    },
+  };
+}
+
+export interface SceneHudHandle {
+  element: HTMLElement;
+  destroy(): void;
+}
+
+/**
+ * The HUD bar's right end while a panorama is entered: a close button where
+ * the map's detail rail sits, then the panorama's credit where the basemap's
+ * is. The map is not drawn then, so `mapSource` (the basemap's group) is
+ * hidden. While a panorama is being prepared or entered the map still shows:
+ * the close button, which cancels, stands before the map's group.
+ */
+export function createSceneHud(options: { controller: SceneController; container: HTMLElement; mapSource?: HTMLElement | null }): SceneHudHandle {
+  const { controller, container, mapSource } = options;
+  const element = el("span", "scene-hud");
+  element.setAttribute("role", "group");
+  element.setAttribute("aria-label", "Panorama");
+  element.hidden = true;
+  const close = el("button", "hud-circle-button scene-exit-button", "\u2715");
+  close.id = "sceneExitButton";
+  close.type = "button";
+  const credits = el("span", "hud-chip-group scene-credits-slot");
+  credits.id = "sceneCreditsSlot";
+  credits.setAttribute("aria-label", "Panorama credits");
+  element.append(close, credits);
+  container.prepend(element);
+  const onClose = (): void => { void controller.handle()?.exit(); };
+  close.addEventListener("click", onClose);
+
+  let shownCredits = "";
+  const off = controller.subscribe(state => {
+    const phase = state.status?.phase;
+    const inside = phase === "immersive";
+    element.hidden = !(inside || phase === "entering" || phase === "preparing");
+    if (mapSource) mapSource.hidden = inside;
+    const label = inside ? "Exit panorama" : "Cancel entering the panorama";
+    close.setAttribute("aria-label", label);
+    close.title = inside ? "Exit panorama: back to the view you entered it from. Escape does the same." : `${label}. Escape does the same.`;
+    const shown = inside ? state.status?.credits ?? [] : [];
+    const key = JSON.stringify(shown);
+    if (key === shownCredits) return;
+    shownCredits = key;
+    credits.hidden = shown.length === 0;
+    credits.replaceChildren(...shown.map(credit => {
+      const text = credit.license ? `${credit.text} \u00b7 ${credit.license}` : credit.text;
+      if (!credit.url) return el("span", "hud-chip scene-credit-chip", text);
+      const link = el("a", "hud-chip hud-chip-button scene-credit-chip", text);
+      link.href = credit.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.title = `Panorama: ${text}. Opens its source.`;
+      link.append(createExternalLinkIcon());
+      return link;
+    }));
+  });
+
+  return {
+    element,
+    destroy() {
+      off();
+      close.removeEventListener("click", onClose);
+      if (mapSource) mapSource.hidden = false;
+      element.remove();
     },
   };
 }

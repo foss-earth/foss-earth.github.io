@@ -43,6 +43,9 @@ const INVALID: Mutation[] = [
   ["an unknown height datum", doc => { (entity(doc, 1).capture as Record<string, unknown>).height = { meters: 2, datum: "EGM96" }; }],
   ["a zero radius", doc => { (entity(doc, 0).marker as Record<string, unknown>).radiusMeters = 0; }],
   ["a link with no label", doc => { delete ((entity(doc, 0).links as Record<string, unknown>[])[0]).label; }],
+  ["an outline colour by name", doc => { doc.markerStyle = { outline: { color: "gold", widthPx: 2 } }; }],
+  ["an outline wider than 32 px", doc => { (entity(doc, 0).marker as Record<string, unknown>).style = { outline: { color: "#ffffff", widthPx: 33 } }; }],
+  ["a hover that shrinks", doc => { doc.markerStyle = { hover: { scale: 0.9 } }; }],
 ];
 
 describe("the published JSON Schema", () => {

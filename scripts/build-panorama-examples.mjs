@@ -9,7 +9,8 @@
  *   umn-cardinal.scene.json  the same placement with the cardinal/text image,
  *                            to see mirroring or a wrong direction by eye
  *   campus-pair.scene.json   two different images, linked both ways, for the
- *                            enter → look → link → exit path
+ *                            enter → look → link → exit path, with outlined
+ *                            orbs that grow under the pointer
  *
  * The placements are a synthetic test registration: the photograph was not
  * taken on the campus and its north is not surveyed.
@@ -109,7 +110,8 @@ const pair = [
     initialView: { headingDeg: 0, pitchDeg: 0, verticalFovDeg: 60 },
     links: [{ id: "to-grid", target: "pair-grid", label: "Go to the cardinal grid", direction: { headingDeg: 0, pitchDeg: -5 } }] },
   { ...orb("pair-grid", "cardinal-grid", "Test pair: cardinal grid", "The generated cardinal image, 40 m north of the anchor."),
-    marker: { mode: "ground-relative", eastM: 0, northM: 40, offsetM: 12, radiusMeters: 2 },
+    // Overrides the scene's outline: a wider yellow ring on this orb only.
+    marker: { mode: "ground-relative", eastM: 0, northM: 40, offsetM: 12, radiusMeters: 2, style: { outline: { color: "#facc15", widthPx: 3 } } },
     links: [
       { id: "to-photo", target: "pair-photo", label: "Return to the photograph", direction: { headingDeg: 180, pitchDeg: -5 } },
       { id: "to-photo-facing-east", target: "pair-photo", label: "Photograph, facing east", arrivalView: { headingDeg: 90, pitchDeg: 0, verticalFovDeg: 70 } },
@@ -121,6 +123,8 @@ write("campus-pair.scene.json", scene("campus-pair", "Test pair: two linked pano
   "Two different images linked both ways, for the enter, look, link, exit and dispose path.",
   ["buikslotermeerplein-512", "cardinal-grid"], pair,
   { groups: [{ id: "both", title: "Both test images", members: ["pair-photo", "pair-grid"] }], initialPanorama: "pair-photo",
-    overview: { target: { ...CAMPUS, height: null }, distanceMeters: 180, headingDeg: 90, pitchDeg: -25, verticalFovDeg: 60 } }));
+    overview: { target: { ...CAMPUS, height: null }, distanceMeters: 180, headingDeg: 90, pitchDeg: -25, verticalFovDeg: 60 },
+    // Every orb's outline, and growth under the pointer.
+    markerStyle: { outline: { color: "#ffffff", widthPx: 2 }, hover: { scale: 1.25 } } }));
 
 console.log(`Wrote the example scenes to ${path.relative(root, examples)}.`);

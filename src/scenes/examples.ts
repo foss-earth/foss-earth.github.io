@@ -20,7 +20,7 @@ export const SCENE_EXAMPLES: readonly SceneExample[] = [
   {
     id: "campus-pair",
     title: "Test pair: two linked panoramas",
-    description: "Two different images 80 m apart, linked both ways: enter, look, follow a link, go back, exit.",
+    description: "Two different images 80 m apart, linked both ways: enter, look, follow a link, go back, exit. Their orbs are outlined and grow under the pointer.",
     url: "examples/panorama-scenes/campus-pair.scene.json",
   },
 ];

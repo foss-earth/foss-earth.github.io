@@ -244,7 +244,13 @@
         "eastM": 0,
         "northM": 0,
         "offsetM": 12,
-        "radiusMeters": 2
+        "radiusMeters": 2,
+        "style": {
+          "outline": {
+            "color": "#facc15",
+            "widthPx": 3
+          }
+        }
       },
       "links": [
         {
@@ -290,5 +296,14 @@
     "headingDeg": 90,
     "pitchDeg": -25,
     "verticalFovDeg": 60
+  },
+  "markerStyle": {
+    "outline": {
+      "color": "#ffffff",
+      "widthPx": 2
+    },
+    "hover": {
+      "scale": 1.25
+    }
   }
 }
