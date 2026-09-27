@@ -9,7 +9,18 @@ export {
   type GoogleTerrainDetailState,
   type RendererMode,
   type RuntimeMode,
+  NAVIGATION_PRESENTATION_LAYER,
 } from "../engine/babylon/createBabylonRuntime";
+export type {
+  EcefVector,
+  NavigationAcquisition,
+  NavigationEndReason,
+  NavigationLease,
+  NavigationPresentation,
+  NavigationRequest,
+  NavigationSnapshot,
+  NavigationState,
+} from "../engine/babylon/navigationLease";
 export {
   DEFAULT_RASTER_BASE_MAP_ID,
   RASTER_BASE_MAP_SOURCES,

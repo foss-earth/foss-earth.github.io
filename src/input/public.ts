@@ -4,6 +4,7 @@ export {
   createGlobeGamepadAdapter,
   createStandardGlobeProfile,
   GLOBE_GAMEPAD_ACTIONS,
+  PANORAMA_GAMEPAD_ACTIONS,
   STANDARD_GLOBE_PROFILE_ID,
   STANDARD_GLOBE_PROFILE_NAME,
   type GlobeGamepadAdapterOptions,

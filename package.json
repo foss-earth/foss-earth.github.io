@@ -17,6 +17,8 @@
     "./cameraMath": "./src/camera/cameraMath.ts",
     "./mapDetailPolicy": "./src/terrain/mapDetailPolicy.ts",
     "./perf": "./src/perf/index.ts",
+    "./scenes": "./src/scenes/index.ts",
+    "./scenes/schema.json": "./src/scenes/foss-earth-scene-1.schema.json",
     "./settings": "./src/settings/index.ts",
     "./smoothElevation": "./src/terrain/smoothElevation.ts",
     "./style.css": "./src/styles/globe.css"
@@ -47,6 +49,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "ajv": "^8.20.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

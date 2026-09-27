@@ -223,6 +223,8 @@ beforeEach(() => {
     getViewState: mockState.getViewState,
     setViewState: mockState.setViewState,
     setOrbitMode: mockState.setOrbitMode,
+    onNavigationChange: vi.fn(() => vi.fn()),
+    getNavigationState: vi.fn(() => null),
     setInputMode: mockState.setInputMode,
     setInputSensitivity: mockState.setInputSensitivity,
     configureOrbitTargetHeight: mockState.configureOrbitTargetHeight,

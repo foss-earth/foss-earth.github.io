@@ -33,6 +33,7 @@ void createGlobeApp(rootElement, { overlayApiRef: overlayApi }).then((globeApp) 
       settingsSections={globeApp.settingsSections}
       mapTab={globeApp.mapTab}
       rendererTab={globeApp.rendererTab}
+      scenesTab={globeApp.scenesTab}
       overlayApiRef={overlayApi}
     />,
   );

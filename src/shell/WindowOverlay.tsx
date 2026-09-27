@@ -26,7 +26,7 @@ import {
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
-type ElementTabId = "map" | "renderer";
+type ElementTabId = "map" | "renderer" | "scenes";
 /** Every tab the overlay can offer without the host defining it. */
 type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 
@@ -68,6 +68,8 @@ export interface WindowOverlayProps<TabId extends string = never> {
   mapTab?: HTMLElement;
   /** Adds the shared Renderer tab showing this element, from `createRendererPanel`. */
   rendererTab?: HTMLElement;
+  /** Adds the shared Scenes tab showing this element, from `createScenesPanel`. */
+  scenesTab?: HTMLElement;
   locationSearchProvider?: LocationSearchProvider;
   enableAirportPresets?: boolean;
   overlayApiRef?: { current: WindowOverlayHandle<TabId> | null };
@@ -85,6 +87,7 @@ export function WindowOverlay<TabId extends string = never>({
   settingsSections,
   mapTab,
   rendererTab,
+  scenesTab,
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
   overlayApiRef,
@@ -99,9 +102,10 @@ export function WindowOverlay<TabId extends string = never>({
   const elementTabs: Partial<Record<ElementTabId, HTMLElement>> = {
     ...(mapTab ? { map: mapTab } : {}),
     ...(rendererTab ? { renderer: rendererTab } : {}),
+    ...(scenesTab ? { scenes: scenesTab } : {}),
   };
   const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
-  const elementTabLabels: Record<ElementTabId, string> = { map: "Map", renderer: "Renderer" };
+  const elementTabLabels: Record<ElementTabId, string> = { map: "Map", renderer: "Renderer", scenes: "Scenes" };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);
   const builtInTabs: readonly string[] = ["location", ...builtInSectionTabs, ...builtInElementTabs];
