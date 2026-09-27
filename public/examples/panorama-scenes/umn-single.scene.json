@@ -1,0 +1,127 @@
+{
+  "format": "foss-earth-scene",
+  "version": 1,
+  "id": "umn-single",
+  "revision": "1",
+  "title": "UMN — test panorama",
+  "requiredExtensions": [],
+  "extensions": {
+    "foss-earth.fixture": {
+      "purpose": "The acceptance fixture of docs/proposals/panorama-scenes.md §7: one 360° image floating above the Minneapolis campus.",
+      "registration": "Synthetic test registration at the research's campus anchor, 44.974°, −93.235°. The photograph was not captured here and its north is not surveyed.",
+      "source": "scripts/build-panorama-examples.mjs"
+    }
+  },
+  "assets": [
+    {
+      "id": "buikslotermeerplein-512",
+      "revision": "f61e82625a7b",
+      "type": "panorama-image",
+      "colorSpace": "srgb",
+      "alpha": "opaque",
+      "attribution": {
+        "text": "Buikslotermeerplein by Greg Zaal, Poly Haven",
+        "license": "CC0-1.0",
+        "url": "https://polyhaven.com/a/buikslotermeerplein"
+      },
+      "representations": [
+        {
+          "id": "preview-32",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 32,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 6121,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-32/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-32/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-32/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-32/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-32/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-32/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-64",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 64,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 12004,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-64/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-64/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-64/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-64/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-64/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-64/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-128",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 128,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 32522,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-128/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-128/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-128/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-128/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-128/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-128/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-512",
+          "role": "immersion",
+          "projection": "equirectangular",
+          "width": 512,
+          "height": 256,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 40572,
+          "url": "media/buikslotermeerplein-512/immersion-512.jpg"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "umn-test-orb",
+      "type": "panorama",
+      "assetId": "buikslotermeerplein-512",
+      "title": "UMN — test panorama",
+      "description": "A test photograph of Buikslotermeerplein, Amsterdam, shown 30 m above the campus. It was not taken here.",
+      "capture": {
+        "longitudeDeg": -93.235,
+        "latitudeDeg": 44.974,
+        "height": null
+      },
+      "imagePose": {
+        "headingDeg": 0,
+        "pitchDeg": 0,
+        "rollDeg": 0
+      },
+      "marker": {
+        "mode": "ground-relative",
+        "eastM": 0,
+        "northM": 0,
+        "offsetM": 30,
+        "radiusMeters": 2
+      }
+    }
+  ],
+  "initialPanorama": "umn-test-orb",
+  "overview": {
+    "target": {
+      "longitudeDeg": -93.235,
+      "latitudeDeg": 44.974,
+      "height": null
+    },
+    "distanceMeters": 104.403,
+    "headingDeg": 0,
+    "pitchDeg": -16.699244,
+    "verticalFovDeg": 60
+  }
+}

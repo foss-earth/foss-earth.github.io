@@ -1,0 +1,77 @@
+{
+  "format": "foss-earth-scene",
+  "version": 1,
+  "id": "neutral-garden",
+  "revision": "1",
+  "title": "Garden and courtyard",
+  "requiredExtensions": [],
+  "assets": [
+    {
+      "id": "garden-image", "revision": "1", "type": "panorama-image",
+      "colorSpace": "srgb", "alpha": "opaque",
+      "attribution": { "text": "Example garden photograph", "license": "CC0-1.0" },
+      "representations": [
+        {
+          "id": "preview-128", "role": "preview", "projection": "cube",
+          "faceSize": 128, "mimeType": "image/jpeg", "encodedBytes": 36000,
+          "faces": {
+            "px": "media/garden/128/px.jpg", "nx": "media/garden/128/nx.jpg",
+            "py": "media/garden/128/py.jpg", "ny": "media/garden/128/ny.jpg",
+            "pz": "media/garden/128/pz.jpg", "nz": "media/garden/128/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-4096", "role": "immersion", "projection": "equirectangular",
+          "width": 4096, "height": 2048, "mimeType": "image/jpeg",
+          "encodedBytes": 2400000, "url": "media/garden/4096.jpg"
+        }
+      ]
+    },
+    {
+      "id": "courtyard-image", "revision": "1", "type": "panorama-image",
+      "colorSpace": "srgb", "alpha": "opaque",
+      "attribution": { "text": "Example courtyard photograph", "license": "CC0-1.0" },
+      "representations": [
+        {
+          "id": "preview-128", "role": "preview", "projection": "cube",
+          "faceSize": 128, "mimeType": "image/jpeg", "encodedBytes": 42000,
+          "faces": {
+            "px": "media/courtyard/128/px.jpg", "nx": "media/courtyard/128/nx.jpg",
+            "py": "media/courtyard/128/py.jpg", "ny": "media/courtyard/128/ny.jpg",
+            "pz": "media/courtyard/128/pz.jpg", "nz": "media/courtyard/128/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-4096", "role": "immersion", "projection": "equirectangular",
+          "width": 4096, "height": 2048, "mimeType": "image/jpeg",
+          "encodedBytes": 2800000, "url": "media/courtyard/4096.jpg"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "garden", "type": "panorama", "assetId": "garden-image",
+      "title": "Garden", "description": "A fictional open garden fixture.",
+      "capture": { "longitudeDeg": 0, "latitudeDeg": 0, "height": null },
+      "imagePose": { "headingDeg": 0, "pitchDeg": 0, "rollDeg": 0 },
+      "marker": { "mode": "ground-relative", "eastM": 0, "northM": 0, "offsetM": 4 },
+      "initialView": { "headingDeg": 0, "pitchDeg": 0, "verticalFovDeg": 60 },
+      "links": [{ "id": "to-courtyard", "target": "courtyard", "label": "Go to courtyard" }]
+    },
+    {
+      "id": "courtyard", "type": "panorama", "assetId": "courtyard-image",
+      "title": "Courtyard", "description": "A different fictional photograph.",
+      "capture": {
+        "longitudeDeg": 0.0002, "latitudeDeg": 0,
+        "height": { "meters": 2, "datum": "WGS84-ellipsoid", "source": "synthetic fixture" }
+      },
+      "imagePose": { "headingDeg": 90, "pitchDeg": 0, "rollDeg": 0 },
+      "marker": { "mode": "capture-relative", "eastM": 0, "northM": 0, "offsetM": 4 },
+      "initialView": { "headingDeg": 270, "pitchDeg": 0, "verticalFovDeg": 60 },
+      "links": [{ "id": "to-garden", "target": "garden", "label": "Return to garden" }]
+    }
+  ],
+  "groups": [{ "id": "outdoor-spaces", "title": "Outdoor spaces", "members": ["garden", "courtyard"] }],
+  "initialPanorama": "garden"
+}
