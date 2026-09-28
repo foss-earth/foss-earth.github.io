@@ -578,7 +578,11 @@ Where stage 1 differs from this spec:
   interval by default, measured as the shortest interval between frames. The
   thresholds are multiples of it (1.2 and 0.84: 20 and 14 ms at 60 Hz),
   with 1 s windows, 2 slow or 10 fast windows, quarter-level steps and 5 s
-  between steps: today's values, as parameters.
+  between steps: today's values, as parameters. Both switches are off by
+  default: one short interval between frames can set the measured goal to a
+  few milliseconds, which no frame meets, and every window then coarsens
+  detail to the coarse end of its range. The Smooth motion preset and
+  `?terrainQuality=auto` turn it on.
 - **What it did** shows in readings on the auto switches, the goal and the
   terrain default: where each is, what was asked for, and the frame time that
   caused it. The rail lists "coarsened to hold the frame time" (`frame-time`,
