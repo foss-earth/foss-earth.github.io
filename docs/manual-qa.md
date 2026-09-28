@@ -4,7 +4,8 @@ Exercise these by hand before publishing a build. See [Development](development.
 automated checks (`npm run ci`).
 
 - Boot without a key and confirm fallback mode is visible.
-- Boot with `?key=...` and confirm Google tiles mode is reported.
+- Boot with `?key=...` and confirm Google tiles mode is reported, that `key` is gone from the address bar, and that a reload without it still uses Google.
+- Change the basemap and elevation provider in Map → Source and confirm the address bar shows `mapSource=` and `elevationSource=`.
 - Verify desktop controls: left drag pan, right drag orbit, shift plus trackpad swipe orbit, wheel zoom.
 - Verify mobile/touch controls: one-finger pan, two-finger orbit, pinch zoom.
 - Verify controller navigation, with a controller the browser reports in its standard layout and

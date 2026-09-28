@@ -378,17 +378,18 @@ describe("createGlobeApp smoke behavior", () => {
     // Detail has its one home in the Map tab, beside the basemap choice.
     expect(app.mapTab.querySelectorAll('[aria-label="Detail"]')).toHaveLength(1);
 
-    // Choosing saves the parameter, which the runtime follows; the old URL parameter goes.
-    window.history.replaceState(null, "", "/?mapSource=usgs-topo");
+    // Choosing saves the parameter, which the runtime follows, and writes it to the address bar.
+    window.history.replaceState(null, "", "/?tiles=usgs-topo&scene=campus");
     const google = app.mapTab.querySelector<HTMLInputElement>('input[name="foss-earth-map-source"][value="google"]')!;
     google.click();
     const { getAppSettings } = await import("../settings/appSettings");
     expect(getAppSettings().get("map.source.basemap")).toBe("google");
-    expect(new URL(window.location.href).searchParams.has("mapSource")).toBe(false);
+    expect(window.location.search).toBe("?scene=campus&mapSource=google");
 
     const terrarium = app.mapTab.querySelector<HTMLInputElement>('input[name="foss-earth-elevation-source"][value="aws-terrarium"]')!;
     terrarium.click();
     expect(getAppSettings().get("map.source.elevation")).toBe("aws-terrarium");
+    expect(window.location.search).toBe("?scene=campus&mapSource=google&elevationSource=aws-terrarium");
     // Keys and the map cache have their homes in the same tab.
     expect(app.mapTab.querySelector('[data-parameter="map.source.googleKey"]')).not.toBeNull();
     expect(app.mapTab.querySelector(".foss-earth-map-cache-section")).not.toBeNull();
@@ -593,6 +594,8 @@ describe("createGlobeApp smoke behavior", () => {
       expect.any(HTMLCanvasElement),
       expect.objectContaining({ googleApiKey: "test-key" }),
     );
+    // Saved on this device, and off the address bar.
+    expect(window.location.search).toBe("");
   });
 
   it("lets the map source preference force a raster basemap", async () => {
@@ -608,6 +611,7 @@ describe("createGlobeApp smoke behavior", () => {
         rasterBaseMap: expect.objectContaining({ id: "usgs-topo" }),
       }),
     );
+    expect(window.location.search).toBe("?mapSource=usgs-topo");
   });
 
   it("exits POI tracking before north-up reset", async () => {

@@ -45,15 +45,17 @@ changing its source. Its `styles.css` is the one export read straight from `src/
 
 ## Google Photorealistic 3D Tiles
 
-The free raster basemaps need no key. To enable Google's Photorealistic 3D Tiles, pass your own
-Maps Tiles API key as a query parameter:
+The free raster basemaps need no key. To enable Google's Photorealistic 3D Tiles, paste your own
+Maps Tiles API key in Map → Source, or pass it once as a query parameter:
 
 ```text
 http://127.0.0.1:5173/?key=YOUR_GOOGLE_MAPS_API_KEY
 ```
 
-Without a key the app starts in fallback mode and shows the fallback notice in the lower-left
-corner. The key stays in your browser; it is never committed or sent anywhere but Google.
+The app saves the key in this origin's local storage and removes it from the address bar, so later
+visits need no `?key=` and links you copy do not carry it. Without a key the app starts in fallback
+mode and shows the fallback notice in the lower-left corner. The key is never committed or sent
+anywhere but Google.
 
 ## Quality checks
 

@@ -48,17 +48,17 @@ USGS imagery is high-resolution only within the United States. Each service sets
 
 ## URL parameters
 
-Settings you change in the app are written back to the URL, so a link reproduces your setup.
+The basemap and elevation source you choose in the app are written back to the URL, so a link reproduces your map.
 
 | Parameter | Values | Effect |
 |---|---|---|
-| `key` | A Google Maps Tiles API key | Turns on Photorealistic 3D Tiles |
+| `key` | A Google Maps Tiles API key | Turns on Photorealistic 3D Tiles. The key is saved in your browser and removed from the URL |
 | `mapSource` | `google`, `usgs-imagery`, `usgs-imagery-topo`, `usgs-topo`, `osm-standard`, `carto-positron`, `carto-dark-matter`, `open-topo-map` | Basemap |
 | `elevationSource` | `mapterhorn`, `aws-terrarium` | Elevation source |
 | `terrainQuality` | `auto`, `low`, `balanced`, `high` | Terrain detail |
 | `renderer` | `webgpu`, `webgl2`, `webgl` | Forces a renderer |
 
-For example: `https://foss-earth.github.io/?mapSource=open-topo-map&renderer=webgl2`. Your Google key stays in your browser and is sent only to Google.
+For example: `https://foss-earth.github.io/?mapSource=open-topo-map&renderer=webgl2`. Your Google key stays in your browser's storage for this site and is sent only to Google; you can also paste it in Map → Source.
 
 ## Run it locally
 

@@ -126,6 +126,16 @@ did for `osfs.world-detail-target`.
   `mapSource`, `elevationSource`, `renderer`, `rasterImagery` and
   `terrainQuality` parameters keep working and map onto registry ids;
   `terrainQuality` is retired (see [Migration](#migration)).
+- Secrets are the exception: a sensitive parameter given in the URL (`key`,
+  `googleKey`, or `set.<id>`) is saved on this device at once, in the record
+  that never exports it, and taken off the address bar, so links, bookmarks and
+  history do not carry it. A later URL key replaces the saved one.
+- The basemap and elevation provider in use are written back to the address bar
+  as `mapSource` and `elevationSource` whenever they change, from whichever
+  control, so a link or a reload opens the same map. A default that moves by
+  itself, such as the Google default a key sets at startup, is written only
+  when the URL already names the parameter; a host-forced value is never
+  written.
 
 ## Controls
 
@@ -219,7 +229,7 @@ Values are today's. "Hardcoded" marks what is not changeable at all today.
 | --- | --- | --- |
 | `map.source.basemap` | choice | Saved per origin; USGS Imagery Topo by default, Google 3D Tiles with a key |
 | `map.source.elevation` | choice | Mapterhorn |
-| `map.source.googleKey` | text | URL `key`/`googleKey` only; not saveable in the UI |
+| `map.source.googleKey` | text | Saved per origin from the Map tab, or from URL `key`/`googleKey`, which is then removed from the address bar |
 | `map.source.cartoKey` | text | **Missing.** CARTO has required an API key since August 2026 and answers keyless requests with an "API KEY REQUIRED" placeholder, so both CARTO basemaps are broken until this exists |
 
 ### Map → Detail
