@@ -30,6 +30,7 @@ export type {
   ViewRecord,
 } from "./format";
 export { validateScene, type SceneLimits, type ValidateSceneOptions } from "./validateScene";
+export { checkSceneFiles, type SceneFileReport } from "./checkSceneFiles";
 export {
   loadScene,
   type EnterOptions,

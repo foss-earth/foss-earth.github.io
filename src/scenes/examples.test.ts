@@ -1,7 +1,8 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { checkSceneFiles } from "./checkSceneFiles";
 import { validateScene } from "./validateScene";
 
 const directory = fileURLToPath(new URL("../../public/examples/panorama-scenes/", import.meta.url));
@@ -18,17 +19,13 @@ describe("published example scenes", () => {
   });
 
   for (const name of manifests) {
-    it(`${name} validates, and its declared bytes are its files' bytes`, () => {
+    it(`${name} validates, and its files are what it declares`, () => {
       const result = validateScene(readFileSync(path.join(directory, name), "utf8"), { baseUrl: `https://foss-earth.test/examples/panorama-scenes/${name}` });
       expect(result.ok ? [] : result.errors).toEqual([]);
       if (!result.ok) return;
-      for (const asset of result.scene.assets.values()) {
-        for (const representation of asset.representations) {
-          const urls = representation.projection === "cube" ? Object.values(representation.faces) : [representation.url];
-          const bytes = urls.reduce((sum, url) => sum + statSync(localFile(url)).size, 0);
-          expect(bytes, `${asset.id}/${representation.id}`).toBe(representation.encodedBytes);
-        }
-      }
+      const report = checkSceneFiles(result.scene, url => (existsSync(localFile(url)) ? new Uint8Array(readFileSync(localFile(url))) : null));
+      expect(report.problems).toEqual([]);
+      expect(report.files).toBeGreaterThan(0);
     });
   }
 
