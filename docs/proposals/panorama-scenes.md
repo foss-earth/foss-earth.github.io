@@ -458,13 +458,16 @@ fits every reservation; otherwise deliver a lower variant and expose the limitin
 budget. Center-density formulas are heuristics, not conservative whole-image bounds.
 
 These are **provisional development defaults**, selected to exercise bounded paths,
-not measured safe totals for a phone. Their controls/readings belong in §6:
+not measured safe totals for a phone. Their controls/readings belong in §6. The
+first three are derived from the renderer's texture limit W (8192 px until it
+reports one) since 2026-09-27, so the default loads the largest image a scene
+offers that the renderer can hold:
 
 | Independent allowance | Initial value | Purpose |
 | --- | ---: | --- |
-| Source GPU textures, including mips | 128 MiB | Previews plus active/transition images |
-| Transition overlap, a subset of source/cache GPU bytes | 48 MiB | Cap extra incoming/outgoing coexistence |
-| Decoded images plus CPU staging | 64 MiB | Reserve simultaneous application-owned copies |
+| Source GPU textures, including mips | 128 MiB of previews + two W × W/2 images: 470 MiB at 8192 px | Previews plus active/transition images |
+| Transition overlap, a subset of source/cache GPU bytes | one W × W/2 image: 171 MiB at 8192 px | Cap extra incoming/outgoing coexistence |
+| Decoded images plus CPU staging | one W × W/2 image + 16 MiB: 144 MiB at 8192 px | Reserve simultaneous application-owned copies |
 | Retained/in-flight encoded response bodies | 32 MiB | Bound downloaded bytes waiting for decode |
 | One encoded HTTP response | 16 MiB | Stop an oversized response while reading |
 | Concurrent requests / decodes | 4 / 1 | Bound independent loading work |
@@ -474,10 +477,12 @@ not measured safe totals for a phone. Their controls/readings belong in §6:
 | Linked-destination prefetch | 0 destinations / 0 MiB | No speculative immersion transfer by default |
 
 For scale, 43 mipmapped 128² preview cubes need approximately 21.5 MiB. A 4096×2048
-whole image needs about 42.67 MiB with mips; 6144×3072 needs 96 MiB. The latter can
-fit source128 alongside those previews but its decoded 72 MiB exceeds decoded64,
-so that whole-image path is refused under these defaults. Two 4096 images can fit
-source128 with the previews, and one incoming image fits overlap48. Reservation
+whole image needs about 42.67 MiB with mips; 6144×3072 needs 96 MiB. The first
+defaults, 128 MiB of source memory, 48 MiB of overlap and 64 MiB of decoded
+images, refused the latter: its decoded 72 MiB exceeded decoded64. On a screen of
+two device pixels per CSS pixel they refused far less as well: 60 orbs take
+256 px preview cubes, 2 MiB each, and their 120 MiB left 8 MiB, not enough for
+even a 2048×1024 image (10.67 MiB), so the campus tour stayed on its previews. Reservation
 checks, not filename dimensions or an unexplained “8K” cutoff, determine admission.
 If overlap cannot fit, switch using a resident preview, release the outgoing source,
 then refine; reduced motion may cut between ready representations. Never exceed the
@@ -826,8 +831,12 @@ supported and does not change the measured rendering path.
 ## 6. Settings and UI
 
 Use the existing registry, provenance, preset and parameter-section controls.
-Add a Scenes tab with Content, Appearance, Loading and memory, Navigation, Cache
-and Credits. Every setting has one home; its toolbar button toggles the tab.
+Three tabs hold them (as built, 2026-09-27; [UI layout](../ui-layout.md#a-panoramas-tabs)).
+The Scenes tab holds what the globe shows and what both sides share: Content,
+Orbs, Motion, Loading and memory, Credits, and Cache when it lands. The
+panorama's own tab, "360: <title>", holds its image detail. 360 image settings,
+shown only inside a panorama, holds Image, Looking and Entering. Every setting
+has one home; a toolbar button toggles its tab.
 Controller bindings stay in Controls → Controller. Use [paragraph grids](../ui-layout.md),
 continuous tracks and one two-thumb track per range. Presets display/copy their
 values and become Custom on edits; no code branches on preset names.
@@ -846,22 +855,22 @@ rendered device pixels are different units. A range means one two-thumb control.
 | --- | --- | --- | --- |
 | `implementation` | quad / mesh | quad; simple reference port | Appearance; draws/triangles; stage 3 |
 | `appearance` | rectilinear / fisheye | rectilinear; simple identity endpoint | Appearance; active mapping; usability |
-| `previewFov` | full deg, 30–150 | 90; reference baseline | Appearance; actual FOV; text checks |
+| `previewFov` | full deg, 30–150 | 90; reference baseline | Orbs; actual FOV; text checks |
 | `fisheyeFov` | full deg, 30–180 | 180; original candidate endpoint | Appearance; rim filtering |
 | `fisheyeBlendAngles` | half-angle deg range, 1–previewFov/2, min<max | [20,45]; finish by identity | Appearance; α/λ; validate edits together |
 | `sphereSilhouetteError` | rendered px, 0.1–4 | 0.5; subpixel target | Appearance; achieved error/segments |
 | `sphereSegments` | count range, 8–256 | [16,128]; bounded mesh search | Appearance; actual rings/segments, cap warning |
-| `previewDensity` | texels/rendered px at center, 0.25–4 | 1; understandable heuristic | Appearance; source/limiter, rim checks |
-| `previewFaceRange` | px range, 16–min(2048, device limit) | [64,256]; small previews | Appearance; actual face dimensions |
-| `markerRadiusMeters` | m, 0.1–100 | 1; fallback for absent authored radius | Appearance; authored/effective radius |
-| `markerDiameter` | CSS px range, 4–256 | [24,96]; prototype discoverability | Appearance; effective diameter; portrait trial |
-| `hitTargetDiameter` | CSS px, 24–96 | 44; generous separate pointer target | Appearance; overlap/list fallback |
+| `previewDensity` | texels/rendered px at center, 0.25–4 | 1; understandable heuristic | Orbs; source/limiter, rim checks |
+| `previewFaceRange` | px range, 16–min(2048, device limit) | [64,256]; small previews | Orbs; actual face dimensions |
+| `markerRadiusMeters` | m, 0.1–100 | 1; fallback for absent authored radius | Orbs; authored/effective radius |
+| `markerDiameter` | CSS px range, 4–256 | [24,96]; prototype discoverability | Orbs; effective diameter; portrait trial |
+| `hitTargetDiameter` | CSS px, 24–96 | 44; generous separate pointer target | Orbs; overlap/list fallback |
 | `declutterSpacing` | CSS px, 0–128 | 12; prototype spacing | Appearance; omitted count; dense fixture |
 | `visibleMarkers` | count, 0–2000 | 200; scale-fixture ceiling | Appearance; rendered/eligible counts |
-| `immersionDensity` | texels/rendered px, 0.25–4 | 1; visible quality target | Appearance; footprint and limited regions |
-| `immersionMaxSide` | px, 256–device limit | min(8192, device limit); dimensional cap only | Loading; source dimensions and limiter |
-| `sourceGpuMiB` | MiB, 1–4096 | 128; bounded 4K development pair | Loading; source+mip reservations; stress |
-| `decodedMiB` | MiB, 1–2048 | 64; 4K decode and staging room | Loading; reserved/actual, decoder limitation |
+| `immersionDensity` | texels/rendered px, 0.25–4, or Off | Off: the largest image the detail allows (was 1) | 360 image settings → Image; footprint and limited regions |
+| `immersionWidth` | px around the turn, 256–device limit | the device limit: the largest image offered (replaced `immersionMaxSide`, a texture-side cap defaulting to min(8192, limit)) | The panorama's tab → Image detail; image on screen and why no larger one |
+| `sourceGpuMiB` | MiB, 1–4096 | 128 of previews + two images as wide as the texture limit (was 128 in all) | Loading; source+mip reservations; stress |
+| `decodedMiB` | MiB, 1–2048 | one image as wide as the texture limit + 16 (was 64) | Loading; reserved/actual, decoder limitation |
 | `encodedMiB` | MiB, 1–512 | 32; bounded response storage | Loading; retained/in-flight bytes |
 | `responseMiB` | MiB, 0.25–256, ≤encodedMiB | 16; catch oversized responses | Loading; largest response/rejections |
 | `requests` | count, 1–16 | 4; permit previews without fan-out | Loading; active/queued requests |
@@ -869,7 +878,7 @@ rendered device pixels are different units. A range means one two-thumb control.
 | `uploadMiBPerFrame` | MiB/frame, 0.25–64 | 4; bound upload work, not timing | Loading; bytes/frame, measured stalls |
 | `uploadOutstandingMiB` | MiB, 0.25–256 | 16; bound submitted pending work | Loading; outstanding bytes/completions |
 | `requestTimeout` | s, 1–120 | 30; recover hanging loads | Loading; elapsed/errors; cancellation |
-| `overlapMiB` | MiB, 0–4096, ≤source+cache caps | 48; one 4K replacement | Loading; extra pinned subset, not extra permission |
+| `overlapMiB` | MiB, 0–4096, ≤source+cache caps | one image as wide as the texture limit (was 48, one 4K replacement) | Loading; extra pinned subset, not extra permission |
 | `prefetchCount` | count, 0–8 | 0; no speculative destinations | Loading; requested neighbors |
 | `prefetchMiB` | encoded MiB, 0–128 | 0; no speculative transfer | Loading; bytes; both caps required |
 | `terrainStreaming` | paused / saved-overview | paused; no hidden immersion requests | Loading; selection view and request count |
@@ -877,22 +886,22 @@ rendered device pixels are different units. A range means one two-thumb control.
 | `cacheMiB` | MiB, 0–1024 | 32; bounded enabled experiment | Cache; allocated/used estimates |
 | `cacheSizeRange` | output px range, 16–min(2048, device limit) | [32,256]; overview-scale outputs | Cache; output dimensions; quality comparison |
 | `cacheRefreshTexels` | texels/frame, 0–16777216 | 262144; four 256² outputs | Cache; texels/time; direct fallback |
-| `verticalFovRange` | deg range, 20–120 | [35,90]; prototype look range | Navigation; current/limited FOV |
-| `pitchRange` | deg range, −89.9–89.9 | [−85,85]; avoid look-axis degeneracy | Navigation; current pitch; pole-content trial |
-| `entryOrientation` | level-current / authored | level-current; preserve azimuth, level pitch | Navigation; target/provenance |
-| `expandDuration` | ms, 0–2000 | 350; short reveal prototype | Navigation; phase/progress; motion trial |
-| `orientDuration` | ms, 0–2000 | 250; separate leveling phase | Navigation; current/target orientation |
-| `fadeDuration` | ms, 0–1000 | 150; exit/LOD/fallback blend | Navigation; overlap/phase; visual check |
-| `hoverDuration` | ms, 0–1000 | 120; growth under the pointer, when the scene's style asks | Navigation; visual check |
-| `reducedMotion` | system / reduce | system; respect OS, allow stricter user choice | Navigation; effective state |
-| `reducedFadeDuration` | ms, 0–250 | 0; cut avoids animation | Navigation; effective duration |
-| `dragSensitivity` | deg/CSS px, 0.01–2 | 0.15; starting pointer gain | Navigation; angular response; user trial |
-| `swipeSensitivity` | deg/CSS px of scroll, 0.01–2 | 0.15; as dragging, in trackpad mode | Navigation; angular response; user trial |
-| `lookRate` | deg/s, 1–360 | 90; key/full gamepad rate | Navigation; actual rate |
-| `zoomPerNotch` | log-tangent-FOV fraction/notch, 0.01–1 | 0.1; multiplicative wheel change | Navigation; actual FOV |
-| `zoomRate` | log-tangent-FOV fraction/s, 0.01–4 | 0.5; held key/gamepad zoom | Navigation; rate |
-| `pinchGain` | ratio, 0.1–4 | 1; inverse finger-separation ratio | Navigation; gain |
-| `inertiaHalfLife` | ms, 0–1000 | 100; brief optional continuation, 0 off | Navigation; angular speed; cancellation |
+| `verticalFovRange` | deg range, 20–120 | [35,90]; prototype look range | 360 image settings → Looking; current/limited FOV |
+| `pitchRange` | deg range, −89.9–89.9 | [−85,85]; avoid look-axis degeneracy | 360 image settings → Looking; current pitch; pole-content trial |
+| `entryOrientation` | level-current / authored | level-current; preserve azimuth, level pitch | 360 image settings → Entering; target/provenance |
+| `expandDuration` | ms, 0–2000 | 350; short reveal prototype | Scenes → Motion; phase/progress; motion trial |
+| `orientDuration` | ms, 0–2000 | 250; separate leveling phase | 360 image settings → Entering; current/target orientation |
+| `fadeDuration` | ms, 0–1000 | 150; exit/LOD/fallback blend | Scenes → Motion; overlap/phase; visual check |
+| `hoverDuration` | ms, 0–1000 | 120; growth under the pointer, when the scene's style asks | Scenes → Motion; visual check |
+| `reducedMotion` | system / reduce | system; respect OS, allow stricter user choice | Scenes → Motion; effective state |
+| `reducedFadeDuration` | ms, 0–250 | 0; cut avoids animation | Scenes → Motion; effective duration |
+| `dragSensitivity` | deg/CSS px, 0.01–2 | 0.15; starting pointer gain | 360 image settings → Looking; angular response; user trial |
+| `swipeSensitivity` | deg/CSS px of scroll, 0.01–2 | 0.15; as dragging, in trackpad mode | 360 image settings → Looking; angular response; user trial |
+| `lookRate` | deg/s, 1–360 | 90; key/full gamepad rate | 360 image settings → Looking; actual rate |
+| `zoomPerNotch` | log-tangent-FOV fraction/notch, 0.01–1 | 0.1; multiplicative wheel change | 360 image settings → Looking; actual FOV |
+| `zoomRate` | log-tangent-FOV fraction/s, 0.01–4 | 0.5; held key/gamepad zoom | 360 image settings → Looking; rate |
+| `pinchGain` | ratio, 0.1–4 | 1; inverse finger-separation ratio | 360 image settings → Looking; gain |
+| `inertiaHalfLife` | ms, 0–1000 | 100; brief optional continuation, 0 off | 360 image settings → Looking; angular speed; cancellation |
 | `scene.manifestMiB` | MiB, 0.1–16 | 2; bounded parse | Content; parsed bytes; oversized fixture |
 | `scene.entityLimit` | count, 1–100000 | 2000; bounded discovery data | Content; entity count |
 | `scene.assetLimit` | count, 1–100000 | 2000; bound resource descriptors | Content; asset count |
@@ -1056,13 +1065,46 @@ work.
   rendered pixels, and left out of the probes' outputs. The linked pair example
   uses both.
 - **The bar while entered:** the map's detail rail and basemap chip are hidden,
-  since the map is not drawn. The panorama's credit takes the chip's place, with a
-  close button where the rail sat. While a panorama is prepared or entered, the
-  map still shows, and the close button cancels before the map's group.
+  since the map is not drawn. The panorama's credit takes the chip's place. The
+  close button that sat where the rail was is gone since the second trial,
+  below.
 - **The input check:** [`scripts/validation/panorama-input.mjs`](../../scripts/validation/panorama-input.mjs)
   checks all of this with real mouse, wheel and key events from headless Chrome,
   on the GPU. Its retained run passed:
   [input-2026-09-27](../../validation/evidence/panorama-scenes/input-2026-09-27/README.md).
+
+**After the second user trial (2026-09-27).** The user found every image soft,
+wanted a quality control and a tab for the panorama in place of the close button,
+different tabs inside a panorama, and a + menu that stays in front.
+
+- **Why the images were soft.** Not only the tour's 4096 px ceiling: on the
+  user's screen, two device pixels per CSS pixel, the tour's 60 orbs chose 256 px
+  preview cubes, and their 120 MiB left 8 MiB of the 128 MiB GPU budget. No whole
+  image fit, not even 2048 px, so every panorama stayed on its 1024 px preview.
+  The loader also asked only for the smallest image meeting one texel per pixel.
+- **The largest image by default.** The loader now shows the largest immersion
+  image within `scene.panorama.immersionWidth` (the image detail, px around the
+  turn, defaulting to the renderer's texture limit), the device and the budgets.
+  The sharpness target, `immersionDensity`, is Off by default; a number brings
+  back the smallest image meeting it. Moving either, or a GPU budget, chooses
+  again at once. `sourceGpuMiB`, `overlapMiB` and `decodedMiB` are derived from the
+  texture limit, §4. The status gives which image is shown, one on its way, and
+  why no larger one is, naming the detail, the device or the budget.
+- **The panorama's tab.** Entering opens "360: <title>" with the photograph's
+  details, its links and the image detail; a link retitles it; closing it leaves,
+  as Escape does. The Scenes tab no longer shows the panorama on screen or an
+  Exit button, and the bar has no close button.
+- **Tabs by context.** Inside a panorama, Location and Map are hidden and 360
+  image settings is offered; hidden tabs return to their places afterwards. The
+  bar hides the camera's position there too.
+- **The + menu.** Its panel clips what passes its edges, and with many tabs the
+  + sits at the strip's right end, so the menu was cut off at the panel's edge,
+  showing the globe or the panorama in its place. It is now drawn in the
+  overlay's own layer, fixed to the window at the button.
+- **The format.** `imagePose.aligned` says whether an image's north is set; the
+  tab shows it.
+- **Not re-run:** the campus and input checks follow the change (the panorama's
+  tab replaces the close button), but no GPU run was made for it.
 
 **Not covered.**
 

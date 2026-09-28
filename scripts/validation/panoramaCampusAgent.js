@@ -542,12 +542,15 @@
       },
     },
     streaming: () => ({ streaming: runtime.isStreamingTiles?.() ?? null, tiles: runtime.getTileMetrics?.() ?? null }),
-    /** The panorama's HUD chips as the browser lays them out, style sheets included. */
+    /**
+     * The panorama's tab, whose close button is the way out, and its credit in
+     * the HUD, as the browser lays them out, style sheets included.
+     */
     hudChips() {
       const shown = element => Boolean(element) && getComputedStyle(element).display !== "none";
-      const exit = document.querySelector("#sceneExitButton");
+      const tab = [...document.querySelectorAll(".foss-earth-tab-button")].find(button => button.textContent.startsWith("360: "));
       const credits = document.querySelector("#sceneCreditsSlot");
-      return { exit: shown(exit), exitText: exit?.textContent ?? null, credits: shown(credits) ? credits.querySelectorAll(".scene-credit-chip").length : 0 };
+      return { exit: shown(tab), exitText: tab?.textContent ?? null, credits: shown(credits) ? credits.querySelectorAll(".scene-credit-chip").length : 0 };
     },
     // Automatic map detail: what it changed, and holding the map at the detail asked for.
     detail: {

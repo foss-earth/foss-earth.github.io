@@ -34,11 +34,13 @@ export { checkSceneFiles, type SceneFileReport } from "./checkSceneFiles";
 export {
   loadScene,
   type EnterOptions,
+  type ImmersionDetailStatus,
   type LoadSceneOptions,
   type LoadSceneResult,
   type SceneActionResult,
   type SceneEntryStatus,
   type SceneHandle,
+  type SceneImageStatus,
   type SceneInput,
   type ScenePhase,
   type SceneRuntime,
@@ -53,4 +55,4 @@ export {
 } from "./sceneHistory";
 export { createSceneController, type SceneController, type SceneControllerOptions, type SceneControllerState, type SceneExample } from "./sceneController";
 export type { LookState } from "./panoramaInput";
-export { SCENE_PARAMETERS, SCENES_TAB } from "../settings/catalogue/scenes";
+export { PANORAMA_SETTINGS_TAB, PANORAMA_TAB, SCENE_PARAMETERS, SCENES_TAB } from "../settings/catalogue/scenes";

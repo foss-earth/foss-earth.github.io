@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   LocationPanel,
   openOrSelectTabInWorkspace,
@@ -17,8 +17,11 @@ import { SectionsPanel, type PanelSection } from "./SectionsPanel";
 import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLog";
 import { resolveDockLayout, type DockLayoutMode, type DockResizePriority } from "./dockLayout";
 import { foldWorkspace, restoreWorkspace, forgetCompactWorkspaceTab, type CompactWorkspaceMemory } from "./compactWorkspace";
+import { hideWorkspaceTabs, restoreWorkspaceTabs, type HiddenTab } from "./contextTabs";
+import type { PanoramaTabs, PanoramaTabsSnapshot } from "./panoramaTabs";
 import {
   closeTabInWorkspace,
+  setWorkspaceSlotCollapsed,
   setWorkspaceSlotSize,
   slotIdForOpenTab,
 } from "../windowing/core/workspaceState";
@@ -26,9 +29,17 @@ import {
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
-type ElementTabId = "map" | "renderer" | "scenes";
+type ElementTabId = "map" | "renderer" | "scenes" | "panorama" | "panorama-settings";
 /** Every tab the overlay can offer without the host defining it. */
 type BuiltInTabId = "location" | SectionTabId | ElementTabId;
+
+/** Tabs about the map, which a panorama hides: the map is not drawn inside one, and the camera is the panorama's. */
+const HIDDEN_IN_PANORAMA: ReadonlySet<string> = new Set(["location", "map"]);
+/** Tabs that exist only inside a panorama: its own, and 360 image settings. */
+const PANORAMA_ONLY: ReadonlySet<string> = new Set(["panorama", "panorama-settings"]);
+const OUTSIDE_PANORAMA: PanoramaTabsSnapshot = { title: null };
+/** Enough of the panorama tab's definition to open it; its label comes from the render. */
+const PANORAMA_TAB_DEFINITION: readonly WindowTabDefinition<"panorama">[] = [{ id: "panorama", label: "360" }];
 
 const DEFAULT_LOCATION: GeodeticLocation = {
   latDeg: 44.977753,
@@ -70,6 +81,13 @@ export interface WindowOverlayProps<TabId extends string = never> {
   rendererTab?: HTMLElement;
   /** Adds the shared Scenes tab showing this element, from `createScenesPanel`. */
   scenesTab?: HTMLElement;
+  /**
+   * A panorama's tabs, from `createPanoramaTabs`. Entering a panorama opens its
+   * tab, titled "360: <title>", and closing that tab leaves it. Inside one the
+   * tabs about the map are hidden and 360 image settings is offered; each
+   * comes back where it was when the context returns.
+   */
+  panoramaTabs?: PanoramaTabs;
   locationSearchProvider?: LocationSearchProvider;
   enableAirportPresets?: boolean;
   overlayApiRef?: { current: WindowOverlayHandle<TabId> | null };
@@ -88,6 +106,7 @@ export function WindowOverlay<TabId extends string = never>({
   mapTab,
   rendererTab,
   scenesTab,
+  panoramaTabs,
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
   overlayApiRef,
@@ -99,23 +118,38 @@ export function WindowOverlay<TabId extends string = never>({
     ...(interfaceSections ? { interface: interfaceSections } : {}),
     ...(settingsSections ? { settings: settingsSections } : {}),
   };
+  const subscribePanorama = useCallback((listener: () => void) => panoramaTabs?.subscribe(listener) ?? (() => {}), [panoramaTabs]);
+  const getPanorama = useCallback(() => panoramaTabs?.getSnapshot() ?? OUTSIDE_PANORAMA, [panoramaTabs]);
+  const panorama = useSyncExternalStore(subscribePanorama, getPanorama, getPanorama);
+  const inPanorama = panorama.title !== null;
+  /** Whether a built-in tab belongs to the context on screen: the globe, or a panorama. */
+  const shownHere = (tabId: string): boolean => (PANORAMA_ONLY.has(tabId) ? inPanorama : !(inPanorama && HIDDEN_IN_PANORAMA.has(tabId)));
   const elementTabs: Partial<Record<ElementTabId, HTMLElement>> = {
     ...(mapTab ? { map: mapTab } : {}),
     ...(rendererTab ? { renderer: rendererTab } : {}),
     ...(scenesTab ? { scenes: scenesTab } : {}),
+    ...(panoramaTabs ? { panorama: panoramaTabs.panorama, "panorama-settings": panoramaTabs.settings } : {}),
   };
   const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
-  const elementTabLabels: Record<ElementTabId, string> = { map: "Map", renderer: "Renderer", scenes: "Scenes" };
+  const elementTabLabels: Record<ElementTabId, string> = {
+    map: "Map", renderer: "Renderer", scenes: "Scenes", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
+  };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);
   const builtInTabs: readonly string[] = ["location", ...builtInSectionTabs, ...builtInElementTabs];
   const tabDefinitions: readonly WindowTabDefinition<OverlayTabId>[] = [
-    { id: "location", label: "Location" },
+    { id: "location", label: "Location", available: shownHere("location") },
     ...builtInSectionTabs.map((id) => ({ id, label: sectionTabLabels[id] })),
     ...additionalTabs.filter((tab) => !builtInTabs.includes(tab.id)),
-    ...builtInElementTabs.map((id) => ({ id, label: elementTabLabels[id] })),
+    ...builtInElementTabs.map((id) => ({ id, label: elementTabLabels[id], available: shownHere(id) })),
   ];
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  // The tab strips' + menus are drawn here, outside the panels that would clip them.
+  const [overlayElement, setOverlayElement] = useState<HTMLDivElement | null>(null);
+  const setOverlay = useCallback((element: HTMLDivElement | null) => {
+    overlayRef.current = element;
+    setOverlayElement(element);
+  }, []);
   const workspace = useWindowWorkspace<OverlayTabId>();
   const compactMemory = useRef<CompactWorkspaceMemory<OverlayTabId> | null>(null);
   const forgetClosedTabs = (next: WindowWorkspaceState<OverlayTabId>): void => {
@@ -220,6 +254,50 @@ export function WindowOverlay<TabId extends string = never>({
     root.style.removeProperty("--foss-log-width");
   }, []);
 
+  // Entering a panorama hides the tabs about the map and opens the panorama's
+  // tab; leaving hides the panorama's tabs. Each hidden tab comes back where
+  // it was when its context returns.
+  const contextMemory = useRef<{
+    globe: HiddenTab<OverlayTabId>[];
+    panorama: HiddenTab<OverlayTabId>[];
+    /** The slot the panorama's tab opened in, and whether it was collapsed before. */
+    opened: { slotId: WindowSlotId; collapsed: boolean } | null;
+  }>({ globe: [], panorama: [], opened: null });
+  const contextShown = useRef(false);
+  useLayoutEffect(() => {
+    if (contextShown.current === inPanorama) return;
+    contextShown.current = inPanorama;
+    const memory = contextMemory.current;
+    const preferred: WindowSlotId = primaryAvailable ? "primary" : "secondary";
+    if (inPanorama) {
+      const hidden = hideWorkspaceTabs(workspace.state, HIDDEN_IN_PANORAMA as ReadonlySet<OverlayTabId>);
+      memory.globe = hidden.hidden;
+      const restored = restoreWorkspaceTabs(hidden.state, memory.panorama, primaryAvailable);
+      memory.panorama = [];
+      const slotId = slotIdForOpenTab(restored, "panorama") ?? preferred;
+      memory.opened = { slotId, collapsed: restored[slotId].collapsed };
+      workspace.setState(openOrSelectTabInWorkspace(restored, "panorama", preferred, PANORAMA_TAB_DEFINITION as readonly WindowTabDefinition<OverlayTabId>[]));
+      return;
+    }
+    const hidden = hideWorkspaceTabs(workspace.state, PANORAMA_ONLY as ReadonlySet<OverlayTabId>);
+    memory.panorama = hidden.hidden;
+    let restored = restoreWorkspaceTabs(hidden.state, memory.globe, primaryAvailable);
+    memory.globe = [];
+    // The panel the panorama's tab opened goes back to how it was, if that tab was what it showed.
+    const opened = memory.opened;
+    memory.opened = null;
+    if (opened && hidden.hidden.some((entry) => entry.tabId === "panorama" && entry.slotId === opened.slotId && entry.active)) {
+      restored = setWorkspaceSlotCollapsed(restored, opened.slotId, opened.collapsed);
+    }
+    workspace.setState(restored);
+  }, [inPanorama, primaryAvailable, workspace]);
+
+  // Closing the panorama's tab leaves the panorama, as Escape does.
+  const beforeCloseTab = (tabId: OverlayTabId): boolean | void => {
+    if (onBeforeCloseTab?.(tabId) === false) return false;
+    if (tabId === "panorama") panoramaTabs?.leave();
+  };
+
   // Refresh the imperative API with the committed workspace and layout each render.
   useLayoutEffect(() => {
     if (!overlayApiRef) return;
@@ -241,7 +319,7 @@ export function WindowOverlay<TabId extends string = never>({
           return;
         }
         // Closing from a toolbar button asks first, as the tab's own close button does.
-        if (onBeforeCloseTab?.(tabId) === false) return;
+        if (beforeCloseTab(tabId) === false) return;
         updateWorkspace(closeTabInWorkspace(state, slotId, tabId));
       },
     };
@@ -268,7 +346,7 @@ export function WindowOverlay<TabId extends string = never>({
   };
 
   return (
-    <div ref={overlayRef} className="foss-earth-window-overlay">
+    <div ref={setOverlay} className="foss-earth-window-overlay">
       <WorkspaceDockSlot<OverlayTabId>
         side="left"
         slotId="primary"
@@ -285,7 +363,8 @@ export function WindowOverlay<TabId extends string = never>({
         addMenuOpen={primaryAddOpen}
         onAddMenuOpenChange={(open) => { setPrimaryAddOpen(open); if (open) setSecondaryAddOpen(false); }}
         strings={{ openPanelTabAriaLabel: "Open left panel", openPanelTabTitle: "Open left panel" }}
-        onBeforeCloseTab={onBeforeCloseTab}
+        onBeforeCloseTab={beforeCloseTab}
+        menuContainer={overlayElement}
       />
       <WorkspaceDockSlot<OverlayTabId>
         side="right"
@@ -303,7 +382,8 @@ export function WindowOverlay<TabId extends string = never>({
         onAddMenuOpenChange={(open) => { setSecondaryAddOpen(open); if (open) setPrimaryAddOpen(false); }}
         visible
         strings={{ openPanelTabAriaLabel: "Open right panel", openPanelTabTitle: "Open right panel" }}
-        onBeforeCloseTab={onBeforeCloseTab}
+        onBeforeCloseTab={beforeCloseTab}
+        menuContainer={overlayElement}
       />
     </div>
   );

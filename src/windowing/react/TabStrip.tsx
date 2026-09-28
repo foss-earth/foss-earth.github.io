@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 function cx(...parts: Array<string | null | undefined | false>): string {
   return parts.filter(Boolean).join(" ");
@@ -46,7 +47,15 @@ export interface TabStripProps<TabId extends string> {
   strings?: TabStripStrings;
   renderAddButtonContent?: ReactNode;
   renderCloseButtonContent?: (tabId: TabId) => ReactNode;
+  /**
+   * Where the + menu is drawn: outside the panel, which clips what passes its
+   * edges, and in front of everything under it. The document's body when absent.
+   */
+  menuContainer?: HTMLElement | null;
 }
+
+/** Keeps the menu this far inside the window's edges. */
+const MENU_EDGE_PX = 8;
 
 export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
   const {
@@ -66,17 +75,21 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
     strings,
     renderAddButtonContent,
     renderCloseButtonContent,
+    menuContainer,
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const addRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuAlignsRight, setMenuAlignsRight] = useState(false);
+  const [menuPlace, setMenuPlace] = useState<CSSProperties | null>(null);
 
   const closeAriaLabel = strings?.closeTabAriaLabel ?? ((tabLabel: string) => `Close ${tabLabel} tab`);
   useEffect(() => {
     if (!addMenuOpen) return;
 
     const handleOutsidePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         onAddMenuOpenChange(false);
       }
     };
@@ -85,14 +98,31 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [addMenuOpen, onAddMenuOpenChange]);
 
+  // The menu is fixed to the window where the + button is: over it, starting at
+  // its left edge, or ending at its right edge where it would pass the window's.
   useLayoutEffect(() => {
-    if (!addMenuOpen || !menuRef.current) return;
-
-    const menu = menuRef.current;
-    const anchor = menu.parentElement?.getBoundingClientRect();
-    if (!anchor) return;
-
-    setMenuAlignsRight(anchor.left + menu.offsetWidth > window.innerWidth - 8);
+    if (!addMenuOpen) return;
+    const place = (): void => {
+      const menu = menuRef.current;
+      const anchor = addRef.current?.getBoundingClientRect();
+      if (!menu || !anchor) return;
+      const alignsRight = anchor.left + menu.offsetWidth > window.innerWidth - MENU_EDGE_PX;
+      setMenuAlignsRight(alignsRight);
+      setMenuPlace({
+        position: "fixed",
+        top: anchor.top,
+        ...(alignsRight ? { right: Math.max(MENU_EDGE_PX, window.innerWidth - anchor.right) } : { left: Math.max(MENU_EDGE_PX, anchor.left) }),
+        maxHeight: Math.max(0, window.innerHeight - anchor.top - MENU_EDGE_PX),
+        overflowY: "auto",
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
   }, [addMenuOpen, openTabs.length, availableTabs.length]);
 
   const alignClassName = menuAlignsRight
@@ -165,6 +195,7 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
 
       <div className={cx("foss-earth-tab-add-wrap", classNames?.addButtonWrap)}>
         <button
+          ref={addRef}
           type="button"
           onClick={() => onAddMenuOpenChange(!addMenuOpen)}
           className={cx("foss-earth-tab-add", classNames?.addButton)}
@@ -174,11 +205,13 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
           {renderAddButtonContent ?? "+"}
         </button>
 
-        {addMenuOpen ? (
+        {addMenuOpen && typeof document !== "undefined" ? createPortal(
           <div
             role="menu"
             ref={menuRef}
-            className={cx("foss-earth-window-menu", classNames?.addMenu, alignClassName)}
+            className={cx("foss-earth-window-menu", "foss-earth-window-menu-floating", classNames?.addMenu, alignClassName)}
+            // Measured before it is placed, so hidden until then.
+            style={menuPlace ?? { position: "fixed", top: 0, left: 0, visibility: "hidden" }}
             onPointerDown={(event) => event.stopPropagation()}
           >
             {availableTabs.length === 0 ? (
@@ -203,7 +236,8 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
                 </button>
               ))
             )}
-          </div>
+          </div>,
+          menuContainer ?? document.body,
         ) : null}
       </div>
     </div>

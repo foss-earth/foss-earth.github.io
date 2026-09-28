@@ -166,6 +166,15 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
 }
 
+/* Drawn outside the panel, which clips at its edges: in front of the panels, the globe and a panorama. */
+.foss-earth-window-menu.foss-earth-window-menu-floating {
+  z-index: 40;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+  color: rgba(241, 245, 249, 0.94);
+  pointer-events: auto;
+}
+
 .foss-earth-window-menu {
   z-index: 20;
   display: grid;

@@ -89,6 +89,8 @@ export interface WorkspaceDockSlotProps<TabId extends string> {
   dockPanelProps?: WorkspaceDockPanelOverrides;
   /** Return `false` to keep the tab open. */
   onBeforeCloseTab?: (tabId: TabId) => boolean | void;
+  /** Where the tab strip's + menu is drawn, outside the panel; the document's body when absent. */
+  menuContainer?: HTMLElement | null;
 }
 
 function availableTabsFromWorkspace<TabId extends string>(
@@ -127,6 +129,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
     renderTabCloseButtonContent,
     dockPanelProps,
     onBeforeCloseTab,
+    menuContainer,
   } = props;
 
   if (!visible) return null;
@@ -258,6 +261,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
           }}
           renderAddButtonContent={renderTabAddButtonContent}
           renderCloseButtonContent={renderTabCloseButtonContent}
+          menuContainer={menuContainer}
         />
       )}
       {...dockPanelProps}

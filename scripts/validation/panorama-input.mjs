@@ -9,13 +9,14 @@
  *     neither the pixels beyond it nor the same ring without the style are.
  *  2. Hover: the pointer over an orb grows it to the hover scale with a
  *     pointer cursor, and moving away shrinks it back.
- *  3. A click enters. While entered, the bar's right end is the close button
- *     and the panorama's credit; the map's group is hidden.
+ *  3. A click enters. While entered, the panorama's tab, "360: <title>", is
+ *     open, the bar's right end is the panorama's credit, and the map's group
+ *     is hidden. The bar has no close button.
  *  4. A mouse drag turns the view while the button is held, not only on
  *     release, and hovering after the release turns nothing.
  *  5. In trackpad mode a two-finger swipe looks around and a pinch zooms;
  *     in mouse mode the wheel zooms. A held arrow key turns the view.
- *  6. The close button leaves, and the map's group returns.
+ *  6. Closing the panorama's tab leaves, and the map's group returns.
  *
  * It builds the app and serves the build through request interception (no
  * HTTP server). Map tiles come from the default keyless providers, with the
@@ -189,11 +190,15 @@ const HELPERS = `(() => {
     cursor: () => getComputedStyle(canvas).cursor,
     onCanvas: (x, y) => document.elementFromPoint(x, y) === canvas,
     hud() {
-      const close = document.querySelector("#sceneExitButton");
+      // The panorama's tab, "360: <title>": closing it leaves the panorama.
+      const tab = [...document.querySelectorAll(".foss-earth-tab-shell")].find(shell => shell.querySelector(".foss-earth-tab-button")?.textContent?.startsWith("360: "));
+      const close = tab?.querySelector(".foss-earth-tab-close") ?? null;
       const map = document.querySelector(".map-source-hud");
       const credits = [...document.querySelectorAll(".scene-credit-chip")].filter(shown);
       return {
         close: shown(close) ? { ...rect(close), label: close.getAttribute("aria-label") } : null,
+        tab: tab ? tab.querySelector(".foss-earth-tab-button").textContent : null,
+        exitButton: shown(document.querySelector("#sceneExitButton")),
         map: shown(map),
         credits: credits.map(el => ({ ...rect(el), text: el.textContent })),
         viewport: { width: innerWidth, height: innerHeight },
@@ -318,7 +323,7 @@ try {
   // ─── 3. Click to enter, and the bar's right end ─────────────────────
   console.log("Entering");
   const hudBefore = await page("window.__input.hud()");
-  check(hudBefore.map && !hudBefore.close, `overview: the map's group ${hudBefore.map ? "shown" : "hidden"}, no close button`);
+  check(hudBefore.map && !hudBefore.close, `overview: the map's group ${hudBefore.map ? "shown" : "hidden"}, no panorama tab`);
   const at = (await page("window.__input.orbs()")).find(o => o.id === target.id);
   await mouse("mouseMoved", at.x, at.y);
   await press(at.x, at.y);
@@ -330,9 +335,10 @@ try {
   report.hud = hud;
   const credit = hud.credits.at(-1);
   check(!hud.map, "entered: the map's group is hidden");
-  check(Boolean(hud.close) && hud.close.label === "Exit panorama", `entered: a close button, "${hud.close?.label}"`);
+  const title = await page(`window.__fossEarthPanoramaTest.scenes.handle().status.entries.find(e => e.id === ${JSON.stringify(target.id)}).title`);
+  check(Boolean(hud.close) && hud.tab === `360: ${title}` && hud.close.label === `Close 360: ${title} tab`, `entered: the panorama's tab "${hud.tab}", its close button "${hud.close?.label}"`);
+  check(!hud.exitButton, "entered: no close button left of the credit");
   check(Boolean(credit) && hud.viewport.width - credit.right <= 24 && hud.viewport.height - credit.bottom <= 24, `the credit "${credit?.text}" ends in the bottom-right corner (${credit ? `${(hud.viewport.width - credit.right).toFixed(0)} px from the right, ${(hud.viewport.height - credit.bottom).toFixed(0)} from the bottom` : "none"})`);
-  check(Boolean(hud.close && credit) && hud.close.right <= hud.credits[0].left && Math.abs((hud.close.top + hud.close.bottom) / 2 - (credit.top + credit.bottom) / 2) < 4, "the close button sits left of the credit, on its row");
 
   // ─── 4. Mouse drag ──────────────────────────────────────────────────
   console.log("Mouse drag");
@@ -417,11 +423,11 @@ try {
   await mouse("mouseMoved", (close.left + close.right) / 2, (close.top + close.bottom) / 2);
   await press((close.left + close.right) / 2, (close.top + close.bottom) / 2);
   await release((close.left + close.right) / 2, (close.top + close.bottom) / 2);
-  await until("window.__input.status().phase === 'overview'", 30_000, "the overview after the close button");
+  await until("window.__input.status().phase === 'overview'", 30_000, "the overview after closing the panorama's tab");
   await sleep(500);
   const hudAfter = await page("window.__input.hud()");
   report.hudAfterClose = hudAfter;
-  check(hudAfter.map && !hudAfter.close && hudAfter.credits.length === 0, "after closing: the map's group is back, and no close button or credit");
+  check(hudAfter.map && !hudAfter.close && hudAfter.credits.length === 0, "after closing the tab: the map's group is back, and no panorama tab or credit");
 } catch (error) {
   failures.push(`The check stopped: ${error.message}`);
   console.log(`  ✗ ${error.message}`);

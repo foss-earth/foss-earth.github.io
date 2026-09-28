@@ -626,12 +626,12 @@ try {
     navigation.single.cameraAfterExit = await page(`window.__campus.cameraDifference(${JSON.stringify(before)})`);
     console.log(`  exit restores the camera: ${JSON.stringify(navigation.single.cameraAfterExit)}`);
     if (!restored(navigation.single.cameraAfterExit)) fail("Exit did not restore the globe camera the panorama was entered from.");
-    // The Exit chip and the credit are there only while a panorama is entered.
+    // The panorama's tab, the way out, and its credit are there only while a panorama is entered.
     navigation.single.hudChips = { overview: chipsInOverview, immersive: chipsInside, afterExit: await chips() };
     const { overview: o, immersive: i, afterExit: x } = navigation.single.hudChips;
-    console.log(`  HUD: overview exit ${o.exit}; entered exit ${i.exit} ("${i.exitText}"), credits ${i.credits}; after Exit exit ${x.exit}, credits ${x.credits}`);
-    if (o.exit || x.exit) fail("The Exit chip shows in the overview, where there is nothing to exit.");
-    if (!i.exit) fail("The Exit chip is missing while a panorama is entered.");
+    console.log(`  Panorama tab: overview ${o.exit}; entered ${i.exit} ("${i.exitText}"), credits ${i.credits}; after Exit ${x.exit}, credits ${x.credits}`);
+    if (o.exit || x.exit) fail("The panorama's tab shows in the overview, where there is nothing to leave.");
+    if (!i.exit) fail("The panorama's tab is missing while a panorama is entered.");
     if (i.credits < 1) fail("The photograph's credit is missing while it is on screen.");
     if (o.credits > 0 || x.credits > 0) fail("A panorama credit shows in the overview.");
 
@@ -732,7 +732,7 @@ if (report.navigation) {
   lines.push("## Entering, links, Back and Exit", "",
     `- The entered photograph's immersion differs from the CPU rays by up to ${n.single?.immersion.maxDeg.toExponential(3)}°; after Exit the globe camera is back within ${camera(n.single?.cameraAfterExit)}.`,
     `- The pair: A entered ${n.pair?.a.maxDeg.toExponential(3)}°, B after the link ${n.pair?.b.maxDeg.toExponential(3)}°; Back returned to A: ${n.pair?.backReturnsToA ? "yes" : "no"}; after Exit the camera is back within ${camera(n.pair?.cameraAfterExit)}.`,
-    `- The Exit chip, as laid out: ${n.single?.hudChips ? `hidden in the overview ${!n.single.hudChips.overview.exit ? "yes" : "no"}, shown while entered ${n.single.hudChips.immersive.exit ? "yes" : "no"}, hidden after Exit ${!n.single.hudChips.afterExit.exit ? "yes" : "no"}; credits while entered: ${n.single.hudChips.immersive.credits}` : "not checked"}.`, "");
+    `- The panorama's tab, as laid out: ${n.single?.hudChips ? `hidden in the overview ${!n.single.hudChips.overview.exit ? "yes" : "no"}, shown while entered ${n.single.hudChips.immersive.exit ? "yes" : "no"}, hidden after Exit ${!n.single.hudChips.afterExit.exit ? "yes" : "no"}; credits while entered: ${n.single.hudChips.immersive.credits}` : "not checked"}.`, "");
 }
 if (failures.length) lines.push("## Failures", "", ...failures.map(entry => `- ${entry}`), "");
 await writeFile(path.join(out, "summary.md"), lines.join("\n"));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ResolvedRepresentation } from "./format";
-import { chooseRepresentation, createResourcePools, MIB, mipLevelCount, representationDecodedBytes, representationGpuBytes, rgba8Bytes } from "./budget";
+import { chooseRepresentation, createResourcePools, MIB, mipLevelCount, representationAroundPx, representationDecodedBytes, representationGpuBytes, rgba8Bytes } from "./budget";
 
 const cube = (id: string, faceSize: number): ResolvedRepresentation => ({
   id, role: "preview", projection: "cube", mimeType: "image/jpeg", encodedBytes: 1000, faceSize,
@@ -92,7 +92,9 @@ describe("choosing a representation", () => {
     const choice = chooseRepresentation(all, "preview", 200, rep => (rep.id === "p256" ? "over the source GPU limit" : null));
     expect(choice?.representation.id).toBe("p128");
     expect(choice?.limitation).toContain("p256: over the source GPU limit");
+    expect(choice?.next).toEqual({ representation: all[2], reason: "over the source GPU limit" });
     expect(chooseRepresentation(all, "preview", 1000, () => null)?.limitation).toContain("largest available is 256");
+    expect(chooseRepresentation(all, "preview", 1000, () => null)?.next).toBeNull();
     expect(chooseRepresentation(all, "preview", 10, () => "no")).toBeNull();
   });
 
@@ -100,5 +102,15 @@ describe("choosing a representation", () => {
     const mixed = [equirect("e2048", 2048), equirect("e4096", 4096), cube("c768", 768)];
     expect(chooseRepresentation(mixed, "any", 600, () => null)?.representation.id).toBe("c768");
     expect(chooseRepresentation(mixed, "any", 900, () => null)?.representation.id).toBe("e4096");
+    expect(representationAroundPx(mixed[2])).toBe(3072);
+    expect(representationAroundPx(mixed[1])).toBe(4096);
+  });
+
+  it("asked for the largest, takes the largest admissible and names the first larger one refused", () => {
+    const images = [cube("p256", 256), equirect("e2048", 2048), equirect("e4096", 4096), equirect("e6144", 6144)];
+    const choice = chooseRepresentation(images, "any", Number.POSITIVE_INFINITY, rep => (representationAroundPx(rep) > 4096 ? "over the detail" : null));
+    expect(choice?.representation.id).toBe("e4096");
+    expect(choice?.next).toEqual({ representation: images[3], reason: "over the detail" });
+    expect(chooseRepresentation(images, "any", Number.POSITIVE_INFINITY, () => null)).toMatchObject({ representation: images[3], next: null });
   });
 });

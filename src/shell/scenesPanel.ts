@@ -1,10 +1,10 @@
 /**
  * The Scenes tab (docs/proposals/panorama-scenes.md §6): Content (load a
- * scene, the examples, its panoramas and their details), Appearance,
- * Loading and memory, Navigation, and Credits. Also the pieces a scene
- * needs on the map: link buttons anchored to their directions while a
- * panorama is entered, and the bar's right end while it is: a close button
- * and the panorama's credit, in place of the map's.
+ * scene, the examples, its panoramas and their orbs), Orbs, Motion, Loading
+ * and memory, and Credits. The panorama on screen has tabs of its own
+ * (panoramaTabs.ts). Also the pieces a scene needs over the canvas: link
+ * buttons anchored to their directions while a panorama is entered, and the
+ * bar's right end while it is: the panorama's credit, in place of the map's.
  */
 import type { SettingsRegistry } from "../settings/registry";
 import { SCENES_TAB } from "../settings/catalogue/scenes";
@@ -69,7 +69,7 @@ function entryDetails(entry: SceneEntryStatus): string[] {
   lines.push(marker.mode === "ground-relative"
     ? `Shown ${marker.offsetM} m above the displayed ground${marker.eastM || marker.northM ? `, ${marker.eastM} m east and ${marker.northM} m north of the capture` : ""}.`
     : `Shown ${marker.offsetM} m above the capture point${marker.eastM || marker.northM ? `, ${marker.eastM} m east and ${marker.northM} m north` : ""}.`);
-  lines.push(`Radius ${marker.radiusMeters} m${marker.authoredRadius ? ", as the scene sets it" : ", from Appearance → Orb radius"}; the orb's size on screen bounds it.`);
+  lines.push(`Radius ${marker.radiusMeters} m${marker.authoredRadius ? ", as the scene sets it" : ", from Orbs → Orb radius"}; the orb's size on screen bounds it.`);
   if (entry.previewDetail) {
     lines.push(`Preview ${entry.previewDetail.representation}, ${Math.round(entry.previewDetail.faceTexels)} px faces${entry.previewDetail.limitation ? `: ${entry.previewDetail.limitation}` : "."}`);
   }
@@ -131,9 +131,6 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     } else if (status.overview === "applied" && status.phase === "overview") {
       heading.append(button("Back to the scene's view", () => { void controller.handle()?.showOverview(); }));
     }
-    if (status.phase === "immersive" || status.phase === "preparing" || status.phase === "entering") {
-      heading.append(button(status.phase === "immersive" ? "Exit panorama" : "Cancel", () => { void controller.handle()?.exit(); }, "Escape does the same."));
-    }
     heading.append(button("Unload", () => controller.unload(), "Removes the scene and everything it loaded."));
     if (status.lastError) heading.append(note(status.lastError));
     sceneBlock.append(heading);
@@ -151,19 +148,6 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     }
     sceneBlock.append(list);
 
-    const active = status.entries.find(entry => entry.id === status.active);
-    if (active && active.links.length > 0) {
-      const links = row("Links from here");
-      for (const link of active.links) {
-        const follow = button(link.label, () => { void controller.handle()?.follow(link.id); });
-        follow.disabled = !link.enabled;
-        links.append(follow);
-      }
-      sceneBlock.append(links);
-    }
-    if (status.immersionDetail) {
-      sceneBlock.append(note(`Showing ${status.immersionDetail.representation}${status.immersionDetail.limitation ? `: ${status.immersionDetail.limitation}` : "."}`));
-    }
     for (const group of status.groups) {
       const groupRow = row(group.title);
       for (const member of group.members) {
@@ -200,7 +184,7 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
   const off = controller.subscribe(state => {
     renderMessages(state);
     // The view changes every frame while looking; redraw the list only when something else does.
-    const key = JSON.stringify(state.status ? { ...state.status, view: null } : null);
+    const key = JSON.stringify(state.status ? { ...state.status, view: null, immersionDetail: null } : null);
     if (key === lastRendered) return;
     lastRendered = key;
     renderScene(state.status);
@@ -209,8 +193,8 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
   const sections = createSectionsElement([
     { id: "scenes.content", title: settings.getSectionTitle(SCENES_TAB, "content"), element: section("content", content), defaultOpen: true },
     { id: "scenes.appearance", title: settings.getSectionTitle(SCENES_TAB, "appearance"), element: section("appearance"), defaultOpen: false },
+    { id: "scenes.motion", title: settings.getSectionTitle(SCENES_TAB, "motion"), element: section("motion"), defaultOpen: false },
     { id: "scenes.loading", title: settings.getSectionTitle(SCENES_TAB, "loading"), element: section("loading"), defaultOpen: false },
-    { id: "scenes.navigation", title: settings.getSectionTitle(SCENES_TAB, "navigation"), element: section("navigation"), defaultOpen: false },
     { id: "scenes.credits", title: settings.getSectionTitle(SCENES_TAB, "credits"), element: section("credits", credits, false), defaultOpen: false },
   ]);
 
@@ -286,43 +270,40 @@ export interface SceneHudHandle {
 }
 
 /**
- * The HUD bar's right end while a panorama is entered: a close button where
- * the map's detail rail sits, then the panorama's credit where the basemap's
- * is. The map is not drawn then, so `mapSource` (the basemap's group) is
- * hidden. While a panorama is being prepared or entered the map still shows:
- * the close button, which cancels, stands before the map's group.
+ * The HUD bar's right end while a panorama is entered: its credit where the
+ * basemap's is. The map is not drawn then, so `mapSource` (the basemap's
+ * group) is hidden, and so is whatever else is in `mapOnly`, such as the
+ * camera's position, whose Location tab a panorama hides. There is no close
+ * button: the panorama's tab and Escape are the ways out.
  */
-export function createSceneHud(options: { controller: SceneController; container: HTMLElement; mapSource?: HTMLElement | null }): SceneHudHandle {
-  const { controller, container, mapSource } = options;
+export function createSceneHud(options: {
+  controller: SceneController;
+  container: HTMLElement;
+  mapSource?: HTMLElement | null;
+  /** More of the bar that is about the map, hidden with it. */
+  mapOnly?: readonly HTMLElement[];
+}): SceneHudHandle {
+  const { controller, container } = options;
+  const mapElements = [...(options.mapSource ? [options.mapSource] : []), ...(options.mapOnly ?? [])];
   const element = el("span", "scene-hud");
   element.setAttribute("role", "group");
   element.setAttribute("aria-label", "Panorama");
   element.hidden = true;
-  const close = el("button", "hud-circle-button scene-exit-button", "\u2715");
-  close.id = "sceneExitButton";
-  close.type = "button";
   const credits = el("span", "hud-chip-group scene-credits-slot");
   credits.id = "sceneCreditsSlot";
   credits.setAttribute("aria-label", "Panorama credits");
-  element.append(close, credits);
+  element.append(credits);
   container.prepend(element);
-  const onClose = (): void => { void controller.handle()?.exit(); };
-  close.addEventListener("click", onClose);
 
   let shownCredits = "";
   const off = controller.subscribe(state => {
-    const phase = state.status?.phase;
-    const inside = phase === "immersive";
-    element.hidden = !(inside || phase === "entering" || phase === "preparing");
-    if (mapSource) mapSource.hidden = inside;
-    const label = inside ? "Exit panorama" : "Cancel entering the panorama";
-    close.setAttribute("aria-label", label);
-    close.title = inside ? "Exit panorama: back to the view you entered it from. Escape does the same." : `${label}. Escape does the same.`;
+    const inside = state.status?.phase === "immersive";
+    for (const mapElement of mapElements) mapElement.hidden = inside;
     const shown = inside ? state.status?.credits ?? [] : [];
+    element.hidden = shown.length === 0;
     const key = JSON.stringify(shown);
     if (key === shownCredits) return;
     shownCredits = key;
-    credits.hidden = shown.length === 0;
     credits.replaceChildren(...shown.map(credit => {
       const text = credit.license ? `${credit.text} \u00b7 ${credit.license}` : credit.text;
       if (!credit.url) return el("span", "hud-chip scene-credit-chip", text);
@@ -340,8 +321,7 @@ export function createSceneHud(options: { controller: SceneController; container
     element,
     destroy() {
       off();
-      close.removeEventListener("click", onClose);
-      if (mapSource) mapSource.hidden = false;
+      for (const mapElement of mapElements) mapElement.hidden = false;
       element.remove();
     },
   };

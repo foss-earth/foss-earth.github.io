@@ -107,7 +107,8 @@ Every setting lives in exactly one place, a section of a tab.
   (`createMapSourcePanel`) is Source, Detail, Automatic adjustment, Loading
   and memory, Imagery selection and Terrain selection; the
   Renderer tab (`createRendererPanel`) is Renderer, Resolution and frame
-  rate, Depth range and Performance debug; the Controls tab is Input method,
+  rate, Depth range and Performance debug; the Scenes tab is Content, Orbs,
+  Motion, Loading and memory and Credits; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
   is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings and About. Map and
   Renderer add a section for
@@ -132,6 +133,60 @@ Every setting lives in exactly one place, a section of a tab.
 - Every toolbar button is shown until the user hides it in Interface → Toolbar,
   because a first-time visitor does not know that + opens the same tabs. Hiding a
   button never hides what it opened; its tab stays under +.
+- The menu under a tab strip's + is drawn outside its panel, in the overlay's own
+  layer, fixed to the window where the + button is. The panel clips what passes
+  its edges, and with many tabs the + sits at the strip's right end, so a menu
+  drawn inside the panel was cut off there and the globe or a panorama showed in
+  its place.
+
+## A panorama's tabs
+
+A panorama has no controls floating over it. Entering one opens a tab titled
+"360: <title>" (`createPanoramaTabs` in `src/shell/panoramaTabs.ts`, given to
+`WindowOverlay` as `panoramaTabs`), selected and in front:
+
+- **Photograph:** its title and description, the groups it is in, where it was
+  taken and to what accuracy, its pose and whether its north is set, and its
+  credit and licence with a link to the source.
+- **Links:** a button for each link, as in the view.
+- **Image detail:** which image is on screen, why no larger one is (the detail
+  asked for, the device's texture limit or a memory budget, each named), the
+  images the panorama offers, and `scene.panorama.immersionWidth`, whose one home
+  this is.
+
+Following a link retitles the same tab. Closing it leaves the panorama, exactly
+as Escape does; while a panorama is still being entered, closing it cancels.
+These are the only ways out: there is no close button in the bar.
+
+Tabs belong to a context, the globe or a panorama, and the overlay shows those
+of the context on screen:
+
+| Tab | On the globe | In a panorama | Why |
+| --- | --- | --- | --- |
+| Location | yes | hidden | It moves the globe camera, which the panorama holds; the photograph's place is in its tab |
+| Map | yes | hidden | The map is not drawn |
+| Renderer | yes | yes | The panorama is drawn by the same renderer, at its resolution and frame-rate cap |
+| Controls | yes | yes | The input method and controller bindings drive the panorama's look too |
+| Interface, Settings | yes | yes | The toolbar, log, search, presets and saved settings apply anywhere |
+| Scenes | yes | yes | Its list enters any other panorama of the scene, and its budgets hold the image on screen |
+| 360: <title> | no | yes | The panorama on screen |
+| 360 image settings | no | yes | What matters only inside a panorama |
+
+A tab hidden by a context comes back where it was, and selected if it was, when
+its context returns, unless it was opened elsewhere meanwhile
+(`src/shell/contextTabs.ts`). A panel the panorama's tab opened goes back to
+how it was when the panorama is left. The bar hides what is about the map in a
+panorama too: the detail rail, the basemap chip, whose place the panorama's
+credit takes, and the camera's position, whose Location tab is hidden.
+
+The Scenes tab holds what the globe shows and what both sides share: Content
+(choosing a scene, its panoramas and their orbs), Orbs, Motion (hover growth,
+the entry reveal, fades and reduced motion, which play on the globe side too),
+Loading and memory (one set of budgets: the orbs' previews and the image on
+screen come from the same pools) and Credits. 360 image settings holds Image
+(the sharpness target), Looking (the field of view, looking up and down, and
+every look and zoom rate) and Entering (where you look and how long levelling
+takes).
 
 ## Map source and credits
 

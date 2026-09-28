@@ -33,6 +33,7 @@ const INVALID: Mutation[] = [
   ["a latitude out of range", doc => { (entity(doc, 0).capture as Record<string, unknown>).latitudeDeg = 91; }],
   ["longitude 180", doc => { (entity(doc, 0).capture as Record<string, unknown>).longitudeDeg = 180; }],
   ["roll -180", doc => { (entity(doc, 1).imagePose as Record<string, unknown>).rollDeg = -180; }],
+  ["north alignment as text", doc => { (entity(doc, 1).imagePose as Record<string, unknown>).aligned = "yes"; }],
   ["a 180° field of view", doc => { (entity(doc, 1).initialView as Record<string, unknown>).verticalFovDeg = 180; }],
   ["a missing cube face", doc => { delete (representation(doc, 1, 0).faces as Record<string, unknown>).nz; }],
   ["an equirect with faces", doc => { representation(doc, 0, 1).faces = {}; }],

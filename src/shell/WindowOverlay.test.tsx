@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { WindowOverlay, type WindowOverlayHandle } from "./WindowOverlay";
+import type { PanoramaTabs, PanoramaTabsSnapshot } from "./panoramaTabs";
 import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLog";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); });
@@ -261,5 +262,79 @@ it("adds Map and Renderer tabs showing the elements a host hands over", async ()
     await act(async () => overlayApiRef.current!.toggleTab("renderer"));
     expect(rendererTab.isConnected).toBe(false);
     expect(host.contains(mapTab)).toBe(true);
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leaves the panorama when the tab closes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
+  const [mapTab, scenesTab, panoramaTab, settingsTab] = ["Basemaps", "Scenes list", "Photograph", "Looking"].map(element);
+  let snapshot: PanoramaTabsSnapshot = { title: null };
+  const listeners = new Set<() => void>();
+  const leave = vi.fn();
+  const panoramaTabs: PanoramaTabs = {
+    panorama: panoramaTab, settings: settingsTab, leave, destroy() {},
+    getSnapshot: () => snapshot,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+  const enter = (title: string | null) => act(async () => { snapshot = { title }; for (const listener of listeners) listener(); });
+  const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    mapTab={mapTab}
+    scenesTab={scenesTab}
+    panoramaTabs={panoramaTabs}
+    overlayApiRef={overlayApiRef}
+  />));
+  const side = (name: "left" | "right") => Array.from(host.querySelectorAll(`[data-side="${name}"] .foss-earth-tab-button`), (button) => button.textContent);
+  const selected = (name: "left" | "right") => host.querySelector(`[data-side="${name}"] .foss-earth-tab-shell-selected .foss-earth-tab-button`)?.textContent;
+  const menu = async (name: "left" | "right") => {
+    await act(async () => host.querySelector<HTMLButtonElement>(`[data-side="${name}"] [aria-label="Open new tab"]`)!.click());
+    const items = Array.from(host.querySelectorAll('[role="menuitem"]'), (item) => item.textContent);
+    await act(async () => host.querySelector<HTMLButtonElement>(`[data-side="${name}"] [aria-label="Open new tab"]`)!.click());
+    return items;
+  };
+  try {
+    await act(async () => overlayApiRef.current!.toggleTab("map"));
+    await act(async () => overlayApiRef.current!.toggleTab("location"));
+    await act(async () => overlayApiRef.current!.toggleTab("map"));
+    expect(side("left")).toEqual(["Map", "Location"]);
+    expect(selected("left")).toBe("Map");
+    expect(await menu("left")).not.toContain("360 image settings");
+
+    // Entering: the map's tabs go, the panorama's opens and shows.
+    await enter("360: Northrop Mall");
+    expect(side("left")).toEqual(["360: Northrop Mall"]);
+    expect(host.contains(panoramaTab)).toBe(true);
+    expect(await menu("left")).toEqual(expect.arrayContaining(["360 image settings", "Scenes"]));
+    expect(await menu("left")).not.toEqual(expect.arrayContaining(["Map"]));
+    expect(await menu("left")).not.toEqual(expect.arrayContaining(["Location"]));
+    await act(async () => overlayApiRef.current!.openOrSelectTab("panorama-settings"));
+    expect(side("left")).toEqual(["360: Northrop Mall", "360 image settings"]);
+
+    // Following a link retitles the same tab.
+    await enter("360: Walter Library");
+    expect(side("left")).toEqual(["360: Walter Library", "360 image settings"]);
+
+    // Escape: the panorama's tabs go and the map's come back where they were.
+    await enter(null);
+    expect(side("left")).toEqual(["Map", "Location"]);
+    expect(selected("left")).toBe("Map");
+    expect(leave).not.toHaveBeenCalled();
+
+    // Entering again brings back 360 image settings too; closing the panorama's tab leaves it.
+    await enter("360: Northrop Mall");
+    expect(side("left")).toEqual(["360: Northrop Mall", "360 image settings"]);
+    expect(selected("left")).toBe("360: Northrop Mall");
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close 360: Northrop Mall tab"]')!.click());
+    expect(leave).toHaveBeenCalledOnce();
+    await enter(null);
+    expect(side("left")).toEqual(["Map", "Location"]);
   } finally { await act(async () => root.unmount()); }
 });
