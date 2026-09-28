@@ -107,6 +107,50 @@ The retained historical `orthographic` branch remains deliberately unblended.
 For a 30° ray at `d = 1.000001R` it samples about 0.0468°; just inside it abruptly
 samples 30°. It is a negative control, not an alternative validated entry path.
 
+## Flights and the exit handoff
+
+With `scene.panorama.flightDuration` on, the camera itself flies into the orb
+on entry and back out of it on exit ([panoramaFlight.ts](../../src/scenes/panoramaFlight.ts)).
+The sphere is drawn at one radius `R` throughout a flight: the orb's projected
+size where the flight begins (in) or ends (out). The eye moves on a line through
+`M`, so both handoffs happen inside the sphere, at `d = R/2`, where every ray is
+covered and `D = v` whatever the orientation. The eye never reaches `d = 0`,
+where the axis is undefined.
+
+**Entry** ends there. The loader requires `handoffReady` for the flight's last
+pose, with that pose's own orientation, roll and field of view, then presents the
+same view full screen. Both sides draw the orb's preview.
+
+**Exit** hands off the other way, from the fullscreen image to the sphere, in
+the flight's first frame. It is exact when all three hold:
+
+1. Every viewport ray is covered and `D = v`: the eye is inside, at `d = R/2`.
+   The loader checks `handoffReady` for the first pose and fades instead if it
+   fails.
+2. The globe camera's orientation, roll and vertical FOV equal the
+   presentation's. The first pose is the presentation's forward, up and FOV, and
+   the runtime places the camera with that up rather than its own level one; the
+   roll unwinds during the flight.
+3. The sphere samples the same source as the image did: the image on screen,
+   cube or equirectangular, not the orb's preview, with the same filtering (the
+   seam-aware gradients for an equirectangular image) and one output conversion,
+   drawn over everything at full opacity.
+
+Equal directions alone cannot guarantee equal pixels, as above; GPU float
+precision and filtering remain to be checked on a device.
+
+On the way out the camera always looks at `M`, so it leaves the sphere looking
+inward and coverage shrinks continuously, as the reveal does in reverse. On the
+way in, the view turns toward `M` as it closes in. An orb far off the view's
+axis and within a few radii can still be crossed with rays pointing away from
+`M`: the outward-crossing discontinuity described above, where corner rays
+become covered at `d = R`. The orb's overlay is then only partly revealed.
+
+The CPU reference's rows inside the sphere (`0.6R` and the centre) exercise the
+condition in 1; it was not re-run for the flights. The unit tests check both
+flights' ends against `handoffReady`, the placed camera's pose with roll on
+Babylon's own camera, and the exit's source.
+
 ## Position and orientation meaning
 
 Capture position `P` locates where the photograph was recorded. Display position

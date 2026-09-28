@@ -404,7 +404,9 @@ user's short fade once coverage is ready.
 The CPU sphere reference includes concurrent camera rotation but does **not** test
 this depth-mask overlay, terrain composite, timing, pointer feel or phone readability.
 Those are stage 1 visual/usability checks. No user camera translation or claim of
-photographic parallax accompanies expansion.
+photographic parallax accompanies expansion. The flight into and out of an orb,
+which the user asked for later, does move the camera; it still claims no
+parallax: see **Flying in and out** under stage 1 as built.
 
 Preparation applies EXIF orientation once and normalizes to opaque sRGB. Decode
 samples to linear light, composite/crossfade in linear light, then perform exactly
@@ -606,6 +608,12 @@ the overview from which A was entered. Return geometry may have refined while
 away; retain the saved pose, apply only required safe camera constraints, and
 report any resulting adjustment. Do not silently frame B on Exit.
 
+The flight out of an orb, which the user asked for, is the exception, and says
+so: with `flightDuration` on, Exit backs out of the orb on screen facing the way
+the view faces, and ends looking at that orb with the snapshot's pitch, distance
+and field of view. Cancellation, device loss and scene replacement still restore
+the snapshot, and with the flight off, Exit restores it as above.
+
 The lease suspends the globe's input handlers and POI tracking, ends anchor drags
 and pointer capture, and cancels all inertial velocities. New panorama handlers
 use a shared router. Pointer/touch look, wheel/pinch FOV, keyboard look/zoom,
@@ -628,6 +636,12 @@ translation is disabled. Enter/Space activates focused destinations, Tab navigat
 DOM controls, and Escape cancels preparation/entry or exits. Pointer look during
 expansion cancels the expansion to its prior usable state; during arrival leveling
 it cancels leveling and starts looking. Inertia has an exposed exponential half-life.
+
+While it holds the lease, the owner may also move the globe camera itself:
+`placeNavigationCamera(lease, view)` puts its eye at a presentation's position
+and orientation, roll included, nearer than the zoom limit, at any pitch and
+through the ground, as a flight into an orb needs. The camera's limits and
+collisions return when a snapshot is restored or the lease ends.
 
 Entry, exit and animated arrival acquire a rendering hold and release it in a
 `finally` path. Asset completion and settings changes request a frame. Still
@@ -890,7 +904,8 @@ rendered device pixels are different units. A range means one two-thumb control.
 | `verticalFovRange` | deg range, 20–120 | [35,90]; prototype look range | 360 image settings → Looking; current/limited FOV |
 | `pitchRange` | deg range, −89.9–89.9 | [−85,85]; avoid look-axis degeneracy | 360 image settings → Looking; current pitch; pole-content trial |
 | `entryOrientation` | level-current / authored | level-current; preserve azimuth, level pitch | 360 image settings → Entering; target/provenance |
-| `expandDuration` | ms, 0–2000 | 350; short reveal prototype | Scenes → Motion; phase/progress; motion trial |
+| `flightDuration` | ms, 100–5000, or Off | 1000, on as the user asked; long enough to follow, short enough not to wait on | Scenes → Motion ("Fly into and out of 360 images"); phase; motion trial |
+| `expandDuration` | ms, 0–2000 | 350; short reveal prototype, when the camera does not fly in | Scenes → Motion; phase/progress; motion trial |
 | `orientDuration` | ms, 0–2000 | 250; separate leveling phase | 360 image settings → Entering; current/target orientation |
 | `fadeDuration` | ms, 0–1000 | 150; exit/LOD/fallback blend | Scenes → Motion; overlap/phase; visual check |
 | `hoverDuration` | ms, 0–1000 | 120; growth under the pointer, when the scene's style asks | Scenes → Motion; visual check |
@@ -1106,6 +1121,51 @@ different tabs inside a panorama, and a + menu that stays in front.
   tab shows it.
 - **Not re-run:** the campus and input checks follow the change (the panorama's
   tab replaces the close button), but no GPU run was made for it.
+
+**Flying in and out (2026-09-27).** The user asked for the camera to move into
+a 360 image when it is entered and back out of it when it is left, "pulling out
+from the direction it is currently facing", as a setting on by default. It is
+`scene.panorama.flightDuration`, "Fly into and out of 360 images" in Scenes →
+Motion: 1000 ms, or Off. The poses are pure functions in
+[`panoramaFlight.ts`](../../src/scenes/panoramaFlight.ts); the loader drives them
+and the runtime's `placeNavigationCamera` moves the globe camera (§5).
+
+- **In.** The camera flies straight at the orb's marker while turning to face
+  it, and the orb becomes a sphere of the size it had on screen when the flight
+  began, solid where terrain does not hide it and revealed over everything as
+  the camera closes in. The distance shrinks by the same factor each moment, so
+  the orb grows at a steady rate. The flight ends inside the sphere, at half its
+  radius, where every ray shows the image itself; the fullscreen image takes over
+  there with the camera's own view, then levelling runs as before.
+- **Out.** The reverse: the camera starts inside the sphere, which draws the
+  image on screen (the sharp one, not the orb's preview) over everything with the
+  view's own rays, so its first frame equals the image's last. It backs away
+  keeping the heading the view faces, always looking at the orb, while its pitch,
+  distance and field of view move to those of the view the panorama was entered
+  from, and the roll unwinds. The sphere is the size the orb has on screen there,
+  so it becomes the orb itself; its overlay fades as it goes, and the camera ends
+  as the globe's ordinary orbit of the orb.
+- **Where Exit ends, and why.** It ends facing the way the view faced, centred on
+  the orb, at the entry view's pitch, distance and field of view, not at the saved
+  view. Pulling out is backing away along the look; ending anywhere else needs a
+  turn on the way out. Keeping the pitch, distance and field of view keeps the map
+  at the scale the user chose. The cost: facing elsewhere than when entering, the
+  map there may not have loaded, since maps stay paused while a panorama holds
+  navigation; they stream once the flight ends. With the flight off, Exit fades
+  back to the saved view as before.
+- **Input.** As during entry, Escape, a press or a wheel on the canvas end the
+  animation at once: an entry is cancelled back to the saved view, an exit
+  completes where its flight ends. Looking stops as the exit begins. Back during
+  an exit joins it, entering another panorama cuts it short and then flies in,
+  and links are not followed on the way out.
+- **Off, reduced motion, or a runtime that cannot move its camera:** the entry
+  reveal (`expandDuration`) and the exit fade, as before.
+- **The handoffs** are in the [visual contract](../validation/panorama-visual-contract.md#flights-and-the-exit-handoff).
+  Tests check both flights' ends against `handoffReady`, that the placed camera
+  has the pose asked, roll included, on Babylon's own camera, and that the exit
+  ends as the globe camera's orbit at the heading faced. The campus check now
+  expects that end view; it was not run for this change, and no GPU or motion
+  trial was made.
 
 **Not covered.**
 

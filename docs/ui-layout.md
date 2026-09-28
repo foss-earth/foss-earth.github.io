@@ -188,7 +188,8 @@ credit takes, and the camera's position, whose Location tab is hidden.
 
 The Scenes tab holds what the globe shows and what both sides share: Content
 (choosing a scene, its panoramas and their orbs), Orbs, Motion (hover growth,
-the entry reveal, fades and reduced motion, which play on the globe side too),
+flying into and out of 360 images, the entry reveal, fades and reduced motion,
+which play on the globe side too),
 Loading and memory (one set of budgets: the orbs' previews and the image on
 screen come from the same pools) and Credits. 360 image settings holds Image
 (the sharpness target), Looking (the field of view, looking up and down, and

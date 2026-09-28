@@ -56,8 +56,14 @@ describe("the scene parameters' defaults", () => {
     for (const id of ["immersionDensity", "verticalFovRange", "pitchRange", "dragSensitivity", "lookRate", "entryOrientation", "orientDuration"]) {
       expect(home(`scene.panorama.${id}`).tab, id).toBe(PANORAMA_SETTINGS_TAB);
     }
-    for (const id of ["previewFov", "markerDiameter", "hoverDuration", "expandDuration", "reducedMotion", "sourceGpuMiB", "requests"]) {
+    for (const id of ["previewFov", "markerDiameter", "hoverDuration", "flightDuration", "expandDuration", "reducedMotion", "sourceGpuMiB", "requests"]) {
       expect(home(`scene.panorama.${id}`).tab, id).toBe(SCENES_TAB);
     }
+  });
+
+  it("flies into and out of 360 images by default, for a duration in ms that can be turned off", () => {
+    const spec = SCENE_PARAMETERS.find(each => each.id === "scene.panorama.flightDuration")!;
+    expect(spec).toMatchObject({ label: "Fly into and out of 360 images", unit: "ms", kind: "number", default: 1000, home: { tab: SCENES_TAB, section: "motion" } });
+    expect(spec.named).toEqual([{ id: "off", label: "Off" }]);
   });
 });

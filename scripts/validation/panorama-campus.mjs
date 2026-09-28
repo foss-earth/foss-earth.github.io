@@ -597,7 +597,15 @@ try {
     console.log("Entering, links, Back and Exit…");
     const navigation = {};
     const snapshot = () => page("window.__fossEarthPanoramaTest.runtime.captureNavigationSnapshot()?.camera");
-    const restored = difference => difference && difference.centerM < 1e-3 && difference.yawRad < 1e-6 && difference.pitchRad < 1e-6 && difference.radiusM < 1e-3 && difference.fovRad < 1e-6;
+    // Exit flies back out of the orb (scene.panorama.flightDuration, on by default): it ends facing the way the
+    // view faced, centred on the orb, at the pitch, distance and field of view the panorama was entered from.
+    const facing = () => page("window.__fossEarthPanoramaTest.scenes.handle().status.view.headingDeg");
+    const pulledOut = (difference, after, facedDeg) => {
+      if (!difference || !after || typeof facedDeg !== "number") return false;
+      const turn = Math.abs(((((after.yaw - (facedDeg * Math.PI) / 180) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+      // The globe camera's heading is about the geocentric vertical, the view's about the geodetic: up to 0.2° apart.
+      return difference.pitchRad < 1e-6 && difference.radiusM < 1e-3 && difference.fovRad < 1e-6 && turn < 0.01;
+    };
     const act = async (label, expression) => {
       const result = await job(`window.__fossEarthPanoramaTest.scenes.handle().${expression}`, 60_000, 100);
       if (!result?.ok) throw new Error(`${label}: ${JSON.stringify(result)}`);
@@ -621,11 +629,13 @@ try {
     await act("enter", `enter(${JSON.stringify(current.entity.id)})`);
     navigation.single = { immersion: await immersion(current.entity, "umn-single entered") };
     const chipsInside = await chips();
+    let faced = await facing();
     await act("exit", "exit()");
     await job(`window.__campus.until(s => s.phase === "overview", 30000)`, 40_000, 100);
     navigation.single.cameraAfterExit = await page(`window.__campus.cameraDifference(${JSON.stringify(before)})`);
-    console.log(`  exit restores the camera: ${JSON.stringify(navigation.single.cameraAfterExit)}`);
-    if (!restored(navigation.single.cameraAfterExit)) fail("Exit did not restore the globe camera the panorama was entered from.");
+    navigation.single.facedDeg = faced;
+    console.log(`  exit pulls out facing ${faced}°: ${JSON.stringify(navigation.single.cameraAfterExit)}`);
+    if (!pulledOut(navigation.single.cameraAfterExit, await snapshot(), faced)) fail("Exit did not end facing the way the view faced, at the pitch, distance and field of view it was entered from.");
     // The panorama's tab, the way out, and its credit are there only while a panorama is entered.
     navigation.single.hudChips = { overview: chipsInOverview, immersive: chipsInside, afterExit: await chips() };
     const { overview: o, immersive: i, afterExit: x } = navigation.single.hudChips;
@@ -650,11 +660,13 @@ try {
     await job(`window.__campus.until(s => s.phase === "immersive" && s.active === ${JSON.stringify(a.id)}, 30000)`, 40_000, 100);
     navigation.pair.backReturnsToA = true;
     console.log(`  Back returns to ${a.id}`);
+    faced = await facing();
     await act("exit", "exit()");
     await job(`window.__campus.until(s => s.phase === "overview", 30000)`, 40_000, 100);
     navigation.pair.cameraAfterExit = await page(`window.__campus.cameraDifference(${JSON.stringify(before)})`);
-    console.log(`  Exit from the pair restores the camera: ${JSON.stringify(navigation.pair.cameraAfterExit)}`);
-    if (!restored(navigation.pair.cameraAfterExit)) fail("Exit from the pair did not restore the globe camera it was entered from.");
+    navigation.pair.facedDeg = faced;
+    console.log(`  Exit from the pair pulls out facing ${faced}°: ${JSON.stringify(navigation.pair.cameraAfterExit)}`);
+    if (!pulledOut(navigation.pair.cameraAfterExit, await snapshot(), faced)) fail("Exit from the pair did not end facing the way the view faced, at the pitch, distance and field of view it was entered from.");
     navigation.pair.entity = pair.entity.id;
     report.navigation = navigation;
   }
@@ -728,10 +740,10 @@ if (report.timing) {
 }
 if (report.navigation) {
   const n = report.navigation;
-  const camera = d => (d ? `centre ${d.centerM.toExponential(1)} m, yaw ${d.yawRad.toExponential(1)} rad, pitch ${d.pitchRad.toExponential(1)} rad` : "not measured");
+  const camera = d => (d ? `pitch ${d.pitchRad.toExponential(1)} rad, distance ${d.radiusM.toExponential(1)} m and field of view ${d.fovRad.toExponential(1)} rad of the view it was entered from` : "not measured");
   lines.push("## Entering, links, Back and Exit", "",
-    `- The entered photograph's immersion differs from the CPU rays by up to ${n.single?.immersion.maxDeg.toExponential(3)}°; after Exit the globe camera is back within ${camera(n.single?.cameraAfterExit)}.`,
-    `- The pair: A entered ${n.pair?.a.maxDeg.toExponential(3)}°, B after the link ${n.pair?.b.maxDeg.toExponential(3)}°; Back returned to A: ${n.pair?.backReturnsToA ? "yes" : "no"}; after Exit the camera is back within ${camera(n.pair?.cameraAfterExit)}.`,
+    `- The entered photograph's immersion differs from the CPU rays by up to ${n.single?.immersion.maxDeg.toExponential(3)}°; after Exit the globe camera faces ${n.single?.facedDeg}°, as the view did, within ${camera(n.single?.cameraAfterExit)}.`,
+    `- The pair: A entered ${n.pair?.a.maxDeg.toExponential(3)}°, B after the link ${n.pair?.b.maxDeg.toExponential(3)}°; Back returned to A: ${n.pair?.backReturnsToA ? "yes" : "no"}; after Exit the camera faces ${n.pair?.facedDeg}°, within ${camera(n.pair?.cameraAfterExit)}.`,
     `- The panorama's tab, as laid out: ${n.single?.hudChips ? `hidden in the overview ${!n.single.hudChips.overview.exit ? "yes" : "no"}, shown while entered ${n.single.hudChips.immersive.exit ? "yes" : "no"}, hidden after Exit ${!n.single.hudChips.afterExit.exit ? "yes" : "no"}; credits while entered: ${n.single.hudChips.immersive.credits}` : "not checked"}.`, "");
 }
 if (failures.length) lines.push("## Failures", "", ...failures.map(entry => `- ${entry}`), "");
