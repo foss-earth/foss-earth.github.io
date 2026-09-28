@@ -5,10 +5,10 @@ import { getAppSettings } from "../settings/appSettings";
  * parameters. Every one is shown until the user hides it in Settings, because
  * a first-time visitor cannot be expected to know that + opens the same things.
  */
-export type HudButtonId = "help" | "settings" | "theme" | "inputMode" | "scenes";
+export type HudButtonId = "help" | "settings" | "theme" | "inputMode";
 export type HudButtonVisibility = Record<HudButtonId, boolean>;
 
-export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "settings", "theme", "inputMode", "scenes"];
+export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "settings", "theme", "inputMode"];
 
 /** @deprecated The record key before the settings registry; migrated into `interface.toolbar.*`. */
 export const HUD_BUTTON_VISIBILITY_STORAGE_KEY = "foss-earth.hudButtons";
