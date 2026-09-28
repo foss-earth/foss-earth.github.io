@@ -77,7 +77,12 @@ Then open the URL Vite prints. [Development](docs/development.md) explains the f
 
 ## Use it in your app
 
-FOSS Earth is also a TypeScript package. [0SFS](https://0sfs.github.io/), a flight simulator that runs in the browser, is built on it ([source](https://github.com/0SFS/0SFS.github.io)). The package is not on npm yet. Link it from a sibling checkout:
+FOSS Earth is also a TypeScript package. Two applications are built on it:
+
+- [0SFS](https://0sfs.github.io/), a flight simulator that runs in the browser ([source](https://github.com/0SFS/0SFS.github.io)).
+- The University of Minnesota's campus tour, a FOSS Earth scene of 360° photographs ([source](https://github.com/UMN-VR/UMN-VR.github.io)).
+
+Each keeps only what its own domain needs; the globe, the scene format and its tools stay here. The package is not on npm yet. Link it from a sibling checkout:
 
 ```json
 "dependencies": {

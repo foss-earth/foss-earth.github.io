@@ -2,16 +2,25 @@
 
 ## Where work belongs
 
-- This package is the owner of the shared globe: terrain, height and map sources,
-  rendering, camera and input, windowing, the HUD and log shells. Sibling
-  applications, `../0sfs` among them, consume it through the `exports` map in
-  `package.json` and keep only what their own domain needs.
+- This package is the owner of the shared globe, a Google Earth clone: terrain,
+  height and map sources, rendering, camera and input, windowing, the HUD and log
+  shells, and the scene format with its panorama viewer and tools. Applications
+  consume it through the `exports` map in `package.json` and its documented scripts,
+  and keep only what their own domain needs:
+  - `../0sfs` is the flight simulator.
+  - `../UMN-VR/UMN-VR.github.io` is the University of Minnesota campus tour. It
+    owns the tour's scene, photographs, placements and its conversion from
+    YouVisit.
+- Content belongs to the application that shows it. A tour's photographs,
+  positions and import from another platform go in the tour's repository. FOSS
+  Earth keeps the format, the loader and the tools that work on any scene.
 - Work that reaches you from a consuming application stays here when it would still
   be correct in a globe with no aircraft, vehicle or mission in the scene. Do not send
   such a change back to the application because only one application needs it today;
   that is how shared code ends up written twice.
-- Genuinely application-specific code, anything naming an aircraft, a flight model or
-  a product mode, belongs in that application, not here.
+- Genuinely application-specific code belongs in that application, not here. That
+  means anything naming an aircraft, a flight model, a product mode, or a particular
+  tour and its content.
 - When a consumer needs something new, export it from a documented surface rather than
   letting the consumer deep-import an internal path, and check the consuming
   repositories still build.
