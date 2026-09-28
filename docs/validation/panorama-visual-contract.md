@@ -151,6 +151,16 @@ condition in 1; it was not re-run for the flights. The unit tests check both
 flights' ends against `handoffReady`, the placed camera's pose with roll on
 Babylon's own camera, and the exit's source.
 
+A flight cut short hands off nothing between renderers: the image is not on
+screen, only the globe camera and the sphere. Its braking starts from the
+flight's last frame, with that frame's pose and sphere, and ends as the globe
+camera's orbit with the same eye, look, level up and field of view as the
+braking's last frame, and with the orb at its own size and without overlay,
+which is how the orb draws once the sphere is gone. A press or another
+navigation that stops the braking early settles the orbit at once from where
+it is; the field of view, roll and a tilt beyond the globe's limits then jump
+by what the braking had left of them.
+
 ## Position and orientation meaning
 
 Capture position `P` locates where the photograph was recorded. Display position

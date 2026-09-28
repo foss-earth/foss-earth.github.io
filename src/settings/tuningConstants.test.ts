@@ -133,6 +133,8 @@ const LEDGER: Record<string, [Kind, string]> = {
   "src/scenes/budget.ts#CUBE_LAYERS": ["fact", "A cube has six faces."],
   "src/scenes/budget.ts#MIB": ["fact", "Bytes in a mebibyte."],
   "src/scenes/format.ts#SCENE_FORMAT_VERSION": ["fact", "The version of the scene format this loader reads."],
+  "src/scenes/panoramaFlight.ts#COAST_REST_SHARE": ["guard", "A flight cut short has stopped once this share of its motion is left; how fast it brakes is camera.inertiaDecay."],
+  "src/scenes/panoramaFlight.ts#GLIDE_FRAME_MS": ["fact", "The 60 Hz frame camera.inertiaDecay is given per."],
   "src/scenes/panoramaFlight.ts#INSIDE_SHARE": ["structure", "Where a flight into or out of an orb ends or starts inside its sphere: anywhere inside, every ray shows the image itself, so the handoff is the same; half the radius stays clear of the surface and of the centre, where the orb has no axis."],
   "src/scenes/panoramaInput.ts#GLIDE_RELEASE_WINDOW_MS": ["guard", "A drag held still this long before its release was not a flick; its last move's speed is stale."],
   "src/scenes/panoramaInput.ts#INERTIA_STOP_DEG_PER_S": ["guard", "A look glide slower than this has stopped."],

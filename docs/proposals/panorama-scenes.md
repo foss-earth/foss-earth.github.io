@@ -611,8 +611,11 @@ report any resulting adjustment. Do not silently frame B on Exit.
 The flight out of an orb, which the user asked for, is the exception, and says
 so: with `flightDuration` on, Exit backs out of the orb on screen facing the way
 the view faces, and ends looking at that orb with the snapshot's pitch, distance
-and field of view. Cancellation, device loss and scene replacement still restore
-the snapshot, and with the flight off, Exit restores it as above.
+and field of view. A flight cut short, in or out, is the other exception: it
+brakes and stays where it stops, as the globe camera's own orbit there, rather
+than jumping back to the snapshot or on to the flight's end ("Cut short" under
+Flying in and out). Device loss still restores the snapshot, and with the flight
+off, cancellation and Exit restore it as above.
 
 The lease suspends the globe's input handlers and POI tracking, ends anchor drags
 and pointer capture, and cancels all inertial velocities. New panorama handlers
@@ -627,7 +630,9 @@ descriptors and bindings in FOSS Earth's adapter; route its `getContext` through
 the lease. Preserve gamepad-tools' binding capture, selected device and deadzone
 behavior. Controller handling remains gamepad-tools' responsibility. Do not add
 a second poller or map panorama look to globe pan behind the immersive camera.
-Look inertia, if enabled, belongs to this context and is cancelled on every transfer.
+Look inertia, if enabled, belongs to this context and is cancelled on every transfer;
+so is a wheel gesture's momentum, which the system sends as wheel events: whoever
+takes input ignores a wheel gesture already under way, to its end.
 Dragging the image right looks left; dragging it down looks up. Wheel-up/pinch-out
 narrows vertical FOV. Wheel events are read as the globe reads them, by `input.mode`
 and the globe's own gesture classifier: in trackpad mode a two-finger swipe moves
@@ -1153,11 +1158,44 @@ and the runtime's `placeNavigationCamera` moves the globe camera (§5).
   map there may not have loaded, since maps stay paused while a panorama holds
   navigation; they stream once the flight ends. With the flight off, Exit fades
   back to the saved view as before.
-- **Input.** As during entry, Escape, a press or a wheel on the canvas end the
-  animation at once: an entry is cancelled back to the saved view, an exit
-  completes where its flight ends. Looking stops as the exit begins. Back during
-  an exit joins it, entering another panorama cuts it short and then flies in,
-  and links are not followed on the way out.
+- **Input.** Escape, a press or a new wheel gesture on the canvas cut a flight
+  short, and so do Back and `exit()` during an entry. Looking stops as the exit
+  begins. Back during an exit joins it, and links are not followed on the way
+  out.
+- **Cut short (2026-09-27, after the user's trial).** The user found that
+  cutting a flight short snapped the camera back to where the entry began, or
+  on to where the exit would end, and asked instead for it to "switch from
+  moving in the animation to slowing down to standstill", with momentum. So a
+  flight cut short neither jumps nor stops dead: it brakes along its own path,
+  keeping `camera.inertiaDecay` of its speed each 60 Hz frame as the globe's
+  glide does after a flick (`coast` in `panoramaFlight.ts`). Meanwhile, at the
+  same rate, what the globe camera cannot hold turns into what it can: the field
+  of view to the overview's, the roll to level, a tilt outside
+  `camera.pitchLimits` to the nearest inside. The sphere turns back into the orb
+  as it goes, to the orb's own size from there and without its overlay. At rest
+  the globe camera gets its own orbit holding the eye where it stopped, about
+  the point on its line of sight nearest the orb, or at `camera.zoomLimits`'
+  nearest if that is farther, so nothing moves at the handover. That point can
+  be under the ground when the camera stopped nearer the orb than the zoom limit;
+  the globe's ground following then lifts it, and the camera with it, on the
+  first zoom. The globe's own
+  inertia is not used for the braking: within its zoom limit of the orb, which
+  is much of each flight, it cannot hold the camera where the flight has it.
+  The entry is cancelled; the exit completes. While it brakes, a press or a new
+  wheel gesture stops it where it is, as grabbing the globe stops its glide, and
+  the input that cut the flight short is spent doing so: it does not also move
+  the map. Another navigation, such as entering another panorama, or a new scene,
+  stops a flight or its braking where it is at once and starts from there.
+- **Momentum is not input (2026-09-27).** The user found that pressing Escape
+  while a trackpad swipe's glide was still turning the image skipped the flight
+  out. A trackpad's glide after the fingers lift is the system's: a stream of
+  wheel events, which the flight took for input cutting it short. A wheel event
+  within `WHEEL_GESTURE_IDLE_MS` of the one before continues its gesture, as the
+  wheel handlers already read gestures; now only a gesture that begins after a
+  flight began cuts it short. Whoever takes input next ignores a wheel gesture
+  under way when it does, to its end: the globe after a panorama gives navigation
+  back, and a panorama's look after an entry, so neither the image's glide
+  pans the map nor the map's turns the image.
 - **Off, reduced motion, or a runtime that cannot move its camera:** the entry
   reveal (`expandDuration`) and the exit fade, as before.
 - **The handoffs** are in the [visual contract](../validation/panorama-visual-contract.md#flights-and-the-exit-handoff).
@@ -1165,7 +1203,13 @@ and the runtime's `placeNavigationCamera` moves the globe camera (§5).
   has the pose asked, roll included, on Babylon's own camera, and that the exit
   ends as the globe camera's orbit at the heading faced. The campus check now
   expects that end view; it was not run for this change, and no GPU or motion
-  trial was made.
+  trial was made. For flights cut short, tests check that the braking starts
+  from the flight's pose and speed, falls by the glide's share each frame, ends
+  level, at the globe's field of view and within its tilt limits, and that the
+  settled orbit holds the eye where it stopped, on Babylon's camera too; and
+  that a swipe's momentum neither cuts a flight short nor reaches the globe or
+  the look after a handover. The braking has not been tried on a GPU or by the
+  user.
 
 **Not covered.**
 
