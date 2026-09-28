@@ -11,6 +11,8 @@ export type { GlobeHandle, GlobeLayer, GlobeLayerContext, GlobeLayerState, Globe
 export type { InputModeHudHandle } from "./hud/inputModeHud";
 export { DEFAULT_INPUT_SENSITIVITY } from "./input/inputSettings";
 export { createGlobeApp } from "./app/createGlobeApp";
+export type { GlobeAppHandle, GlobeAppOptions } from "./app/createGlobeApp";
+export { mountGlobeApp } from "./app/mountGlobeApp";
 export { createBabylonLayer, createMeshCullable, asBabylonContext } from "./layers/types";
 export { DEFAULT_RASTER_BASE_MAP_ID, RASTER_BASE_MAP_SOURCES, resolveRasterBaseMapSource } from "./engine/babylon/rasterBaseMaps";
 export type { RasterBaseMapProtocol, RasterBaseMapSource } from "./engine/babylon/rasterBaseMaps";

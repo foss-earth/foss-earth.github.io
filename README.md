@@ -102,11 +102,30 @@ const globe = await createGlobe({
 globe.setViewState({ latDeg: 36.1, lonDeg: -112.14, zoomMeters: 4000, pitchDeg: 60 });
 ```
 
-The exports point at TypeScript source, so build your app with a bundler that compiles TypeScript, such as Vite.
+To show the whole app, with its toolbar, tabs and your own scenes, mount it instead:
+
+```ts
+import { mountGlobeApp } from "foss-earth";
+
+await mountGlobeApp(document.getElementById("root")!, {
+  // Listed in Scenes → Content; `?scene=<id>` opens only these. URLs resolve against your base URL.
+  scenes: [{ id: "campus", title: "Campus tour", description: "…", url: "tour/scene.json" }],
+  initialScene: "campus", // opened at start unless the address names another
+});
+```
+
+The exports point at TypeScript source, so build your app with a bundler that compiles TypeScript, such as Vite. With Vite, the app's config needs:
+
+- `@vitejs/plugin-react`, for the tab overlay;
+- `server.fs.allow` including the FOSS Earth checkout, so the dev server may read it;
+- `resolve.dedupe` for `@babylonjs/core`, `@babylonjs/loaders`, `3d-tiles-renderer`, `react` and `react-dom`, listed in your own dependencies, so there is one copy of each;
+- `define` for `__BUILD_TIME__`, `__SOURCE_VERSION__` and `__REPOSITORY_SLUG__`, which Settings → About shows, declared as `string` constants for TypeScript.
+
+[0SFS's `vite.config.ts`](https://github.com/0SFS/0SFS.github.io/blob/main/vite.config.ts) is a complete example.
 
 | Export | What it provides |
 |---|---|
-| `foss-earth` | `createGlobe`, the view API, the basemap and elevation source lists, and point sprites |
+| `foss-earth` | `createGlobe`, `mountGlobeApp`, the view API, the basemap and elevation source lists, and point sprites |
 | `foss-earth/runtime` | The Babylon runtime, renderer and map configuration, surface queries and terrain readiness |
 | `foss-earth/layers` | Types for adding your own Babylon content to the scene |
 | `foss-earth/shell` | HUD bar, docked tab overlay, location search, status log, tile cache panel and fullscreen |

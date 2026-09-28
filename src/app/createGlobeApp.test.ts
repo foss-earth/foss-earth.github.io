@@ -648,3 +648,37 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.childElementCount).toBe(0);
   });
 });
+
+describe("createGlobeApp scenes", () => {
+  const tour = { id: "tour", title: "A campus tour", description: "The host's own scene.", url: "tours/campus/scene.json" };
+  const other = { id: "other", title: "Another tour", description: "A second scene.", url: "tours/other/scene.json" };
+  // A manifest that never arrives, so the scene stays loading while the test reads it.
+  const pendingFetch = () => vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+
+  it("offers the host's scenes, and opens its initial scene when the address names none", async () => {
+    pendingFetch();
+
+    const { app } = await createAppUnderTest({ scenes: [tour, other], initialScene: "tour" });
+
+    expect(app.scenes.examples).toEqual([tour, other]);
+    expect(app.scenes.state().loading).toBe(new URL("/tours/campus/scene.json", window.location.href).href);
+  });
+
+  it("opens the scene the address names, among the host's", async () => {
+    pendingFetch();
+    window.history.replaceState(null, "", "/?scene=other");
+
+    const { app } = await createAppUnderTest({ scenes: [tour, other], initialScene: "tour" });
+
+    expect(app.scenes.state().loading).toBe(new URL("/tours/other/scene.json", window.location.href).href);
+  });
+
+  it("offers FOSS Earth's examples and opens none, without a host's scenes", async () => {
+    pendingFetch();
+
+    const { app } = await createAppUnderTest();
+
+    expect(app.scenes.examples.map(example => example.id)).toContain("umn-single");
+    expect(app.scenes.state().loading).toBeNull();
+  });
+});

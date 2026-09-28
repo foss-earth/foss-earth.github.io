@@ -97,11 +97,12 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
   const loadButton = button("Load", () => { if (urlField.value.trim()) void controller.load(urlField.value); });
   urlField.addEventListener("keydown", event => { if (event.key === "Enter" && urlField.value.trim()) void controller.load(urlField.value); });
   loadRow.append(urlField, loadButton);
-  const examplesRow = row("Examples");
-  for (const example of controller.examples) examplesRow.append(button(example.title, () => { void controller.load(example.id, { exampleId: true }); }, example.description));
+  // The scenes this app offers: FOSS Earth's examples, or a host application's own.
+  const offeredRow = row("Scenes");
+  for (const offered of controller.examples) offeredRow.append(button(offered.title, () => { void controller.load(offered.id, { exampleId: true }); }, offered.description));
   const messages = el("div", "foss-earth-choices");
   const sceneBlock = el("div", "foss-earth-choice-panel");
-  content.append(loadRow, examplesRow, messages, sceneBlock);
+  content.append(loadRow, offeredRow, messages, sceneBlock);
 
   // ─── Credits ──────────────────────────────────────────────────────
   const credits = el("div", "foss-earth-choices");
