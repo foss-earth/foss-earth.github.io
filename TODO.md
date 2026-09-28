@@ -7,6 +7,8 @@ when hover over POI and move mouse into overlaid UI the tooltip remains active u
 
 After a pan at a fixed zoom, the orbit pivot keeps the old ground height, so orbiting can take the camera underground until the next zoom. Prompt: [docs/camera-pivot-and-zoom-prompt.md](docs/camera-pivot-and-zoom-prompt.md).
 
+Automatic detail adjustment coarsens the map to its lowest detail: one short interval between frames sets its measured goal to 2 ms. Off by default until fixed. Report: [bugs/auto-detail-measured-goal.md](bugs/auto-detail-measured-goal.md).
+
 The dropdown on the tab strip draws behind the globe and the panorama viewer once many tabs push it out of the tab window. Fixed as part of [docs/panorama-mode-prompt.md](docs/panorama-mode-prompt.md).
 
 features
