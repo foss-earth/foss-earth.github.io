@@ -133,6 +133,8 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   };
   const onPointerDown = (event: PointerEvent): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // A press during an entry or exit cuts it short, and is not also a click.
+    if (current && current.status.phase !== "overview") return;
     presses.set(event.pointerId, { x: event.clientX, y: event.clientY, moved: false });
     if (presses.size > 1) multiTouch = true;
   };

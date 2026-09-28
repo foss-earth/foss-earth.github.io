@@ -152,14 +152,11 @@ flights' ends against `handoffReady`, the placed camera's pose with roll on
 Babylon's own camera, and the exit's source.
 
 A flight cut short hands off nothing between renderers: the image is not on
-screen, only the globe camera and the sphere. Its braking starts from the
-flight's last frame, with that frame's pose and sphere, and ends as the globe
-camera's orbit with the same eye, look, level up and field of view as the
-braking's last frame, and with the orb at its own size and without overlay,
-which is how the orb draws once the sphere is gone. A press or another
-navigation that stops the braking early settles the orbit at once from where
-it is; the field of view, roll and a tilt beyond the globe's limits then jump
-by what the braking had left of them.
+screen, only the globe camera and the sphere. The globe camera takes over with
+the eye and look of the flight's last frame, and the sphere of that frame
+turns into the orb as the glide slows. What the globe camera cannot hold jumps
+at the handover: the roll to level, and a tilt beyond its limits to the
+nearest inside. The field of view does not jump; it eases back to the globe's.
 
 ## Position and orientation meaning
 
