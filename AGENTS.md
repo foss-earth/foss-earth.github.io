@@ -34,6 +34,21 @@
   nothing floats in a screen corner.
 - Spec and reasons: [docs/ui-layout.md](docs/ui-layout.md).
 
+## Camera motion
+
+- The camera is a physical thing with mass and momentum. It never jumps: an
+  animation cut short stays where it got to, never snapping to its start or end.
+- Momentum carries across every handover: whoever takes the camera over keeps its
+  velocity and turn and slows it with the one glide, `camera.inertiaDecay`. Never
+  a second decay, a fixed ease-out, or a dead stop.
+- The person's input acts at once and keeps acting: the gesture that interrupts
+  goes on moving the camera. Nothing holds the camera while input waits.
+- Only the person's input is input: a trackpad's momentum never interrupts
+  anything, and a gesture from before a handover does not follow the camera over.
+- Limits bend rather than snap, automatic corrections move at a bounded rate, a
+  press that stops motion is not also a click, and reduced motion fades instead.
+- Spec, reasons, where it is built and a checklist: [docs/camera-motion.md](docs/camera-motion.md).
+
 ## Settings
 
 - The user decides how their machine's compute, memory and bandwidth are spent,

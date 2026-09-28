@@ -1180,7 +1180,8 @@ and the runtime's `placeNavigationCamera` moves the globe camera (§5).
   a flick (`glideNavigationCamera`, §5). The input that cut it short goes on
   moving the camera: a wheel gesture begun during the flight is the globe's
   from its next event, and a mouse press becomes a drag from where the pointer
-  is. The entry is cancelled; the exit completes.
+  is. The entry is cancelled; the exit completes. The rules this follows,
+  for every camera, are in [Camera motion](../camera-motion.md).
   - **The orbit handed back.** The eye and look stay exactly where the flight
     had them, orbiting the point where the line of sight comes down to the
     orbit target's height near the orb, so ground following has nothing to

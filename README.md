@@ -156,6 +156,7 @@ Early. There are no releases yet, and the package API changes as FOSS Earth and 
 | [Airport locations](docs/airport-locations.md) | Airport and runway lookup |
 | [Compass height model](docs/compass-height-model.md) | Camera anchor height |
 | [UI layout](docs/ui-layout.md) | How controls, tabs and docks are laid out |
+| [Camera motion](docs/camera-motion.md) | How the camera moves: mass, momentum, and input that always acts |
 | [Map detail implementation spec](docs/proposals/map-detail-control.md) | Projected raster imagery, shared detail controls and 0sfs migration |
 | [Design proposals](docs/proposals/) | Architecture notes |
 
