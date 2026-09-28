@@ -13,6 +13,8 @@ const LINKED_PARAMETER_IDS = ["map.source.basemap", "map.source.elevation"];
 
 let app: SettingsRegistry | null = null;
 let stops: (() => void)[] = [];
+/** The text written to the query for each linked parameter this session. */
+const written = new Map<string, string>();
 
 /** Every query name a parameter is read from, the one written back first. */
 function queryNames(id: string): string[] {
@@ -50,26 +52,34 @@ function unchosen(state: ParameterState): boolean {
   return state.provenance === "default" || state.provenance === "host-default" || state.provenance === "host";
 }
 
+/** Gives the query every value written this session, under the name FOSS Earth has always read. */
+function writeLinked(): void {
+  editQuery(params => {
+    for (const [id, text] of written) {
+      const [name, ...older] = queryNames(id);
+      for (const other of older) params.delete(other);
+      params.set(name, text);
+    }
+  });
+}
+
 /**
- * Writes the value in use into the query under the name FOSS Earth has always
- * read, whenever it changes and whichever control changed it, choosing a
- * default included. When only a default moved, as a host's does at startup,
- * the query follows only if it already names the parameter. A host-forced
- * value leaves the query alone.
+ * Writes the value in use into the query whenever it changes and whichever
+ * control changed it, choosing a default included. When only a default moved,
+ * as a host's does at startup, the query follows only if it already names the
+ * parameter. A host-forced value leaves the query alone.
  */
 function followInQuery(registry: SettingsRegistry, id: string): () => void {
-  const [name, ...older] = queryNames(id);
   let last = registry.inspect(id);
   return registry.watch(id, value => {
     const state = registry.inspect(id);
     const defaultsOnly = unchosen(last) && unchosen(state);
     last = state;
     if (state.provenance === "host") return;
-    editQuery(params => {
-      if (defaultsOnly && !queryNames(id).some(named => params.has(named))) return;
-      for (const other of older) params.delete(other);
-      params.set(name, stringifyValue(value));
-    });
+    const query = new URLSearchParams(window.location.search);
+    if (defaultsOnly && !queryNames(id).some(name => query.has(name))) return;
+    written.set(id, stringifyValue(value));
+    writeLinked();
   });
 }
 
@@ -95,6 +105,10 @@ export function getAppSettings(): SettingsRegistry {
   if (typeof window !== "undefined") {
     saveSecretsFromQuery(registry);
     stops = LINKED_PARAMETER_IDS.map(id => followInQuery(registry, id));
+    // Back and Forward, as scenes use them, bring back an entry's older query;
+    // settings are not history, so the query is given the values in use again.
+    window.addEventListener("popstate", writeLinked);
+    stops.push(() => window.removeEventListener("popstate", writeLinked));
     // Another tab saved: follow it, as the theme always has.
     const onStorage = (event: StorageEvent): void => {
       if (event.key === SETTINGS_STORAGE_KEY) registry.reload();
@@ -110,5 +124,6 @@ export function getAppSettings(): SettingsRegistry {
 export function resetAppSettings(): void {
   for (const stop of stops) stop();
   stops = [];
+  written.clear();
   app = null;
 }

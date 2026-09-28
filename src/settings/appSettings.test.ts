@@ -58,6 +58,19 @@ describe("the app registry and the address bar", () => {
     expect(window.location.search).toBe("?scene=campus&mapSource=google");
   });
 
+  it("gives the query the values in use again after Back or Forward, keeping the entry's state", () => {
+    window.history.replaceState(null, "", "/?scene=campus");
+    const settings = getAppSettings();
+    settings.set("map.source.basemap", "osm-standard");
+    // Back to an entry a scene pushed before the choice: its URL comes back with it.
+    const entry = { fossEarthScene: { destination: "northrop" } };
+    window.history.replaceState(entry, "", "/?scene=campus&mapSource=usgs-topo");
+    window.dispatchEvent(new PopStateEvent("popstate", { state: entry }));
+
+    expect(window.location.search).toBe("?scene=campus&mapSource=osm-standard");
+    expect(window.history.state).toEqual(entry);
+  });
+
   it("leaves the query alone while a host forces the basemap", () => {
     window.history.replaceState(null, "", "/?mapSource=usgs-topo");
     const release = getAppSettings().force("map.source.basemap", "osm-standard", "a test");

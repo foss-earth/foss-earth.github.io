@@ -135,7 +135,8 @@ did for `osfs.world-detail-target`.
   control, so a link or a reload opens the same map. A default that moves by
   itself, such as the Google default a key sets at startup, is written only
   when the URL already names the parameter; a host-forced value is never
-  written.
+  written. Back and Forward, which scenes use, bring back an entry's older
+  URL; settings are not history, so the values in use are written to it again.
 
 ## Controls
 
