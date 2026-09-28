@@ -274,7 +274,7 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
   const root = createRoot(host);
   const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
   const [mapTab, scenesTab, panoramaTab, settingsTab] = ["Basemaps", "Scenes list", "Photograph", "Looking"].map(element);
-  let snapshot: PanoramaTabsSnapshot = { title: null };
+  let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
   const listeners = new Set<() => void>();
   const leave = vi.fn();
   const panoramaTabs: PanoramaTabs = {
@@ -282,7 +282,7 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
     getSnapshot: () => snapshot,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
-  const enter = (title: string | null) => act(async () => { snapshot = { title }; for (const listener of listeners) listener(); });
+  const enter = (title: string | null) => act(async () => { snapshot = { title, onScreen: title !== null }; for (const listener of listeners) listener(); });
   const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
   await act(async () => root.render(<WindowOverlay
     getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
@@ -336,5 +336,75 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
     expect(leave).toHaveBeenCalledOnce();
     await enter(null);
     expect(side("left")).toEqual(["Map", "Location"]);
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("opens a panorama's tab minimized while the camera flies in, and shows it once the panorama is on screen", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
+  const [mapTab, scenesTab, panoramaTab, settingsTab] = ["Basemaps", "Scenes list", "Photograph", "Looking"].map(element);
+  let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
+  const listeners = new Set<() => void>();
+  const panoramaTabs: PanoramaTabs = {
+    panorama: panoramaTab, settings: settingsTab, leave() {}, destroy() {},
+    getSnapshot: () => snapshot,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+  const show = (next: PanoramaTabsSnapshot) => act(async () => { snapshot = next; for (const listener of listeners) listener(); });
+  const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    mapTab={mapTab}
+    scenesTab={scenesTab}
+    panoramaTabs={panoramaTabs}
+    overlayApiRef={overlayApiRef}
+  />));
+  const left = () => host.querySelector<HTMLElement>('[data-side="left"]')!;
+  const selected = () => host.querySelector('[data-side="left"] .foss-earth-tab-shell-selected .foss-earth-tab-button')?.textContent;
+  const flying = { title: "360: Northrop Mall", onScreen: false };
+  const inside = { title: "360: Northrop Mall", onScreen: true };
+  const outside = { title: null, onScreen: false };
+  try {
+    await act(async () => overlayApiRef.current!.toggleTab("map"));
+    expect(left().dataset.collapsed).toBe("false");
+
+    // Flying in: the tab is there and selected, its panel minimized; on screen, it shows.
+    await show(flying);
+    expect(selected()).toBe("360: Northrop Mall");
+    expect(left().dataset.collapsed).toBe("true");
+    await show(inside);
+    expect(left().dataset.collapsed).toBe("false");
+    // Following a link keeps it showing.
+    await show({ title: "360: Walter Library", onScreen: true });
+    expect(left().dataset.collapsed).toBe("false");
+    await show(outside);
+    expect(selected()).toBe("Map");
+    expect(left().dataset.collapsed).toBe("false");
+
+    // A flight cut short: the panel comes back as it was, not minimized.
+    await show(flying);
+    expect(left().dataset.collapsed).toBe("true");
+    await show(outside);
+    expect(selected()).toBe("Map");
+    expect(left().dataset.collapsed).toBe("false");
+
+    // Arriving in one step, with no flight: it shows at once.
+    await show(inside);
+    expect(left().dataset.collapsed).toBe("false");
+    await show(outside);
+
+    // What the person chose during the flight stands.
+    await show(flying);
+    await act(async () => overlayApiRef.current!.openOrSelectTab("scenes"));
+    expect(selected()).toBe("Scenes");
+    await show(inside);
+    expect(selected()).toBe("Scenes");
+    expect(left().dataset.collapsed).toBe("false");
   } finally { await act(async () => root.unmount()); }
 });

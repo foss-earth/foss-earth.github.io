@@ -37,7 +37,7 @@ type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 const HIDDEN_IN_PANORAMA: ReadonlySet<string> = new Set(["location", "map"]);
 /** Tabs that exist only inside a panorama: its own, and 360 image settings. */
 const PANORAMA_ONLY: ReadonlySet<string> = new Set(["panorama", "panorama-settings"]);
-const OUTSIDE_PANORAMA: PanoramaTabsSnapshot = { title: null };
+const OUTSIDE_PANORAMA: PanoramaTabsSnapshot = { title: null, onScreen: false };
 /** Enough of the panorama tab's definition to open it; its label comes from the render. */
 const PANORAMA_TAB_DEFINITION: readonly WindowTabDefinition<"panorama">[] = [{ id: "panorama", label: "360" }];
 
@@ -83,7 +83,8 @@ export interface WindowOverlayProps<TabId extends string = never> {
   scenesTab?: HTMLElement;
   /**
    * A panorama's tabs, from `createPanoramaTabs`. Entering a panorama opens its
-   * tab, titled "360: <title>", and closing that tab leaves it. Inside one the
+   * tab, titled "360: <title>", minimized while the camera flies in and shown
+   * once the panorama is on screen; closing that tab leaves it. Inside one the
    * tabs about the map are hidden and 360 image settings is offered; each
    * comes back where it was when the context returns.
    */
@@ -262,7 +263,9 @@ export function WindowOverlay<TabId extends string = never>({
     panorama: HiddenTab<OverlayTabId>[];
     /** The slot the panorama's tab opened in, and whether it was collapsed before. */
     opened: { slotId: WindowSlotId; collapsed: boolean } | null;
-  }>({ globe: [], panorama: [], opened: null });
+    /** The panorama's tab opened minimized, and shows when the panorama is on screen. */
+    arriving: boolean;
+  }>({ globe: [], panorama: [], opened: null, arriving: false });
   const contextShown = useRef(false);
   useLayoutEffect(() => {
     if (contextShown.current === inPanorama) return;
@@ -276,9 +279,13 @@ export function WindowOverlay<TabId extends string = never>({
       memory.panorama = [];
       const slotId = slotIdForOpenTab(restored, "panorama") ?? preferred;
       memory.opened = { slotId, collapsed: restored[slotId].collapsed };
-      workspace.setState(openOrSelectTabInWorkspace(restored, "panorama", preferred, PANORAMA_TAB_DEFINITION as readonly WindowTabDefinition<OverlayTabId>[]));
+      const opened = openOrSelectTabInWorkspace(restored, "panorama", preferred, PANORAMA_TAB_DEFINITION as readonly WindowTabDefinition<OverlayTabId>[]);
+      // While the camera flies in, the panel stays out of the way of the map it flies over.
+      memory.arriving = !panorama.onScreen;
+      workspace.setState(memory.arriving ? setWorkspaceSlotCollapsed(opened, slotId, true) : opened);
       return;
     }
+    memory.arriving = false;
     const hidden = hideWorkspaceTabs(workspace.state, PANORAMA_ONLY as ReadonlySet<OverlayTabId>);
     memory.panorama = hidden.hidden;
     let restored = restoreWorkspaceTabs(hidden.state, memory.globe, primaryAvailable);
@@ -290,7 +297,19 @@ export function WindowOverlay<TabId extends string = never>({
       restored = setWorkspaceSlotCollapsed(restored, opened.slotId, opened.collapsed);
     }
     workspace.setState(restored);
-  }, [inPanorama, primaryAvailable, workspace]);
+  }, [inPanorama, panorama.onScreen, primaryAvailable, workspace]);
+
+  // The panorama on screen: its tab shows, unless the person chose otherwise
+  // meanwhile, by showing it themselves or picking another tab in its panel.
+  useLayoutEffect(() => {
+    const memory = contextMemory.current;
+    if (!inPanorama || !panorama.onScreen || !memory.arriving) return;
+    memory.arriving = false;
+    const slotId = slotIdForOpenTab(workspace.state, "panorama");
+    if (slotId && workspace.state[slotId].activeTab === "panorama" && workspace.state[slotId].collapsed) {
+      workspace.setState(setWorkspaceSlotCollapsed(workspace.state, slotId, false));
+    }
+  }, [inPanorama, panorama.onScreen, workspace]);
 
   // Closing the panorama's tab leaves the panorama, as Escape does.
   const beforeCloseTab = (tabId: OverlayTabId): boolean | void => {

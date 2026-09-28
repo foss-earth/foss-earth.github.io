@@ -1218,6 +1218,14 @@ and the runtime's `placeNavigationCamera` moves the globe camera (§5).
   navigation back, and a panorama's look after an entry, so neither the image's
   glide pans the map nor the map's turns the image. A gesture that began during
   a flight and cut it short is the exception above: it goes on.
+- **The panel during a flight (2026-09-28).** The user asked for the
+  panorama's tab to start minimized while the flight runs, and to show only
+  once in the image. Entering opens the tab selected with its panel minimized,
+  out of the way of the map the camera flies over, and the panel shows when the
+  panorama is on screen, unless the person showed it or picked another tab in
+  that panel meanwhile ([UI layout](../ui-layout.md#a-panoramas-tabs)). The
+  same holds through the entry reveal when the flight is off. Following a link
+  leaves the panel as it is, and a flight cut short puts it back as it was.
 - **Off, reduced motion, or a runtime that cannot move its camera:** the entry
   reveal (`expandDuration`) and the exit fade, as before.
 - **The handoffs** are in the [visual contract](../validation/panorama-visual-contract.md#flights-and-the-exit-handoff).

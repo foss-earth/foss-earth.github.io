@@ -143,7 +143,11 @@ Every setting lives in exactly one place, a section of a tab.
 
 A panorama has no controls floating over it. Entering one opens a tab titled
 "360: <title>" (`createPanoramaTabs` in `src/shell/panoramaTabs.ts`, given to
-`WindowOverlay` as `panoramaTabs`), selected and in front:
+`WindowOverlay` as `panoramaTabs`), selected and in front. While the camera
+flies in, or the entry fades in, its panel is minimized, out of the way of the
+map the camera flies over. It shows once the panorama is on screen (`onScreen`
+in the tabs' snapshot), unless the person showed it or picked another tab in
+that panel meanwhile. The tab holds:
 
 - **Photograph:** its title and description, the groups it is in, where it was
   taken and to what accuracy, its pose and whether its north is set, and its
