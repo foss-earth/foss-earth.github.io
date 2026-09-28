@@ -9,7 +9,7 @@
 import { DEFAULT_INPUT_RATES } from "../input/inputRates";
 import type { SettingsRegistry } from "../settings/registry";
 import type { SceneDiagnostic } from "./format";
-import { loadScene, type LoadSceneOptions, type SceneHandle, type SceneRuntime, type SceneStatus } from "./loadScene";
+import { loadScene, type LoadSceneOptions, type SceneFailure, type SceneHandle, type SceneRuntime, type SceneStatus } from "./loadScene";
 
 export interface SceneExample {
   /** Stable and shareable: `?scene=<id>`. */
@@ -34,6 +34,8 @@ export interface SceneController {
   load(input: string, options?: { exampleId?: boolean }): Promise<boolean>;
   unload(): void;
   subscribe(listener: (state: SceneControllerState) => void): () => void;
+  /** Each failure as it happens, the scene file's included, for the host's log. */
+  onFailure(listener: (failure: SceneFailure) => void): () => void;
   destroy(): void;
 }
 
@@ -53,10 +55,25 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   let offStatus: (() => void) | null = null;
   let state: SceneControllerState = { loading: null, errors: [], status: null };
   const listeners = new Set<(state: SceneControllerState) => void>();
+  const failureListeners = new Set<(failure: SceneFailure) => void>();
   let loadCounter = 0;
   const set = (next: Partial<SceneControllerState>): void => {
     state = { ...state, ...next };
     for (const listener of [...listeners]) listener(state);
+  };
+  const fail = (failure: SceneFailure): void => {
+    options.loadOptions?.onFailure?.(failure);
+    for (const listener of [...failureListeners]) listener(failure);
+  };
+  /** The first problem, and how many more the Scenes tab lists. */
+  const failScene = (url: string, errors: readonly SceneDiagnostic[]): void => {
+    if (errors.length === 0) return;
+    const [first] = errors;
+    const cause = first.path === "$" ? first.message : `${first.path}: ${first.message}`;
+    const more = errors.length > 1 ? ` Scenes → Content lists ${errors.length - 1} more.` : "";
+    // A fetch's cause names the URL already.
+    const scene = cause.includes(url) ? "The scene" : `The scene ${url}`;
+    fail({ kind: "scene", panorama: null, cause, message: `${scene} could not be loaded: ${/[.!?]$/.test(cause) ? cause : `${cause}.`}${more}` });
   };
 
   const resolveUrl = (input: string, exampleId: boolean): string | null => {
@@ -68,7 +85,9 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   async function load(input: string, loadOptions: { exampleId?: boolean } = {}): Promise<boolean> {
     const url = resolveUrl(input.trim(), loadOptions.exampleId === true);
     if (!url) {
-      set({ errors: [{ path: "$", message: `There is no example scene "${input}".` }] });
+      const errors = [{ path: "$", message: `There is no example scene "${input}".` }];
+      set({ errors });
+      failScene(input, errors);
       return false;
     }
     const token = ++loadCounter;
@@ -77,15 +96,17 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       const replaced = await current.replace(url);
       if (token !== loadCounter) return false;
       set({ loading: null, errors: replaced.ok ? [] : replaced.errors });
+      if (!replaced.ok) failScene(url, replaced.errors);
       return replaced.ok;
     }
-    const result = await loadScene(runtime, url, { settings, ...options.loadOptions });
+    const result = await loadScene(runtime, url, { settings, ...options.loadOptions, onFailure: fail });
     if (token !== loadCounter) {
       if (result.ok) result.handle.dispose();
       return false;
     }
     if (!result.ok) {
       set({ loading: null, errors: result.errors });
+      failScene(url, result.errors);
       return false;
     }
     current = result.handle;
@@ -162,6 +183,10 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       listener(state);
       return () => { listeners.delete(listener); };
     },
+    onFailure(listener) {
+      failureListeners.add(listener);
+      return () => { failureListeners.delete(listener); };
+    },
     destroy() {
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -171,6 +196,7 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       if (pointerCursor) canvas.style.cursor = "";
       unload();
       listeners.clear();
+      failureListeners.clear();
     },
   };
 }

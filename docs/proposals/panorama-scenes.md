@@ -281,7 +281,8 @@ load new previews progressively within caps, without duplicating every texture. 
 the previous generation, release reference-counted resources and ignore stale
 arrivals. Validation/pre-swap failure preserves the previous scene. Post-swap media
 failures leave affected entities unavailable in the list, without an unbudgeted
-rollback copy. Disposal is idempotent and releases
+rollback copy, and each is logged as it happens (`SceneController.onFailure`,
+printed by `connectSceneLog`). Disposal is idempotent and releases
 listeners, camera ownership, GPU resources, decoded images, requests and blob URLs.
 
 ## 3. Visual contract and corrected evidence

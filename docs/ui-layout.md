@@ -150,9 +150,16 @@ A panorama has no controls floating over it. Entering one opens a tab titled
   credit and licence with a link to the source.
 - **Links:** a button for each link, as in the view.
 - **Image detail:** which image is on screen, why no larger one is (the detail
-  asked for, the device's texture limit or a memory budget, each named), the
-  images the panorama offers, and `scene.panorama.immersionWidth`, whose one home
-  this is.
+  asked for, the device's texture limit or a memory budget, each named, or a
+  load that failed), the images the panorama offers, and
+  `scene.panorama.immersionWidth`, whose one home this is.
+
+A failure also goes to the log as an error line, since a tab can be closed: the
+scene file, entering a panorama, a larger image of the one on screen, and orb
+previews. Previews fail together when their server stops, so they share one
+line that counts the panoramas and moves to the top with each new failure.
+Cancelled work and a larger image held back by a limit the user set are not
+failures and are not logged.
 
 Following a link retitles the same tab. Closing it leaves the panorama, exactly
 as Escape does; while a panorama is still being entered, closing it cancels.

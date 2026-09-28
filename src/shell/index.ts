@@ -57,6 +57,7 @@ export { createRendererPanel, getRendererLabel, type RendererPanelHandle, type R
 export { createFrameBudgetPanel, type FrameBudgetPanelHandle, type FrameBudgetPanelOptions } from "./frameBudgetPanel";
 export { createSceneHotspots, createSceneHud, createScenesPanel, type SceneHudHandle, type ScenesPanelHandle } from "./scenesPanel";
 export { createPanoramaTabs, type PanoramaTabs, type PanoramaTabsOptions, type PanoramaTabsSnapshot } from "./panoramaTabs";
+export { connectSceneLog } from "./sceneLog";
 export { PANEL_SECTIONS_OPEN_STORAGE_KEY } from "./panelSectionsOpen";
 export { trackViewportInsets, VIEWPORT_INSET_BOTTOM_PROPERTY, type ViewportInsetsHandle } from "./viewportInsets";
 export { createInputModeHud, type InputModeHudOptions, type InputModeHudHandle } from "../hud/inputModeHud";
