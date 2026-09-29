@@ -56,9 +56,10 @@ function entryState(entry: SceneEntryStatus, status: SceneStatus): string {
   if (!entry.supported) return "Not shown here";
   if (status.active === entry.id) return "Entered";
   if (status.target === entry.id) return PHASE_TEXT[status.phase];
-  if (entry.preview === "failed") return "Unavailable";
-  if (entry.placement === "pending") return "Waiting for the ground";
-  if (entry.preview === "loading" || entry.preview === "idle") return "Loading";
+  if (entry.preview === "failed") return "Preview unavailable";
+  if (entry.preview === "idle") return "Preview queued";
+  if (entry.preview === "loading") return "Loading preview";
+  if (entry.placement === "pending") return "Preview ready · waiting for the ground";
   return "Ready";
 }
 
@@ -115,6 +116,9 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
   }
 
   function renderScene(status: SceneStatus | null): void {
+    const expanded = new Set([...sceneBlock.querySelectorAll<HTMLDetailsElement>("details[open][data-panorama]")].map(item => item.dataset.panorama));
+    const focused = document.activeElement instanceof HTMLButtonElement && sceneBlock.contains(document.activeElement)
+      ? document.activeElement.dataset.panorama : undefined;
     sceneBlock.replaceChildren();
     credits.replaceChildren();
     if (!status || status.phase === "disposed") {
@@ -124,6 +128,12 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     }
     const heading = row(status.title);
     heading.append(note(`${PHASE_TEXT[status.phase]}. ${status.entries.length} ${status.entries.length === 1 ? "entity" : "entities"}, revision ${status.revision}.`));
+    const supported = status.entries.filter(entry => entry.supported);
+    if (supported.length > 0) {
+      const ready = supported.filter(entry => entry.preview === "ready").length;
+      const failed = supported.filter(entry => entry.preview === "failed").length;
+      heading.append(note(`${ready} of ${supported.length} panorama previews ready${failed ? `; ${failed} unavailable` : ""}. Panoramas appear as each preview arrives. Larger images load when you enter a panorama.`));
+    }
     if (!status.renderingAvailable) heading.append(note(status.unavailableReason ?? "Panoramas cannot be drawn here."));
     if (status.overview === "pending") {
       heading.append(note("The overview waits for the map to show the ground at the scene's place."));
@@ -138,8 +148,11 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     const list = row("Panoramas");
     for (const entry of status.entries) {
       const item = el("details", "foss-earth-scene-entry");
+      item.dataset.panorama = entry.id;
+      item.open = expanded.has(entry.id);
       const summary = el("summary", "foss-earth-scene-entry__summary");
       const enter = button(entry.title, () => { void controller.handle()?.enter(entry.id); }, entry.supported ? `Enter ${entry.title}` : entry.message ?? undefined);
+      enter.dataset.panorama = entry.id;
       enter.disabled = !entry.supported || !status.renderingAvailable || status.active === entry.id;
       summary.append(enter, el("span", "foss-earth-scene-entry__state", entryState(entry, status)));
       item.append(summary);
@@ -147,6 +160,7 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
       list.append(item);
     }
     sceneBlock.append(list);
+    if (focused) [...list.querySelectorAll<HTMLButtonElement>("button[data-panorama]")].find(each => each.dataset.panorama === focused)?.focus({ preventScroll: true });
 
     for (const group of status.groups) {
       const groupRow = row(group.title);

@@ -9,7 +9,7 @@
 import { DEFAULT_INPUT_RATES } from "../input/inputRates";
 import type { SettingsRegistry } from "../settings/registry";
 import type { SceneDiagnostic } from "./format";
-import { loadScene, type LoadSceneOptions, type SceneFailure, type SceneHandle, type SceneRuntime, type SceneStatus } from "./loadScene";
+import { loadScene, type LoadSceneOptions, type SceneFailure, type SceneHandle, type SceneProgress, type SceneRuntime, type SceneStatus } from "./loadScene";
 
 export interface SceneExample {
   /** Stable and shareable: `?scene=<id>`. */
@@ -36,6 +36,8 @@ export interface SceneController {
   subscribe(listener: (state: SceneControllerState) => void): () => void;
   /** Each failure as it happens, the scene file's included, for the host's log. */
   onFailure(listener: (failure: SceneFailure) => void): () => void;
+  /** Manifest and image bytes as they arrive; completed downloads stop updating. */
+  onProgress(listener: (progress: SceneProgress) => void): () => void;
   destroy(): void;
 }
 
@@ -56,6 +58,9 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   let state: SceneControllerState = { loading: null, errors: [], status: null };
   const listeners = new Set<(state: SceneControllerState) => void>();
   const failureListeners = new Set<(failure: SceneFailure) => void>();
+  const progressListeners = new Set<(progress: SceneProgress) => void>();
+  let progressOwner: object | null = null;
+  let pendingLoad: AbortController | null = null;
   let loadCounter = 0;
   const set = (next: Partial<SceneControllerState>): void => {
     state = { ...state, ...next };
@@ -64,6 +69,13 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
   const fail = (failure: SceneFailure): void => {
     options.loadOptions?.onFailure?.(failure);
     for (const listener of [...failureListeners]) listener(failure);
+  };
+  const progress = (next: SceneProgress, owner: object): void => {
+    // A superseded fetch may still finish; its bytes do not belong to the
+    // newly requested scene. A handle keeps its owner across replacements.
+    if (owner !== progressOwner || (next.kind === "manifest" && next.id !== state.loading)) return;
+    options.loadOptions?.onProgress?.(next);
+    for (const listener of [...progressListeners]) listener(next);
   };
   /** The first problem, and how many more the Scenes tab lists. */
   const failScene = (url: string, errors: readonly SceneDiagnostic[]): void => {
@@ -91,32 +103,45 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       return false;
     }
     const token = ++loadCounter;
+    pendingLoad?.abort();
+    const request = new AbortController();
+    pendingLoad = request;
+    const signal = options.loadOptions?.signal ? AbortSignal.any([request.signal, options.loadOptions.signal]) : request.signal;
     set({ loading: url, errors: [] });
-    if (current) {
-      const replaced = await current.replace(url);
-      if (token !== loadCounter) return false;
-      set({ loading: null, errors: replaced.ok ? [] : replaced.errors });
-      if (!replaced.ok) failScene(url, replaced.errors);
-      return replaced.ok;
+    try {
+      if (current) {
+        const replaced = await current.replace(url, { signal });
+        if (token !== loadCounter) return false;
+        set({ loading: null, errors: replaced.ok ? [] : replaced.errors });
+        if (!replaced.ok) failScene(url, replaced.errors);
+        return replaced.ok;
+      }
+      const owner = {};
+      progressOwner = owner;
+      const result = await loadScene(runtime, url, { settings, ...options.loadOptions, signal, onFailure: fail, onProgress: next => progress(next, owner) });
+      if (token !== loadCounter) {
+        if (result.ok) result.handle.dispose();
+        return false;
+      }
+      if (!result.ok) {
+        set({ loading: null, errors: result.errors });
+        failScene(url, result.errors);
+        return false;
+      }
+      current = result.handle;
+      offStatus = current.subscribe(status => set({ status }));
+      set({ loading: null, errors: [] });
+      return true;
+    } finally {
+      if (pendingLoad === request) pendingLoad = null;
     }
-    const result = await loadScene(runtime, url, { settings, ...options.loadOptions, onFailure: fail });
-    if (token !== loadCounter) {
-      if (result.ok) result.handle.dispose();
-      return false;
-    }
-    if (!result.ok) {
-      set({ loading: null, errors: result.errors });
-      failScene(url, result.errors);
-      return false;
-    }
-    current = result.handle;
-    offStatus = current.subscribe(status => set({ status }));
-    set({ loading: null, errors: [] });
-    return true;
   }
 
   function unload(): void {
     loadCounter += 1;
+    progressOwner = null;
+    pendingLoad?.abort();
+    pendingLoad = null;
     offStatus?.();
     offStatus = null;
     current?.dispose();
@@ -189,6 +214,10 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       failureListeners.add(listener);
       return () => { failureListeners.delete(listener); };
     },
+    onProgress(listener) {
+      progressListeners.add(listener);
+      return () => { progressListeners.delete(listener); };
+    },
     destroy() {
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -199,6 +228,7 @@ export function createSceneController(options: SceneControllerOptions): SceneCon
       unload();
       listeners.clear();
       failureListeners.clear();
+      progressListeners.clear();
     },
   };
 }

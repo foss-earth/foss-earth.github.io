@@ -36,6 +36,7 @@ export {
   type EnterOptions,
   type ImmersionDetailStatus,
   type SceneFailure,
+  type SceneProgress,
   type LoadSceneOptions,
   type LoadSceneResult,
   type SceneActionResult,

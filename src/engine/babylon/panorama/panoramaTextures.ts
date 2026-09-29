@@ -1,5 +1,6 @@
 /**
- * Panorama source textures on WebGPU: rgba8unorm-srgb, complete mip chains,
+ * Panorama source textures: dispatches to the WebGL uploader when needed.
+ * The WebGPU implementation below uses rgba8unorm-srgb, complete mip chains,
  * uploaded from decoded images in row chunks within a per-frame and an
  * outstanding byte allowance (`scene.panorama.uploadMiBPerFrame`,
  * `scene.panorama.uploadOutstandingMiB`).
@@ -13,6 +14,7 @@
 import { BaseTexture, Constants, InternalTexture, InternalTextureSource, type Scene, type WebGPUEngine } from "@babylonjs/core";
 import { GPU_LAYER_SOURCE_FACES, type CubeFaceName } from "../../../scenes/panoramaMath";
 import { mipLevelCount, rgba8Bytes } from "../../../scenes/budget";
+import { createWebGlPanoramaUploader } from "./panoramaWebGlTextures";
 
 /** The WebGPU objects Babylon keeps behind its engine and textures. */
 interface WebGpuInternals {
@@ -127,6 +129,7 @@ function allocate(scene: Scene, kind: "cube" | "equirectangular", width: number,
 }
 
 export function createPanoramaUploader(scene: Scene, initial: PanoramaUploaderLimits, requestRender: () => void): PanoramaUploader {
+  if (!isWebGpuEngine(scene.getEngine())) return createWebGlPanoramaUploader(scene, initial, requestRender);
   const engine = scene.getEngine() as unknown as WebGPUEngine & WebGpuInternals;
   let limits = initial;
   const queue: UploadJob[] = [];
