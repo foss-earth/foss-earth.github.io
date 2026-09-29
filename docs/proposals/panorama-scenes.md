@@ -12,6 +12,11 @@ This consolidates the [initial review](../360-images-virtual-tour-review.md),
 preliminary scaffold. Historical research is evidence, not a competing specification.
 No production panorama feature or GPU/device qualification is claimed.
 
+The [2026-09-28 WebGL performance review](../webgl-panorama-performance-review.md)
+records the subsequent low-end-device findings, panorama-first priorities, and
+optimization candidates with their UX costs. It is a review for selection, not an
+implemented optimization pass or a replacement for this specification.
+
 **Requirements** below come from the user's instructions. **Proposed decisions**
 are the recommended implementation contract, open to review. **Evidence** is
 exercised CPU behavior or inspected current code. **Provisional defaults** are
