@@ -1,5 +1,6 @@
-import { FOSS_EARTH_MIGRATIONS, FOSS_EARTH_PARAMETERS, FOSS_EARTH_SECTION_TITLES, FOSS_EARTH_URL_NAMES, fossEarthUrlAliases } from "./catalogue";
+import { FOSS_EARTH_MIGRATIONS, FOSS_EARTH_PARAMETERS, FOSS_EARTH_SECTION_TITLES, FOSS_EARTH_URL_NAMES, fossEarthUrlAliases, RENDERER_EXPERIMENT_IDS } from "./catalogue";
 import { readDeviceContext } from "./deviceContext";
+import { linkParameterGroup } from "./parameterGroup";
 import { BUILT_IN_PRESETS } from "./presets";
 import { createSettingsRegistry, SETTINGS_STORAGE_KEY, URL_PARAMETER_PREFIX, type SettingsRegistry } from "./registry";
 import type { ParameterState } from "./types";
@@ -102,9 +103,11 @@ export function getAppSettings(): SettingsRegistry {
   for (const [tab, section, title] of FOSS_EARTH_SECTION_TITLES) registry.setSectionTitle(tab, section, title);
   registry.migrateLegacy(FOSS_EARTH_MIGRATIONS);
   registry.registerPresets(BUILT_IN_PRESETS);
+  const { all: allExperiments, ...experiments } = RENDERER_EXPERIMENT_IDS;
+  stops = [linkParameterGroup(registry, allExperiments, Object.values(experiments))];
   if (typeof window !== "undefined") {
     saveSecretsFromQuery(registry);
-    stops = LINKED_PARAMETER_IDS.map(id => followInQuery(registry, id));
+    stops.push(...LINKED_PARAMETER_IDS.map(id => followInQuery(registry, id)));
     // Back and Forward, as scenes use them, bring back an entry's older query;
     // settings are not history, so the query is given the values in use again.
     window.addEventListener("popstate", writeLinked);
