@@ -23,6 +23,9 @@
     "./smoothElevation": "./src/terrain/smoothElevation.ts",
     "./style.css": "./src/styles/globe.css"
   },
+  "bin": {
+    "foss-earth-qr": "scripts/lan-qr.mjs"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -31,6 +34,7 @@
     "deploy:gh-pages": "npm run build && gh-pages -d dist",
     "lint": "eslint . --cache --cache-strategy content --cache-location node_modules/.cache/eslint/",
     "preview": "vite preview",
+    "qr": "node scripts/lan-qr.mjs",
     "test": "vitest run --passWithNoTests",
     "test:changed": "vitest run --passWithNoTests --changed",
     "test:watch": "vitest"
@@ -57,6 +61,7 @@
     "globals": "^17.4.0",
     "jpeg-js": "^0.4.4",
     "jsdom": "^29.1.1",
+    "qrcode": "^1.5.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",

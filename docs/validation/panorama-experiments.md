@@ -76,7 +76,9 @@ are for.
 ## Human validation
 
 On each device, open the tour once without and once with `?set.renderer.experiments.all=1`.
-Then, for anything that looks wrong, try one switch at a time.
+Then, for anything that looks wrong, try one switch at a time. On a phone, scan the codes the
+tour's `npm run qr` and `npm run qr -- --query=set.renderer.experiments.all=1` print; see
+[Testing on a phone](../development.md#testing-on-a-phone).
 
 1. Enter a stop and drag the view around, including straight up and down (the poles) and
    across the image's back seam. Look for seams, a wrong orientation, flicker, or colours

@@ -57,6 +57,41 @@ visits need no `?key=` and links you copy do not carry it. Without a key the app
 mode and shows the fallback notice in the lower-left corner. The key is never committed or sent
 anywhere but Google.
 
+## Testing on a phone
+
+To open a local server on a phone without typing its address, serve on the local network and
+scan a QR code:
+
+```sh
+npm run dev -- --host        # or: npm run build && npm run preview -- --host
+npm run qr                   # in another terminal
+```
+
+`npm run qr` ([scripts/lan-qr.mjs](../scripts/lan-qr.mjs)) draws the code in the terminal. The
+code opens this computer's Wi-Fi or Ethernet address, at the port of whichever server answers
+there: 5173 for dev, 4173 for preview. It includes your Google key, which the app saves on the
+phone as it would from any `?key=`. The code is made on this computer, with nothing sent
+anywhere. `--path=/some/page/` opens another page. `--query=set.<id>=<value>` adds a parameter,
+and can be repeated. `--port` and `--host=<address>` override the port and the address, when the
+one chosen is not the phone's network. `--no-key` leaves the key out, and `--help` lists all of
+them.
+
+The key comes from `FOSS_EARTH_GOOGLE_KEY` in the environment, or else from that line in this
+checkout's `.env.local`, which git ignores and Vite refuses to serve. With neither, the first run
+asks for the key and saves it there. The printed address hides the key, but the code carries it,
+so don't share a picture of the code.
+
+An application that links FOSS Earth gets the same command as `foss-earth-qr`, such as the UMN
+tour's `npm run qr`. It reads the key from FOSS Earth's `.env.local` wherever it runs. An
+application installed before the command existed needs `npm rebuild foss-earth` to link it.
+
+- A phone's browser gives no WebGPU over plain HTTP, since WebGPU needs a secure context, so
+  the app draws with WebGL there.
+- If your key is restricted to certain websites, Google refuses it from this computer's LAN
+  address until you add the address to the key's restrictions.
+- If the macOS firewall is on, allow Node's incoming connections when asked, or the phone
+  cannot connect.
+
 ## Quality checks
 
 ```sh
