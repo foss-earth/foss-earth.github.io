@@ -38,6 +38,7 @@
  *   [--viewport=1440x900] [--portrait=720x1280] [--dpr=1] [--scale=1] [--fps=60]
  *   [--tolerance=0.01] [--p95=20] [--p99=33.3] [--max-interval=100] [--trace=file.json]
  *   [--skip-correctness] [--skip-colour] [--skip-timing] [--skip-navigation]
+ *   [--query=set.renderer.experiments.all=1&renderer=webgl2] (added to every page's query)
  * Output: build/validation/panorama-campus/<local time>/ with report.json,
  * summary.md, screenshots/ and traces/.
  */
@@ -82,6 +83,8 @@ const config = {
   colourDistinctLevels: 24,
   colourMinimumDistinctPixels: 20,
   userAgentSuffix: "foss-earth-check/1.0",
+  // More query parameters for every page, such as registry values under test.
+  query: arg("query", ""),
   // Asleep for longer than this during a step, the step measured nothing and the check stops.
   suspendedMs: 2000,
   // macOS idle-sleeps an unattended machine and stops the page's clocks mid-trace; closing the lid still does.
@@ -249,7 +252,7 @@ const fail = message => { failures.push(message); console.log(`  ✗ ${message}`
 
 try {
   // ─── 1. Cold load ───────────────────────────────────────────────────
-  const settingsQuery = `set.renderer.frameRateCap=${config.fps}&set.scene.panorama.previewFov=${config.previewFovDeg}`;
+  const settingsQuery = [`set.renderer.frameRateCap=${config.fps}&set.scene.panorama.previewFov=${config.previewFovDeg}`, config.query].filter(Boolean).join("&");
   await send("Page.navigate", { url: `${ORIGIN}/?scene=umn-single&panoramaTest=1&${settingsQuery}` });
   console.log("Cold load…");
   const cold = {};
@@ -277,16 +280,20 @@ try {
   const environment = await job(`({
     adapter: await window.__campus.adapter(),
     renderer: window.__fossEarthPanoramaTest.runtime.renderer.mode,
+    glRenderer: (gl => { if (!gl) return null; const debug = gl.getExtension("WEBGL_debug_renderer_info"); return gl.getParameter(debug ? debug.UNMASKED_RENDERER_WEBGL : gl.RENDERER); })(window.__fossEarthPanoramaTest.runtime.engine._gl),
     map: (s => ({ mode: s.mode, basemap: s.rasterBaseMap?.id ?? null, basemapProvider: s.rasterBaseMap?.provider ?? null, elevation: s.terrainSource?.id ?? null }))(window.__fossEarthPanoramaTest.runtime.status),
     gpuTiming: window.__fossEarthPanoramaTest.runtime.frameProfile.gpuTimed(),
     devicePixelRatio: window.devicePixelRatio,
   })`, 30_000, 100);
   report.environment = environment;
-  const hardware = environment.renderer === "webgpu" && environment.adapter && !environment.adapter.isFallbackAdapter;
+  // WebGPU names its adapter; WebGL its renderer, which is a software one if SwiftShader or llvmpipe draws.
+  const hardware = environment.renderer === "webgpu"
+    ? environment.adapter && !environment.adapter.isFallbackAdapter
+    : Boolean(environment.glRenderer) && !/swiftshader|llvmpipe|software/i.test(environment.glRenderer);
   report.hardwareVerified = Boolean(hardware);
-  console.log(`Renderer ${environment.renderer}; adapter ${JSON.stringify(environment.adapter)}; map ${JSON.stringify(environment.map)}`);
-  if (environment.renderer !== "webgpu") throw new Error("WebGPU did not start: panoramas cannot be drawn, so nothing can be checked.");
-  if (!hardware) fail("The WebGPU adapter is a software fallback or unknown: timing cannot be accepted on it.");
+  console.log(`Renderer ${environment.renderer}${environment.glRenderer ? ` (${environment.glRenderer})` : ""}; adapter ${JSON.stringify(environment.adapter)}; map ${JSON.stringify(environment.map)}`);
+  if (!["webgpu", "webgl2", "webgl"].includes(environment.renderer)) throw new Error(`No renderer started (${environment.renderer}): panoramas cannot be drawn, so nothing can be checked.`);
+  if (!hardware) fail("The renderer is a software fallback or unknown: timing cannot be accepted on it.");
 
   const prepare = async source => {
     const manifest = manifests[source.sceneId];
@@ -688,9 +695,9 @@ try {
 report.failures = failures;
 const configuration = report.environment
   ? `${report.environment.adapter?.vendor ?? "unknown"} ${report.environment.adapter?.architecture ?? ""} (${report.environment.adapter?.description || "no description"}), `
-    + `${report.browser.product}, WebGPU, ${config.landscape.width}×${config.landscape.height} at DPR ${config.dpr}, ${config.fps} fps cap, `
+    + `${report.browser.product}, ${report.environment.renderer === "webgpu" ? "WebGPU" : `${report.environment.renderer} (${report.environment.glRenderer})`}, ${config.landscape.width}×${config.landscape.height} at DPR ${config.dpr}, ${config.fps} fps cap, `
     + `${report.environment.map?.basemap ?? "?"} imagery with ${report.environment.map?.elevation ?? "?"} elevation`
-  : "no WebGPU configuration";
+  : "no renderer configuration";
 report.configuration = configuration;
 report.verdict = failures.length === 0
   ? `automated check passed on ${configuration}; manual acceptance pending`

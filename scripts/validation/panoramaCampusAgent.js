@@ -187,6 +187,9 @@
     const resumes = [];
     let done;
     const finished = new Promise(resolve => { done = resolve; });
+    // Records are kept only while a check captures once the renderer's bookkeeping experiment is on.
+    const capturing = Boolean(options.correlate || options.delay);
+    if (capturing) renderer.captureDraws?.(true);
 
     const hold = on => {
       if (on && !continuous) runtime.beginContinuous();
@@ -277,6 +280,7 @@
       scene.onAfterRenderObservable.remove(after);
       await Promise.allSettled(pendingProbes);
       renderer.setUniformDelayFrames(0);
+      if (capturing) renderer.captureDraws?.(false);
       done({ seconds: total, frames, probes, correlation, resumes, segments: segments.map(s => s.name) });
     }, total * 1000 + 50));
     return finished;
