@@ -30,3 +30,7 @@ through request interception.
   WebGL 1 until that is fixed; `scene-ab` marks it as stale.
 - Playwright is not a dependency. The harnesses that need it say so; install it with
   `npm install --prefix build/tools/playwright playwright`.
+- Close Chrome on every path, with `await chrome.close()` or Playwright's `browser.close()`
+  in a `finally`. A Chrome that is killed leaves a 1.4 GB clone of itself under
+  `/private/var/folders` until the Mac restarts.
+  [Chrome's code-sign clones](chrome-code-sign-clones.md) says why and how to check.

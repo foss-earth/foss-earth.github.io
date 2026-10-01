@@ -88,6 +88,10 @@
 - Headless harnesses already run WebGPU and real WebGL 1 and 2 contexts on this machine's GPU,
   with no server: whole apps with a scene (the UMN tour included), fixtures, A/B comparisons.
   Start from them; [docs/validation/README.md](docs/validation/README.md) lists them.
+- Let headless Chrome exit by itself: `await chrome.close()`, or Playwright's `browser.close()`,
+  in a `finally`, and no signal after it. A killed Chrome leaves a 1.4 GB clone of itself under
+  `/private/var/folders` until the Mac restarts; after stopping a run part way, check for one.
+  [docs/validation/chrome-code-sign-clones.md](docs/validation/chrome-code-sign-clones.md).
 
 ## Checks
 
