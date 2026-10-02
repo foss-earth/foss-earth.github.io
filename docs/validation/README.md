@@ -17,6 +17,7 @@ through request interception.
 | [scripts/validation/panorama-input.mjs](../../scripts/validation/panorama-input.mjs) | The whole app with real mouse, wheel and trackpad events | Panorama input, hover, outlines, the panorama tab |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
+| [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
 | [scripts/check-shell-layout.mjs](../../scripts/check-shell-layout.mjs) | The shell's dock and log in Chromium through Playwright | Layout regressions |
 
 - A forced WebGL 1 context needs either an engine built with `disableWebGL2Support` (the
@@ -24,6 +25,11 @@ through request interception.
   `?renderer=webgl` setting alone does not guarantee WebGL 1.
 - Chrome rounds `performance.now()` to 100 µs unless the page is cross-origin isolated.
   `scene-ab` serves every response isolated, so its sub-millisecond timings hold.
+- A millisecond figure depends on what else the machine was doing: a person using it, other
+  load, memory pressure, and whether the processor idles between frames, which alone changed
+  the main thread's work per frame 5 to 20 times. [Timing a benchmark on this machine](timing.md)
+  has the guards, the two states to measure in, and why `requestAnimationFrame`'s timestamp
+  hides a late frame.
 - WebGL GPU time comes from the disjoint timer query, which Chrome provides on this Mac.
   It times whole frames, and Babylon samples one frame in every few. On WebGL 1 the frame
   profiler's reading never updates after the first (2026-09-29), so there is no GPU time on

@@ -107,6 +107,9 @@
   on the last one only. A worktree gets its own `node_modules/.tmp`.
 - Cap repeated or background runs at half the cores (`--maxWorkers=50%`), and don't
   run a suite while another session is running one.
+- Half the cores is not a memory budget. Before running a script in several processes,
+  measure what one needs and start only as many as fit in half the machine's memory.
+  How, and what else disturbs a timing: [docs/validation/timing.md](docs/validation/timing.md).
 - Benchmarks and headless-browser GPU runs only when the task asks for them.
 
 ## Personal data

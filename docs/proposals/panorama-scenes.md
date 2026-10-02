@@ -508,6 +508,15 @@ detail temporarily, never holes. Missing tiling initially means a reported detai
 limit, not an attempt to load an oversized original. Compression is a separate stage
 with loader, enabled-device-format, quality, fallback and recovery tests.
 
+A first benchmark of what that representation could be, on a desktop only, is the
+[spherical image representation report](../../benchmarks/spherical-image-representation/REPORT.md)
+(2026-10-02): eleven spherical grids and the ways of refining them, on six of the UMN
+tour's panoramas. Sending the tiles under the view first reached within 1 dB of the final
+view with 2.0 to 3.8 times fewer bytes than sending whole levels, on every grid; the
+equi-angular cube needed about 20% fewer JPEG bytes than equirectangular for the same
+view quality. It chooses no representation, measured nothing on a phone, and names the
+trial on phones that should come before one is chosen.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:
