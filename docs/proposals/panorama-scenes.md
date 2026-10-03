@@ -555,7 +555,9 @@ source; `src/engine/babylon/panorama/panoramaTileAtlas.ts` the atlas. The whole 
 checked headlessly on this machine's GPU with
 [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs): both
 warps and the whole image, four views each, on WebGPU, WebGL 2 and WebGL 1, against the
-source image, with a seam score on tile edges, every crossfade and the flight out. It found
+source image, with a seam score on tile edges, every crossfade and the flight out; and on the
+UMN tour's own build, entering Northrop Mall, against its 6144 px image: 27 to 35 dB on every
+renderer, tile edges within 1.3 dB of the whole image's on the same pixels. It found
 two defects the prototype's own page could not have: a shader parameter named `layout`,
 reserved in WGSL as in GLSL ES 3.00, and WebGL's default anisotropic filtering gathering
 texels from neighbouring atlas slots along tile edges. Phones remain checked by hand only.

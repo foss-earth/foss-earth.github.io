@@ -20,12 +20,24 @@
  * WebGL 1 runs in a second Chrome started with WebGL 2 disabled, as the
  * other harnesses force it (docs/validation/README.md).
  *
+ * Another app with a scene of real photographs, such as the UMN tour, runs the
+ * same way: point --dist at its build, --content at the folder its scene is
+ * served from, and --source at a panorama's whole image, which then stands in
+ * for the source:
+ *
+ *   node scripts/validation/panorama-tiles.mjs --dist=../UMN-VR/UMN-VR.github.io/dist-app \
+ *     --content=../UMN-VR/UMN-VR.github.io/public --page=/tour/twin-cities/ --scene= \
+ *     --manifest=tour/twin-cities/scene.json --orb=northrop-mall \
+ *     --source=tour/twin-cities/media/northrop-mall/immersion-6144.jpg
+ *
  * Then it crossfades between the representations, and from one tiled cube
  * to the other, draws the tile outlines, and flies out of the orb, which
  * draws the tiles on its sphere: every shader variant compiles, and any the
  * GPU refuses fails the check.
  *
- * Usage: node scripts/validation/panorama-tiles.mjs [--out=dir] [--dist=dir | --no-build]
+ * Usage: node scripts/validation/panorama-tiles.mjs [--out=dir] [--dist=dir | --no-build] [--content=dir]
+ *   [--page=/] [--scene=umn-tiles] [--manifest=examples/panorama-scenes/umn-tiles.scene.json]
+ *   [--orb=umn-tiles-orb] [--source=synthetic:cardinal:2048 | <an equirectangular JPEG or PNG under dist or content>]
  *   [--renderers=webgpu,webgl2,webgl1] [--representations=whole,equi-angular-tiles,cube-tiles]
  *   [--viewport=540x960] [--min-psnr=24] [--control-margin=6] [--seam-margin=2.5] [--step=3]
  * Output: build/validation/panorama-tiles/<local time>/ with report.json,
@@ -37,7 +49,7 @@ import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import { evaluate, openHeadlessChrome } from "../lib/headlessChrome.mjs";
 import { newOutputDirectory } from "../lib/outputDirectory.mjs";
-import { decodePng, equirectUv, makeCardinalPanorama } from "../lib/panoramaImage.mjs";
+import { decodeJpeg, decodePng, equirectUv, makeCardinalPanorama } from "../lib/panoramaImage.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const arg = (name, fallback) => process.argv.find(value => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -72,8 +84,9 @@ const VIEWS = [
   { name: "down", view: { headingDeg: 200, pitchDeg: -80, verticalFovDeg: 90 } },
   { name: "zoomed", view: { headingDeg: 135, pitchDeg: 10, verticalFovDeg: 30 } },
 ];
-const SCENE = "umn-tiles";
-const ORB = "umn-tiles-orb";
+const SCENE = arg("scene", "umn-tiles");
+const ORB = arg("orb", "umn-tiles-orb");
+const PAGE = arg("page", "/");
 const TILE_IDS = { "equi-angular-tiles": "eac-tiles", "cube-tiles": "cube-tiles" };
 
 // ─── Build ────────────────────────────────────────────────────────────
@@ -82,8 +95,26 @@ if (!arg("dist") && !flag("no-build")) {
   console.log("Building the app…");
   await build({ root, logLevel: "warn", build: { outDir: dist, emptyOutDir: true } });
 }
-const manifest = JSON.parse(await readFile(path.join(dist, "examples/panorama-scenes/umn-tiles.scene.json"), "utf8"));
-const source = makeCardinalPanorama(2048);
+/** Files the page asks for: the app's build, then the content folder, when the scene is served apart from it. */
+const content = arg("content") ? path.resolve(arg("content")) : null;
+async function served(relative) {
+  for (const base of [dist, content].filter(Boolean)) {
+    const file = path.join(base, relative);
+    try { if (file.startsWith(base) && (await stat(file)).isFile()) return file; } catch { /* the next folder */ }
+  }
+  return null;
+}
+const manifestPath = arg("manifest", "examples/panorama-scenes/umn-tiles.scene.json");
+const manifest = JSON.parse(await readFile(await served(manifestPath), "utf8"));
+const orbAsset = manifest.assets.find(asset => asset.id === manifest.entities.find(entity => entity.id === ORB).assetId);
+const sourceName = arg("source", "synthetic:cardinal:2048");
+const source = sourceName.startsWith("synthetic:cardinal") ? makeCardinalPanorama(Number(sourceName.split(":")[2] ?? 2048)) : await (async () => {
+  const bytes = await readFile(await served(sourceName));
+  const decoded = sourceName.endsWith(".png") ? decodePng(bytes) : decodeJpeg(bytes);
+  const rgb = Buffer.alloc(decoded.width * decoded.height * 3);
+  for (let i = 0; i < decoded.width * decoded.height; i++) for (let c = 0; c < 3; c++) rgb[i * 3 + c] = decoded.rgba[i * 4 + c];
+  return { width: decoded.width, height: decoded.height, rgb };
+})();
 
 /** The control's lookup: the direction turned 13° about the vertical and tipped 7°, which moves every grid line and letter. */
 const TURN = 13 * Math.PI / 180, TIP = 7 * Math.PI / 180;
@@ -219,10 +250,8 @@ for (const renderer of config.renderers) {
         const url = new URL(request.url);
         // Only the app's own files: no map, no other host.
         if (url.origin !== ORIGIN) { await send("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" }); return; }
-        let file = path.join(dist, decodeURIComponent(url.pathname));
-        if (url.pathname.endsWith("/")) file = path.join(file, "index.html");
-        let body = null;
-        try { if (file.startsWith(dist) && (await stat(file)).isFile()) body = await readFile(file); } catch { /* 404 below */ }
+        const file = await served(decodeURIComponent(url.pathname).slice(1) + (url.pathname.endsWith("/") ? "index.html" : ""));
+        const body = file ? await readFile(file) : null;
         if (!body) { await send("Fetch.fulfillRequest", { requestId, responseCode: 404, body: "" }); return; }
         await send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "Content-Type", value: MIME[path.extname(file)] ?? "application/octet-stream" }], body: body.toString("base64") });
       })().catch(error => exceptions.push(`interception: ${error.message}`));
@@ -235,14 +264,14 @@ for (const renderer of config.renderers) {
       await send("Emulation.setDeviceMetricsOverride", { width: config.viewport.width, height: config.viewport.height, deviceScaleFactor: 1, mobile: false });
       // Cuts instead of animations, so each view is the one asked for when it is measured.
       const query = new URLSearchParams({
-        scene: SCENE, panoramaTest: "1", renderer: webgl1 ? "webgl" : renderer,
+        ...(SCENE ? { scene: SCENE } : {}), panoramaTest: "1", renderer: webgl1 ? "webgl" : renderer,
         "set.scene.panorama.representation": config.representations[0],
         "set.scene.panorama.flightDuration": "off", "set.scene.panorama.expandDuration": "0", "set.scene.panorama.fadeDuration": "0", "set.scene.panorama.orientDuration": "0",
       });
-      await send("Page.navigate", { url: `${ORIGIN}/?${query}` });
+      await send("Page.navigate", { url: `${ORIGIN}${PAGE}?${query}` });
       const deadline = Date.now() + 60_000;
-      while (!(await page(`Boolean(window.__fossEarthPanoramaTest?.renderer && window.__fossEarthPanoramaTest.scenes.handle()?.status.entries[0]?.preview === "ready")`).catch(() => false))) {
-        if (Date.now() > deadline) throw new Error(`The ${SCENE} scene's preview did not load: ${exceptions.slice(-3).join(" | ")}`);
+      while (!(await page(`Boolean(window.__fossEarthPanoramaTest?.renderer && window.__fossEarthPanoramaTest.scenes.handle()?.status.entries.find(entry => entry.id === ${JSON.stringify(ORB)})?.preview === "ready")`).catch(() => false))) {
+        if (Date.now() > deadline) throw new Error(`${ORB}'s preview did not load: ${exceptions.slice(-3).join(" | ")}`);
         await sleep(200);
       }
       const running = await page("window.__fossEarthPanoramaTest.runtime.renderer.mode") + (webgl1 ? ` ${await page("window.__fossEarthPanoramaTest.runtime.scene.getEngine().webGLVersion")}` : "");
@@ -262,7 +291,7 @@ for (const renderer of config.renderers) {
           const detail = await job(`window.__tiles.settled(${JSON.stringify(representation)}, ${JSON.stringify(TILE_IDS[representation] ?? null)}, 60000)`);
           const shot = await send("Page.captureScreenshot", { format: "png" });
           // Cell edges of the tiles shown, or for a whole image the equi-angular cube's, as a reference.
-          const tiled = manifest.assets[0].representations.find(entry => entry.id === (TILE_IDS[representation] ?? "eac-tiles"));
+          const tiled = orbAsset.representations.find(entry => entry.id === (TILE_IDS[representation] ?? "eac-tiles"));
           const directions = await job(`window.__tiles.directions(${config.stepPx}, ${tiled.faceSize / tiled.tileSize}, ${JSON.stringify(tiled.warp)})`);
           const label = `${renderer}-${representation}-${name}`;
           const png = Buffer.from(shot.data, "base64");
@@ -357,7 +386,7 @@ if (failedToRun) throw failedToRun;
 
 // ─── Report ───────────────────────────────────────────────────────────
 report.passed = report.failures.length === 0 && report.results.length === config.renderers.length * config.representations.length * VIEWS.length;
-report.manifest = { id: manifest.id, revision: manifest.revision };
+report.manifest = { id: manifest.id, revision: manifest.revision, orb: ORB, source: sourceName };
 await writeFile(path.join(out, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
 const rows = report.results.map(entry => `| ${entry.running} | ${entry.representation} | ${entry.view} | ${entry.detail.tiles ? `${entry.detail.tiles.shownInView}/${entry.detail.tiles.inView} at level ${entry.detail.tiles.levelWanted}` : entry.detail.representation} | ${entry.psnrDb.toFixed(1)} | ${entry.edgePsnrDb?.toFixed(1) ?? "–"} | ${entry.turnedPsnrDb.toFixed(1)} |`);
 await writeFile(path.join(out, "summary.md"), [
