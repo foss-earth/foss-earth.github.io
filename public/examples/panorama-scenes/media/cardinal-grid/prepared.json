@@ -1,8 +1,8 @@
 {
   "tool": "scripts/prepare-panorama.mjs",
   "toolVersion": "1",
-  "scriptSha256": "2332d89d3a08f8efe1b10ca7120cc744c385e21818522f833fe76d213e7c02a4",
-  "libSha256": "c7eb47f002431486e27ec45f905a56d45ef7024cde0a661c06e8090c714f85ef",
+  "scriptSha256": "b8ec3a3c778151cf4564840108fcc1d3f0b0c04b809f499cbb64de4495aaea32",
+  "libSha256": "4aeac1958ee2ff3417c3b84c785c9ee206fa9fcad2fd1fd782288652ab19d5e4",
   "node": "v26.9.0",
   "source": {
     "kind": "synthetic",
@@ -37,7 +37,7 @@
       "rollDeg": 0
     }
   },
-  "processing": "EXIF orientation applied once; colour checked as sRGB and not converted; opaque alpha dropped; resampled in linear light and encoded to sRGB once. Faces follow the format's cube table.",
+  "processing": "EXIF orientation applied once; colour checked as sRGB and not converted; opaque alpha dropped; resampled in linear light and encoded to sRGB once. Faces follow the format's cube table; tiled faces carry a gutter resampled past their edges.",
   "outputs": [
     {
       "path": "preview-32/px.jpg",

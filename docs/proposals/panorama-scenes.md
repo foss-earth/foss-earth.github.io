@@ -526,6 +526,40 @@ real HTTP/2 at 2 Mbit/s a forward view was sharp after 1.3 s, where the current 
 its preview for the whole 10-second trace. It supports that design on a desktop only;
 nothing has run on a phone, which is the experiment it names next.
 
+**Built (2026-10-03).** After the prototype's package was tried by hand on phones and
+worked, tiled immersion went into production as the format's `tiled-cube` representation
+([format](../scenes/format.md#tiled-cubes)), in both warps: equi-angular, the default, and
+gnomonic, an ordinary cube map in the same tiles. The person chooses between them and the
+whole image with 360 image settings → Image → **Representation**. What changed from the
+prototype:
+
+- **The orb's preview cube is the bootstrap.** It is on the GPU already when the panorama is
+  entered, so no separate bootstrap image is fetched; a cell with no tile shows it.
+- **Tiles fade in** over `scene.panorama.fadeDuration` instead of snapping: the display table
+  keeps each cell's previous tile beside its new one, and the shader mixes them in linear
+  light.
+- **Only direct replacement**, the policy the report recommends: no residual tiles, no
+  insurance. A tiled cube is cached like any source, so a panorama entered again shows its
+  tiles at once.
+- **Tiles are decoded by the browser and copied from the bitmap into the atlas**, with
+  nothing read back to JavaScript, under the same colour contract as whole images (sRGB
+  texture on WebGPU, decoded in the shader on WebGL).
+- **Preparation is `prepare-panorama.mjs --tiles`**, with the repository's JPEG encoder
+  (4:4:4, no optimized tables): tiles are about 18% larger than the prototype's
+  libjpeg-turbo 4:2:0 tiles of the same quality.
+- **Its parameters** (Scenes → Tiled images) are the prototype's measured values: 196 tiles
+  of atlas, six requests, two uploads a frame, a 5° margin.
+
+`src/scenes/tiles/` holds the geometry, the exact selection, the scheduler and the tiled
+source; `src/engine/babylon/panorama/panoramaTileAtlas.ts` the atlas. The whole app was
+checked headlessly on this machine's GPU with
+[scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs): both
+warps and the whole image, four views each, on WebGPU, WebGL 2 and WebGL 1, against the
+source image, with a seam score on tile edges, every crossfade and the flight out. It found
+two defects the prototype's own page could not have: a shader parameter named `layout`,
+reserved in WGSL as in GLSL ES 3.00, and WebGL's default anisotropic filtering gathering
+texels from neighbouring atlas slots along tile edges. Phones remain checked by hand only.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:

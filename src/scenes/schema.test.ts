@@ -47,6 +47,9 @@ const INVALID: Mutation[] = [
   ["an outline colour by name", doc => { doc.markerStyle = { outline: { color: "gold", widthPx: 2 } }; }],
   ["an outline wider than 32 px", doc => { (entity(doc, 0).marker as Record<string, unknown>).style = { outline: { color: "#ffffff", widthPx: 33 } }; }],
   ["a hover that shrinks", doc => { doc.markerStyle = { hover: { scale: 0.9 } }; }],
+  ["a tiled cube as a preview", doc => { (asset(doc, 0).representations as unknown[]).push({ id: "t", role: "preview", projection: "tiled-cube", warp: "gnomonic", mimeType: "image/jpeg", encodedBytes: 3, faceSize: 4, tileSize: 4, gutter: 0, levelBytes: [3], url: "t/" }); }],
+  ["a tiled cube whose folder is a file", doc => { (asset(doc, 0).representations as unknown[]).push({ id: "t", role: "immersion", projection: "tiled-cube", warp: "gnomonic", mimeType: "image/jpeg", encodedBytes: 3, faceSize: 4, tileSize: 4, gutter: 0, levelBytes: [3], url: "t.jpg" }); }],
+  ["a tiled cube with a projection's warp missing", doc => { (asset(doc, 0).representations as unknown[]).push({ id: "t", role: "immersion", projection: "tiled-cube", mimeType: "image/jpeg", encodedBytes: 3, faceSize: 4, tileSize: 4, gutter: 0, levelBytes: [3], url: "t/" }); }],
 ];
 
 describe("the published JSON Schema", () => {
@@ -59,6 +62,16 @@ describe("the published JSON Schema", () => {
       expect(check(JSON.parse(text)) ? [] : check.errors).toEqual([]);
     });
   }
+
+  it("accepts a tiled cube, and a representation of a later projection, which the loader skips", () => {
+    const doc = parsed();
+    (asset(doc, 0).representations as unknown[]).push(
+      { id: "eac-tiles", role: "immersion", projection: "tiled-cube", warp: "equi-angular", mimeType: "image/jpeg", encodedBytes: 600, faceSize: 768, tileSize: 192, gutter: 1, levelBytes: [100, 200, 300], url: "media/eac-tiles/" },
+      { id: "octahedral", role: "immersion", projection: "octahedral", mimeType: "image/jpeg", encodedBytes: 5 },
+    );
+    expect(check(doc) ? [] : check.errors).toEqual([]);
+    expect(validateScene(doc, { baseUrl: BASE }).ok).toBe(true);
+  });
 
   it("keeps a later entity or asset type by id, as the loader lists it unsupported", () => {
     const doc = parsed();

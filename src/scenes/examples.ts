@@ -23,4 +23,10 @@ export const SCENE_EXAMPLES: readonly SceneExample[] = [
     description: "Two different images 80 m apart, linked both ways: enter, look, follow a link, go back, exit. Their orbs are outlined and grow under the pointer.",
     url: "examples/panorama-scenes/campus-pair.scene.json",
   },
+  {
+    id: "umn-tiles",
+    title: "UMN — tiled test image",
+    description: "The cardinal image as equi-angular and ordinary cube tiles and as a whole image: choose between them in 360 image settings, and see each tile with Tile outlines.",
+    url: "examples/panorama-scenes/umn-tiles.scene.json",
+  },
 ];

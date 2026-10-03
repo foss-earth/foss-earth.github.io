@@ -1,0 +1,167 @@
+{
+  "format": "foss-earth-scene",
+  "version": 1,
+  "id": "umn-tiles",
+  "revision": "1",
+  "title": "UMN — tiled test image",
+  "requiredExtensions": [],
+  "extensions": {
+    "foss-earth.fixture": {
+      "purpose": "The cardinal image as equi-angular and ordinary tiled cubes beside a whole image, at the acceptance fixture's placement: the tiled path, and the colour check of scripts/validation/panorama-tiles.mjs.",
+      "registration": "Synthetic test registration at the research's campus anchor, 44.974°, −93.235°. The photograph was not captured here and its north is not surveyed.",
+      "source": "scripts/build-panorama-examples.mjs"
+    }
+  },
+  "assets": [
+    {
+      "id": "cardinal-tiles",
+      "revision": "bbe958d5e5f6",
+      "type": "panorama-image",
+      "colorSpace": "srgb",
+      "alpha": "opaque",
+      "attribution": {
+        "text": "Generated cardinal and grid test panorama, FOSS Earth"
+      },
+      "representations": [
+        {
+          "id": "preview-32",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 32,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 5614,
+          "faces": {
+            "px": "media/cardinal-tiles/preview-32/px.jpg",
+            "nx": "media/cardinal-tiles/preview-32/nx.jpg",
+            "py": "media/cardinal-tiles/preview-32/py.jpg",
+            "ny": "media/cardinal-tiles/preview-32/ny.jpg",
+            "pz": "media/cardinal-tiles/preview-32/pz.jpg",
+            "nz": "media/cardinal-tiles/preview-32/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-64",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 64,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 10492,
+          "faces": {
+            "px": "media/cardinal-tiles/preview-64/px.jpg",
+            "nx": "media/cardinal-tiles/preview-64/nx.jpg",
+            "py": "media/cardinal-tiles/preview-64/py.jpg",
+            "ny": "media/cardinal-tiles/preview-64/ny.jpg",
+            "pz": "media/cardinal-tiles/preview-64/pz.jpg",
+            "nz": "media/cardinal-tiles/preview-64/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-128",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 128,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 25312,
+          "faces": {
+            "px": "media/cardinal-tiles/preview-128/px.jpg",
+            "nx": "media/cardinal-tiles/preview-128/nx.jpg",
+            "py": "media/cardinal-tiles/preview-128/py.jpg",
+            "ny": "media/cardinal-tiles/preview-128/ny.jpg",
+            "pz": "media/cardinal-tiles/preview-128/pz.jpg",
+            "nz": "media/cardinal-tiles/preview-128/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-2048",
+          "role": "immersion",
+          "projection": "equirectangular",
+          "width": 2048,
+          "height": 1024,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 232181,
+          "url": "media/cardinal-tiles/immersion-2048.jpg"
+        },
+        {
+          "id": "eac-tiles",
+          "role": "immersion",
+          "projection": "tiled-cube",
+          "warp": "equi-angular",
+          "faceSize": 512,
+          "tileSize": 128,
+          "gutter": 1,
+          "levelBytes": [
+            26358,
+            85402,
+            270416
+          ],
+          "mimeType": "image/jpeg",
+          "encodedBytes": 382176,
+          "url": "media/cardinal-tiles/eac-tiles/"
+        },
+        {
+          "id": "cube-tiles",
+          "role": "immersion",
+          "projection": "tiled-cube",
+          "warp": "gnomonic",
+          "faceSize": 512,
+          "tileSize": 128,
+          "gutter": 1,
+          "levelBytes": [
+            24927,
+            81973,
+            260441
+          ],
+          "mimeType": "image/jpeg",
+          "encodedBytes": 367341,
+          "url": "media/cardinal-tiles/cube-tiles/"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "umn-tiles-orb",
+      "type": "panorama",
+      "assetId": "cardinal-tiles",
+      "title": "UMN — tiled test image",
+      "description": "Generated letters N, E, S and W on the horizon and a 30° grid, 30 m above a stated height at the campus, as tiles.",
+      "capture": {
+        "longitudeDeg": -93.235,
+        "latitudeDeg": 44.974,
+        "height": {
+          "meters": 250,
+          "datum": "WGS84-ellipsoid",
+          "source": "A round figure near the campus's ground, for a check that loads no terrain; not measured."
+        }
+      },
+      "imagePose": {
+        "headingDeg": 0,
+        "pitchDeg": 0,
+        "rollDeg": 0
+      },
+      "marker": {
+        "mode": "capture-relative",
+        "eastM": 0,
+        "northM": 0,
+        "offsetM": 30,
+        "radiusMeters": 2
+      }
+    }
+  ],
+  "initialPanorama": "umn-tiles-orb",
+  "overview": {
+    "target": {
+      "longitudeDeg": -93.235,
+      "latitudeDeg": 44.974,
+      "height": {
+        "meters": 280,
+        "datum": "WGS84-ellipsoid",
+        "source": "A round figure near the campus's ground, for a check that loads no terrain; not measured."
+      }
+    },
+    "distanceMeters": 104.403,
+    "headingDeg": 0,
+    "pitchDeg": -16.699244,
+    "verticalFovDeg": 60
+  }
+}

@@ -11,6 +11,9 @@
  *   campus-pair.scene.json   two different images, linked both ways, for the
  *                            enter → look → link → exit path, with outlined
  *                            orbs that grow under the pointer
+ *   umn-tiles.scene.json     the cardinal image with equi-angular and ordinary
+ *                            tiled cubes as well as a whole image, for the
+ *                            tiled path and scripts/validation/panorama-tiles.mjs
  *
  * The placements are a synthetic test registration: the photograph was not
  * taken on the campus and its north is not surveyed.
@@ -48,6 +51,16 @@ const sources = [
     immersion: "1024,2048",
     attribution: ["--attribution", "Generated cardinal and grid test panorama, FOSS Earth"],
   },
+  {
+    assetId: "cardinal-tiles",
+    input: "synthetic:cardinal:2048",
+    pose: { headingDeg: 0, pitchDeg: 0, rollDeg: 0, provenance: "Generated with north at the image centre, so the zero pose is exact." },
+    previews: "32,64,128",
+    immersion: "2048",
+    // 512-texel faces, a quarter of the 2048 width, in tiles of 128: levels 0 to 2.
+    tiles: ["--tiles", "eac,cube", "--tile-size", "128"],
+    attribution: ["--attribution", "Generated cardinal and grid test panorama, FOSS Earth"],
+  },
 ];
 
 const fragments = {};
@@ -61,7 +74,7 @@ for (const source of sources) {
     "--input", source.input, "--pose", pose, "--asset-id", source.assetId,
     "--preview-face-sizes", source.previews, "--immersion-widths", source.immersion,
     "--encoding", "jpeg", "--quality", "90", "--url-prefix", `media/${source.assetId}/`,
-    ...source.attribution, "--out", media,
+    ...(source.tiles ?? []), ...source.attribution, "--out", media,
   ], { cwd: root, stdio: "inherit" });
   fragments[source.assetId] = JSON.parse(readFileSync(path.join(media, "asset.fragment.json"), "utf8"));
 }
@@ -126,5 +139,15 @@ write("campus-pair.scene.json", scene("campus-pair", "Test pair: two linked pano
     overview: { target: { ...CAMPUS, height: null }, distanceMeters: 180, headingDeg: 90, pitchDeg: -25, verticalFovDeg: 60 },
     // Every orb's outline, and growth under the pointer.
     markerStyle: { outline: { color: "#ffffff", widthPx: 2 }, hover: { scale: 1.25 } } }));
+
+// Placed from a stated height rather than the ground, so a check with no map still flies in and out of it.
+const tilesHeight = { meters: 250, datum: "WGS84-ellipsoid", source: "A round figure near the campus's ground, for a check that loads no terrain; not measured." };
+write("umn-tiles.scene.json", scene("umn-tiles", "UMN — tiled test image",
+  "The cardinal image as equi-angular and ordinary tiled cubes beside a whole image, at the acceptance fixture's placement: the tiled path, and the colour check of scripts/validation/panorama-tiles.mjs.",
+  ["cardinal-tiles"],
+  [{ ...orb("umn-tiles-orb", "cardinal-tiles", "UMN — tiled test image", "Generated letters N, E, S and W on the horizon and a 30° grid, 30 m above a stated height at the campus, as tiles."),
+    capture: { ...CAMPUS, height: tilesHeight },
+    marker: { mode: "capture-relative", eastM: 0, northM: 0, offsetM: 30, radiusMeters: 2 } }],
+  { initialPanorama: "umn-tiles-orb", overview: { ...overview, target: { ...CAMPUS, height: { ...tilesHeight, meters: tilesHeight.meters + 30 } } } }));
 
 console.log(`Wrote the example scenes to ${path.relative(root, examples)}.`);

@@ -15,6 +15,7 @@ through request interception.
 | [scripts/validation/panorama-webgl.mjs](../../scripts/validation/panorama-webgl.mjs) | A standalone fixture: the panorama renderer and uploader in forced WebGL 1 and WebGL 2 contexts | Shader colour, orientation, depth and upload bounds on each WebGL version. [Details](panorama-webgl.md) |
 | [scripts/validation/panorama-campus.mjs](../../scripts/validation/panorama-campus.mjs) | The whole app with FOSS Earth's example scenes, map tiles from the network; WebGPU by default, WebGL with `--query=renderer=webgl2`, registry values with `--query=set.<id>=…` | Orb and immersion correctness against CPU references, a negative control, colour, entering and leaving, timing |
 | [scripts/validation/panorama-input.mjs](../../scripts/validation/panorama-input.mjs) | The whole app with real mouse, wheel and trackpad events | Panorama input, hover, outlines, the panorama tab |
+| [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
@@ -49,6 +50,15 @@ through request interception.
   `performance.setResourceTimingBufferSize`.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
+- `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that
+  name compiles on WebGL 1 only. WebGPU reports a refused shader as a console warning
+  ("WebGPU uncaptured error") and draws nothing with it; a check has to watch the console.
+- Babylon gives a texture 4× anisotropic filtering by default. On WebGL, an atlas sampled
+  with implicit derivatives then gathers texels from the neighbouring slot wherever two
+  pixels of a 2×2 quad read different slots: a one-pixel seam along every tile edge, about
+  9% darker on this Mac. Set `anisotropicFilteringLevel = 1` on an atlas. A seam hardly moves
+  a whole view's PSNR; `panorama-tiles.mjs` scores the pixels on tile edges apart, against the
+  whole image's on the same pixels.
 - Close Chrome on every path, with `await chrome.close()` or Playwright's `browser.close()`
   in a `finally`. A Chrome that is killed leaves a 1.4 GB clone of itself under
   `/private/var/folders` until the Mac restarts.

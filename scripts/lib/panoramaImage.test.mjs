@@ -14,10 +14,12 @@ import {
   linearToSrgb,
   readGPano,
   renderCubeFace,
+  renderTileFace,
   resizeArea,
   sniffImage,
   srgbToLinear,
 } from "./panoramaImage.mjs";
+import { createCubeTiling } from "../../src/scenes/tiles/cubeTiling";
 
 describe("codecs", () => {
   it("round-trips RGB through PNG with an sRGB chunk", () => {
@@ -102,6 +104,35 @@ describe("linear-light resampling", () => {
         expect(out.data[(j * size + i) * 3]).toBeCloseTo(u, 1);
         expect(out.data[(j * size + i) * 3 + 1]).toBeCloseTo(v, 1);
       }
+    }
+  });
+
+  it("renders tiled faces, gutters included, at the directions the viewer looks them up in", () => {
+    // An equirectangular image whose colour is its own direction, (d + 1) / 2: smooth everywhere, seam and poles too.
+    const width = 512, height = 256;
+    const data = new Float32Array(width * height * 3);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const lon = ((x + 0.5) / width - 0.5) * 2 * Math.PI, lat = (0.5 - (y + 0.5) / height) * Math.PI;
+      const d = [Math.cos(lat) * Math.sin(lon), Math.cos(lat) * Math.cos(lon), Math.sin(lat)];
+      for (let c = 0; c < 3; c++) data[(y * width + x) * 3 + c] = (d[c] + 1) / 2;
+    }
+    const pyramid = equirectPyramid({ width, height, data });
+    const size = 32, gutter = 1, side = size + 2 * gutter;
+    for (const warp of ["equi-angular", "gnomonic"]) {
+      const tiling = createCubeTiling({ warp, tileSize: size, maxLevel: 0, gutter });
+      const expected = [0, 0, 0];
+      let worst = 0;
+      CUBE_FACE_NAMES.forEach((face, index) => {
+        const out = renderTileFace(pyramid, face, size, warp, gutter);
+        expect(out.width).toBe(side);
+        // Corners, edges past the face (the gutter) and the middle.
+        for (const [i, j] of [[0, 0], [side - 1, 0], [0, side - 1], [side - 1, side - 1], [0, 17], [17, side - 1], [17, 17], [5, 9]]) {
+          tiling.direction(index, (i - gutter + 0.5) / size, (j - gutter + 0.5) / size, expected);
+          for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(out.data[(j * side + i) * 3 + c] - (expected[c] + 1) / 2));
+        }
+      });
+      // Within a source texel's change of colour: about π / 256 a texel, halved.
+      expect(worst, warp).toBeLessThan(0.01);
     }
   });
 });

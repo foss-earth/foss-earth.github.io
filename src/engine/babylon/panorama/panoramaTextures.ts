@@ -15,6 +15,8 @@ import { BaseTexture, Constants, InternalTexture, InternalTextureSource, type Sc
 import { GPU_LAYER_SOURCE_FACES, type CubeFaceName } from "../../../scenes/panoramaMath";
 import { mipLevelCount, rgba8Bytes } from "../../../scenes/budget";
 import { createWebGlPanoramaUploader } from "./panoramaWebGlTextures";
+import type { TiledPanorama } from "../../../scenes/tiles/tiledPanorama";
+import type { TiledSourceTextures } from "./panoramaRenderer";
 
 /** The WebGPU objects Babylon keeps behind its engine and textures. */
 interface WebGpuInternals {
@@ -29,7 +31,7 @@ interface WebGpuInternals {
 export type PanoramaImageSource = ImageBitmap;
 
 export interface PanoramaGpuTexture {
-  readonly kind: "cube" | "equirectangular";
+  readonly kind: "cube" | "equirectangular" | "tiles";
   /** Face size for a cube; width and height for an equirectangular image. */
   readonly width: number;
   readonly height: number;
@@ -37,8 +39,10 @@ export interface PanoramaGpuTexture {
   /** Exact allocated bytes, every mip of every layer. */
   readonly gpuBytes: number;
   readonly texture: BaseTexture;
-  /** True once every row and every mip is written. */
+  /** True once every row and every mip is written; a tiled cube's atlas always is, and fills as tiles arrive. */
   readonly complete: boolean;
+  /** A tiled cube: its scheduler, and the atlas and table its shaders read. */
+  readonly tiles?: { panorama: TiledPanorama; textures: TiledSourceTextures };
   dispose(): void;
 }
 

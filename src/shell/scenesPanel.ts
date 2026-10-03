@@ -209,6 +209,7 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     { id: "scenes.appearance", title: settings.getSectionTitle(SCENES_TAB, "appearance"), element: section("appearance"), defaultOpen: false },
     { id: "scenes.motion", title: settings.getSectionTitle(SCENES_TAB, "motion"), element: section("motion"), defaultOpen: false },
     { id: "scenes.loading", title: settings.getSectionTitle(SCENES_TAB, "loading"), element: section("loading"), defaultOpen: false },
+    { id: "scenes.tiles", title: settings.getSectionTitle(SCENES_TAB, "tiles"), element: section("tiles"), defaultOpen: false },
     { id: "scenes.credits", title: settings.getSectionTitle(SCENES_TAB, "credits"), element: section("credits", credits, false), defaultOpen: false },
   ]);
 
