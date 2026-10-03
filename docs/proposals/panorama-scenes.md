@@ -517,6 +517,15 @@ equi-angular cube needed about 20% fewer JPEG bytes than equirectangular for the
 view quality. It chooses no representation, measured nothing on a phone, and names the
 trial on phones that should come before one is chosen.
 
+The [progressive 360° prototype](../../benchmarks/eac-progressive-prototype/REPORT.md)
+(2026-10-02, Phase 2) built that tiling end to end on the same desktop: equi-angular cube
+faces of 1536 texels in 192-texel JPEG tiles with a one-texel gutter, a one-image bootstrap,
+exact view selection, bounded caches and one draw on WebGL 1, WebGL 2 and WebGPU. Fetching
+the level the view needs directly beat visiting every level and residual refinement; over
+real HTTP/2 at 2 Mbit/s a forward view was sharp after 1.3 s, where the current path showed
+its preview for the whole 10-second trace. It supports that design on a desktop only;
+nothing has run on a phone, which is the experiment it names next.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:
