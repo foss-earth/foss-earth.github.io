@@ -16,6 +16,7 @@ through request interception.
 | [scripts/validation/panorama-campus.mjs](../../scripts/validation/panorama-campus.mjs) | The whole app with FOSS Earth's example scenes, map tiles from the network; WebGPU by default, WebGL with `--query=renderer=webgl2`, registry values with `--query=set.<id>=…` | Orb and immersion correctness against CPU references, a negative control, colour, entering and leaving, timing |
 | [scripts/validation/panorama-input.mjs](../../scripts/validation/panorama-input.mjs) | The whole app with real mouse, wheel and trackpad events | Panorama input, hover, outlines, the panorama tab |
 | [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out. Another app's scene too, such as the UMN tour's, against a panorama's whole image (options at the top of the script) |
+| [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) | The whole app with a scene, a Chrome profile kept between its browsers: a build served by intercepting requests, with no HTTP cache and every response held as long as asked, or a live site read from Chrome's network events | What a first visit, a reload, a look around a panorama and a revisit ask the network for, and how long each takes. On a build it fails when anything is asked for twice; `--set=scene.panorama.savedMiB=0` is its control. On a live site it reports how the host's cache headers behave, with `--wait-min` to let them go stale |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
@@ -51,7 +52,19 @@ through request interception.
   page task, store its result on `window`, and poll for it, as `panorama-campus.mjs`'s `job`
   and `panorama-tiles.mjs`'s do; the prototype's calibration hit the same limit.
 - `performance.getEntriesByType("resource")` stops at 250 entries unless the page calls
-  `performance.setResourceTimingBufferSize`.
+  `performance.setResourceTimingBufferSize`. A scene's 720 preview requests need Chrome's
+  `Network` events instead, which also say what came from the browser's cache
+  (`requestServedFromCache`) and how many bytes crossed the wire (`loadingFinished`).
+- A request fulfilled through `Fetch.fulfillRequest` is kept by the HTTP cache like any other
+  response. To count what a page asks for itself, answer with `Cache-Control: no-store`, as
+  `scene-revisit.mjs` does.
+- GitHub Pages lets every file go stale after ten minutes, and its answer to "has this
+  changed?" is often the whole file again: on the UMN tour, 306 of 720 images and 1.55 of
+  1.72 MiB of the app. A measurement of a second visit has to say how long after the first
+  it was; inside ten minutes it shows the browser's cache, not the site.
+- A harness that serves no map leaves ground-relative orbs unplaced, and an unplaced orb is
+  entered with a fade, not a flight. To time a flight in, use a scene whose orbs are
+  capture-relative with a height, such as `umn-tiles`.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
 - `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that

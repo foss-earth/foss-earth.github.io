@@ -551,8 +551,9 @@ prototype:
   optimized tables at the same quality, so a view takes about that much longer to sharpen
   than the report's times. Encoding tiles 4:2:0 with optimized tables is the first thing to
   win back.
-- **Its parameters** (Scenes → Tiled images) are the prototype's measured values: 196 tiles
-  of atlas, six requests, two uploads a frame, a 5° margin.
+- **Its parameters** (Scenes → Tiled images) are the prototype's measured values: six
+  requests, two uploads a frame, a 5° margin. Its 196 tiles of atlas became 510; see "Loading
+  once" below.
 
 `src/scenes/tiles/` holds the geometry, the exact selection, the scheduler and the tiled
 source; `src/engine/babylon/panorama/panoramaTileAtlas.ts` the atlas. The whole app was
@@ -579,6 +580,70 @@ opens the tiled test image. On the live site, headlessly at a phone's viewport, 
 covered by 6 to 8 tiles in 0.5 to 0.7 s on WebGPU, WebGL 2 and WebGL 1, with either warp, for 23
 to 46 KiB; the whole image took 0.7 to 0.8 s and 227 KiB. It is a small generated image on a
 desktop's connection, so this shows that the deployed path works, not how fast a photograph is.
+
+**Loading once (2026-10-03).** Use of the deployed tour showed three things the tiles had
+not fixed: looking away from part of a 360 image and back loaded it again; every reload
+downloaded the orbs' previews again; and the map loaded far more than it showed. Measured on
+the live tour in headless Chrome, a laptop's window (1512 × 900 CSS px at 2 device pixels),
+this machine's connection:
+
+| Visit | Image requests | On the wire | Every orb's first preview | Last image |
+| --- | ---: | ---: | ---: | ---: |
+| First, four runs | 720 | 6.4 MiB | 6.4 to 19.2 s | 20.6 to 50.0 s |
+| Reload within ten minutes | 720, all from the browser's cache | 0 | 2.0 s | 2.0 s |
+| Revisit after 11 minutes | 720: 306 downloaded again, 414 revalidated | 2.8 MiB | 12.4 s | 21.0 s |
+
+- **The map asked for every orb's largest preview.** Each of the 60 orbs loaded its 64 px
+  cube and then its 256 px cube, the preview for the largest an orb may be drawn, four
+  requests at a time, whether or not the orb was on screen or larger than 24 px.
+- **GitHub Pages lets a file go stale after ten minutes** (`Cache-Control: max-age=600`), and
+  then each one is asked for again. Its answer was the whole file for 306 of the 720, not
+  "unchanged", and the same for the app's own files: 1.55 of 1.72 MiB of them came again.
+- **The atlas held 196 tiles**, the prototype's phone-sized setting, and a laptop's view needs
+  80 at the finest level. After a turn right round, 60 of the first view's tiles had given
+  up their slots, and looking back fetched, decoded and uploaded them again in 0.7 s.
+
+What was built for it, all in `src/scenes/`:
+
+- **Saved images** ([format.md](../scenes/format.md#saved-images), `mediaStore.ts`). Every
+  preview, whole image and tile is kept in IndexedDB under its asset's revision and read from
+  there before the network is asked. Scenes → Saved images holds the limit, what is kept and
+  the clear button.
+- **An atlas with a slot for every tile**, up to the tile memory, whose default now holds all
+  510 tiles of a prepared cube (73.25 MiB, about what the 6144 px whole image takes). Within a
+  panorama nothing is evicted, so nothing is loaded twice.
+- **Orbs load what they are drawn at.** An orb keeps its smallest preview until it is drawn,
+  on screen, with more pixels than that has texels; then it loads the preview its size asks
+  for, the largest orb first. Entering asks for the largest as the entry begins.
+- **Sixteen image requests at once**, from four. With 16 the live tour's 360 first-preview
+  files arrived in 2.9 and 3.1 s; with 8 in 9.0 s; with 4 in 6.4 to 19.2 s. They are 2 KB
+  files that wait on round trips, not bandwidth. The same test on tiles showed little (1.2,
+  0.9 and 1.3 s a view at 16 against 1.6, 1.2 and 1.3 s at 6), so tiles stay at six.
+- **Tiles load during the flight in.** The view a panorama opens on is known when the flight
+  begins, so its tiles load into the panorama's own atlas over that second. On the tiled
+  example, with responses held 100 ms, the view was complete 1.3 s after the click, as the
+  flight and levelling end, where it had taken 1.6 s.
+
+On the tour's build, served to headless Chrome with every response held 100 ms and no HTTP
+cache, by [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs):
+
+| Visit | Image requests | Bytes | Every orb's first preview | Last image |
+| --- | ---: | ---: | ---: | ---: |
+| First, before | 720 | 6.2 MiB | 10.5 to 10.8 s | 19.8 to 20.2 s |
+| First, now | 360 | 0.66 MiB | 4.0 s | 3.9 s |
+| Reload | 0 | 0 | 1.45 s | – |
+| Revisit in a new browser | 0 | 0 | 1.5 s | – |
+
+About 1.4 s of each is the app starting. Inside Northrop Mall, four views a quarter turn apart
+asked for 98, 64, 64 and 36 tiles and held 256 of the atlas's 510; the first view again asked
+for nothing and loaded nothing. On the revisit all five views asked the network for nothing
+and were complete in 0.5 to 0.75 s from the saved images. The same check with the limit at 0
+fails, as it should: every reload and revisit asks again.
+
+What it does not cover: the orbs' fly-in could not be timed on the tour's build, since the
+harness serves no map and the tour's orbs stand on its ground; nothing here has run on a
+phone; and the app's own files are still downloaded again after ten minutes on GitHub Pages,
+1.5 MiB a visit, which only a service worker or another host can stop.
 
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose

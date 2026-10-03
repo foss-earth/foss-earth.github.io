@@ -11,6 +11,8 @@ Automatic detail adjustment coarsens the map to its lowest detail: one short int
 
 Inside a 360 image the north button keeps the map's heading: turning the view does not turn its needle, and pressing it does not turn the view. Report: [bugs/north-button-in-panorama.md](bugs/north-button-in-panorama.md).
 
+A 360 image looked away from and back at loaded its tiles again, a reload downloaded every orb's previews again, and the map loaded every orb's largest preview. Fixed on 2026-10-03: [docs/proposals/panorama-scenes.md](docs/proposals/panorama-scenes.md), "Loading once".
+
 The dropdown on the tab strip draws behind the globe and the panorama viewer once many tabs push it out of the tab window. Fixed as part of [docs/panorama-mode-prompt.md](docs/panorama-mode-prompt.md).
 
 features
@@ -24,3 +26,7 @@ Zoom toward the pointer, or toward the centre of a pinch, as a setting beside to
 Google 3D tiles step through every level of detail on the way down. Add a setting for loading only the level the view needs, which the user wants as the default. Also add an optional pulse on tiles still loading, and a loading bar, perhaps the outline of the map-source chip. Prompt: [docs/tile-loading-prompt.md](docs/tile-loading-prompt.md).
 
 A button that copies the camera's state (position, heading, pitch, distance, field of view) as text, for pasting into a script or sharing a view. Nothing records the camera in the URL today. 0SFS wants it for a script that renders its logo (its TODO.md, "branding").
+
+The app's own files are downloaded again on a visit more than ten minutes after the last: GitHub Pages lets them go stale then, and answered the UMN tour's revalidation with 1.55 of its 1.72 MiB again (docs/proposals/panorama-scenes.md, "Loading once"). A service worker that answers the build's hashed files from a cache, and nothing else, would make that once; it stays installed in visitors' browsers, so it wants deciding before it is built.
+
+One file with every orb's smallest preview. A scene's first visit asks for six files an orb, 360 for the UMN tour, which take 2.5 s at 100 ms a response even sixteen at a time. One image holding them all, named in the scene, would show every orb after one request.
