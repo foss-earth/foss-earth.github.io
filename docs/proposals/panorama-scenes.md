@@ -574,6 +574,12 @@ desktop's connection at a phone's viewport, Northrop Mall's view was covered by 
 loader from before them, which validated every projection strictly; the loader now skips a
 projection it does not know, so a later kind of image needs no ordering of releases.
 
+**Deployed on FOSS Earth's own site (2026-10-03).** <https://foss-earth.github.io/?scene=umn-tiles>
+opens the tiled test image. On the live site, headlessly at a phone's viewport, its view was
+covered by 6 to 8 tiles in 0.5 to 0.7 s on WebGPU, WebGL 2 and WebGL 1, with either warp, for 23
+to 46 KiB; the whole image took 0.7 to 0.8 s and 227 KiB. It is a small generated image on a
+desktop's connection, so this shows that the deployed path works, not how fast a photograph is.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:
