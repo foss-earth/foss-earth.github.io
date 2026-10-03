@@ -10,10 +10,12 @@
  *                            to see mirroring or a wrong direction by eye
  *   campus-pair.scene.json   two different images, linked both ways, for the
  *                            enter → look → link → exit path, with outlined
- *                            orbs that grow under the pointer
+ *                            orbs that grow under the pointer, and both orbs'
+ *                            64 px previews in one sheet
  *   umn-tiles.scene.json     the cardinal image with equi-angular and ordinary
  *                            tiled cubes as well as a whole image, for the
- *                            tiled path and scripts/validation/panorama-tiles.mjs
+ *                            tiled path and scripts/validation/panorama-tiles.mjs;
+ *                            its 64 px preview is in a sheet too
  *
  * The placements are a synthetic test registration: the photograph was not
  * taken on the campus and its north is not surveyed.
@@ -24,6 +26,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { addPreviewSheets } from "./lib/previewSheet.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const examples = path.join(root, "public", "examples", "panorama-scenes");
@@ -103,6 +106,12 @@ const scene = (id, title, purpose, assets, entities, extra = {}) => ({
 });
 
 const write = (name, document) => writeFileSync(path.join(examples, name), `${JSON.stringify(document, null, 2)}\n`);
+/** The scene with its 64 px preview cubes, the first an orb asks for, in one sheet named for the scene. */
+const writeWithSheet = (name, document) => {
+  const added = addPreviewSheets(document, { read: url => readFileSync(path.join(examples, url)), faceSize: 64, quality: 90, urlPrefix: `media/${document.id}-` });
+  for (const { url, bytes } of added.files) writeFileSync(path.join(examples, url), bytes);
+  write(name, added.document);
+};
 
 write("umn-single.scene.json", scene("umn-single", "UMN — test panorama",
   "The acceptance fixture of docs/proposals/panorama-scenes.md §7: one 360° image floating above the Minneapolis campus.",
@@ -132,7 +141,7 @@ const pair = [
 ];
 for (const entity of pair) entity.capture = { ...entity.capture, ...(entity.marker.northM < 0 ? { latitudeDeg: CAMPUS.latitudeDeg - 40 / 111_111 } : { latitudeDeg: CAMPUS.latitudeDeg + 40 / 111_111 }) };
 for (const entity of pair) entity.marker = { ...entity.marker, northM: 0 };
-write("campus-pair.scene.json", scene("campus-pair", "Test pair: two linked panoramas",
+writeWithSheet("campus-pair.scene.json", scene("campus-pair", "Test pair: two linked panoramas",
   "Two different images linked both ways, for the enter, look, link, exit and dispose path.",
   ["buikslotermeerplein-512", "cardinal-grid"], pair,
   { groups: [{ id: "both", title: "Both test images", members: ["pair-photo", "pair-grid"] }], initialPanorama: "pair-photo",
@@ -142,7 +151,7 @@ write("campus-pair.scene.json", scene("campus-pair", "Test pair: two linked pano
 
 // Placed from a stated height rather than the ground, so a check with no map still flies in and out of it.
 const tilesHeight = { meters: 250, datum: "WGS84-ellipsoid", source: "A round figure near the campus's ground, for a check that loads no terrain; not measured." };
-write("umn-tiles.scene.json", scene("umn-tiles", "UMN — tiled test image",
+writeWithSheet("umn-tiles.scene.json", scene("umn-tiles", "UMN — tiled test image",
   "The cardinal image as equi-angular and ordinary tiled cubes beside a whole image, at the acceptance fixture's placement: the tiled path, and the colour check of scripts/validation/panorama-tiles.mjs.",
   ["cardinal-tiles"],
   [{ ...orb("umn-tiles-orb", "cardinal-tiles", "UMN — tiled test image", "Generated letters N, E, S and W on the horizon and a 30° grid, 30 m above a stated height at the campus, as tiles."),

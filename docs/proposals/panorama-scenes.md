@@ -615,6 +615,13 @@ What was built for it, all in `src/scenes/`:
 - **Orbs load what they are drawn at.** An orb keeps its smallest preview until it is drawn,
   on screen, with more pixels than that has texels; then it loads the preview its size asks
   for, the largest orb first. Entering asks for the largest as the entry begins.
+- **One sheet for every orb's first preview** ([format.md](../scenes/format.md#preview-sheets)).
+  A scene may put its orbs' 64 px cubes into one image; the loader cuts each cube's six
+  faces out of it. The tour's is 445 KiB for 60 cubes, against 659 KiB in 360 files, and one
+  request. Each cube keeps its own files, which load if the sheet fails or is turned off.
+  [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) drew
+  an orb from a sheet and from its files on WebGPU, WebGL 2 and WebGL 1: 50.6 to 51.0 dB
+  apart from every side, where the next view was 11.8 to 28.6 dB away.
 - **Sixteen image requests at once**, from four. With 16 the live tour's 360 first-preview
   files arrived in 2.9 and 3.1 s; with 8 in 9.0 s; with 4 in 6.4 to 19.2 s. They are 2 KB
   files that wait on round trips, not bandwidth. The same test on tiles showed little (1.2,
@@ -630,11 +637,12 @@ cache, by [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-
 | Visit | Image requests | Bytes | Every orb's first preview | Last image |
 | --- | ---: | ---: | ---: | ---: |
 | First, before | 720 | 6.2 MiB | 10.5 to 10.8 s | 19.8 to 20.2 s |
-| First, now | 360 | 0.66 MiB | 4.0 s | 3.9 s |
-| Reload | 0 | 0 | 1.45 s | – |
-| Revisit in a new browser | 0 | 0 | 1.5 s | – |
+| First, orbs loading what they are drawn at, 16 at once | 360 | 0.66 MiB | 4.0 s | 3.9 s |
+| First, with the sheet | 1 | 0.43 MiB | 1.5 s | 1.3 s |
+| Reload | 0 | 0 | 1.2 s | – |
+| Revisit in a new browser | 0 | 0 | 1.3 s | – |
 
-About 1.4 s of each is the app starting. Inside Northrop Mall, four views a quarter turn apart
+About 1.2 s of each is the app starting: with the sheet, the orbs are there when the app is. Inside Northrop Mall, four views a quarter turn apart
 asked for 98, 64, 64 and 36 tiles and held 256 of the atlas's 510; the first view again asked
 for nothing and loaded nothing. On the revisit all five views asked the network for nothing
 and were complete in 0.5 to 0.75 s from the saved images. The same check with the limit at 0

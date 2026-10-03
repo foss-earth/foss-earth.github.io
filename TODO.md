@@ -28,5 +28,3 @@ Google 3D tiles step through every level of detail on the way down. Add a settin
 A button that copies the camera's state (position, heading, pitch, distance, field of view) as text, for pasting into a script or sharing a view. Nothing records the camera in the URL today. 0SFS wants it for a script that renders its logo (its TODO.md, "branding").
 
 The app's own files are downloaded again on a visit more than ten minutes after the last: GitHub Pages lets them go stale then, and answered the UMN tour's revalidation with 1.55 of its 1.72 MiB again (docs/proposals/panorama-scenes.md, "Loading once"). A service worker that answers the build's hashed files from a cache, and nothing else, would make that once; it stays installed in visitors' browsers, so it wants deciding before it is built.
-
-One file with every orb's smallest preview. A scene's first visit asks for six files an orb, 360 for the UMN tour, which take 2.5 s at 100 ms a response even sixteen at a time. One image holding them all, named in the scene, would show every orb after one request.

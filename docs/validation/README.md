@@ -17,6 +17,7 @@ through request interception.
 | [scripts/validation/panorama-input.mjs](../../scripts/validation/panorama-input.mjs) | The whole app with real mouse, wheel and trackpad events | Panorama input, hover, outlines, the panorama tab |
 | [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out. Another app's scene too, such as the UMN tour's, against a panorama's whole image (options at the top of the script) |
 | [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) | The whole app with a scene, a Chrome profile kept between its browsers: a build served by intercepting requests, with no HTTP cache and every response held as long as asked, or a live site read from Chrome's network events | What a first visit, a reload, a look around a panorama and a revisit ask the network for, and how long each takes. On a build it fails when anything is asked for twice; `--set=scene.panorama.savedMiB=0` is its control. On a live site it reports how the host's cache headers behave, with `--wait-min` to let them go stale |
+| [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
@@ -62,6 +63,12 @@ through request interception.
   changed?" is often the whole file again: on the UMN tour, 306 of 720 images and 1.55 of
   1.72 MiB of the app. A measurement of a second visit has to say how long after the first
   it was; inside ten minutes it shows the browser's cache, not the site.
+- `runtime.setViewState` puts the orbit centre back on the ground. With no terrain that is
+  the ellipsoid, and an orb at a stated height leaves the frame. To orbit an orb, set the
+  globe camera's `yaw` and `pitch` and leave its centre where the scene's overview put it,
+  as `preview-sheet.mjs` does.
+- The ground compass's N, E, S and W are drawn in the canvas, and turn with the heading. A
+  comparison of two headings sees them unless it looks only at the orb's own pixels.
 - A harness that serves no map leaves ground-relative orbs unplaced, and an unplaced orb is
   entered with a fade, not a flight. To time a flight in, use a scene whose orbs are
   capture-relative with a height, such as `umn-tiles`.

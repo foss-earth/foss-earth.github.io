@@ -54,3 +54,33 @@ describe("checkSceneFiles", () => {
     expect(report.problems[0].message).toMatch(/is 128×128 pixels, declared 64×64/);
   });
 });
+
+describe("checkSceneFiles on a scene with a preview sheet", () => {
+  const pairBase = "https://foss-earth.test/examples/panorama-scenes/campus-pair.scene.json";
+  const pair = (() => {
+    const result = validateScene(readFileSync(new URL("campus-pair.scene.json", examples), "utf8"), { baseUrl: pairBase });
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    return result.scene;
+  })();
+
+  it("counts the sheet as one more file and passes it", () => {
+    const report = checkSceneFiles(pair, reader());
+    expect(report.problems).toEqual([]);
+    // Seven preview cubes of six faces, three whole images and the sheet.
+    expect(report.files).toBe(46);
+  });
+
+  it("reports a sheet that is missing, another size, or not the bytes declared", () => {
+    const sheetFile = /campus-pair-previews-64\.jpg$/;
+    expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? null : bytes))).problems).toEqual([
+      { path: "$.sheets[previews-64].url", message: expect.stringMatching(/campus-pair-previews-64\.jpg does not exist$/) },
+    ]);
+    const face = new Uint8Array(readFileSync(new URL("media/cardinal-grid/preview-64/px.jpg", examples)));
+    expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? face : bytes))).problems.map(problem => problem.path)).toEqual([
+      "$.sheets[previews-64].url", "$.sheets[previews-64].encodedBytes",
+    ]);
+    expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? new Uint8Array([...bytes, 0]) : bytes))).problems).toEqual([
+      { path: "$.sheets[previews-64].encodedBytes", message: expect.stringMatching(/^declares \d+ bytes; the file holds \d+$/) },
+    ]);
+  });
+});

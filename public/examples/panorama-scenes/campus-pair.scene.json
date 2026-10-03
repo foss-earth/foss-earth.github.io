@@ -55,6 +55,11 @@
             "ny": "media/buikslotermeerplein-512/preview-64/ny.jpg",
             "pz": "media/buikslotermeerplein-512/preview-64/pz.jpg",
             "nz": "media/buikslotermeerplein-512/preview-64/nz.jpg"
+          },
+          "sheet": {
+            "id": "previews-64",
+            "x": 0,
+            "y": 0
           }
         },
         {
@@ -125,6 +130,11 @@
             "ny": "media/cardinal-grid/preview-64/ny.jpg",
             "pz": "media/cardinal-grid/preview-64/pz.jpg",
             "nz": "media/cardinal-grid/preview-64/nz.jpg"
+          },
+          "sheet": {
+            "id": "previews-64",
+            "x": 0,
+            "y": 64
           }
         },
         {
@@ -180,6 +190,17 @@
           "url": "media/cardinal-grid/immersion-2048.jpg"
         }
       ]
+    }
+  ],
+  "sheets": [
+    {
+      "id": "previews-64",
+      "revision": "82bd91401d19",
+      "mimeType": "image/jpeg",
+      "width": 384,
+      "height": 128,
+      "encodedBytes": 15821,
+      "url": "media/campus-pair-previews-64.jpg"
     }
   ],
   "entities": [

@@ -91,7 +91,7 @@ const T = "window.__fossEarthPanoramaTest";
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const isMedia = url => /\/media\//.test(url);
 // A tile is <folder>/<face>/<level>/<x>/<y>; a preview face <folder>/<face>.
-const kindOf = url => (/\/[np][xyz]\/\d+\/\d+\/\d+\.\w+$/.test(url) ? "tiles" : /preview-\d+/.exec(url)?.[0] ?? /immersion-\d+/.exec(url)?.[0] ?? /previews?-sheet[^/]*/.exec(url)?.[0] ?? "other");
+const kindOf = url => (/\/[np][xyz]\/\d+\/\d+\/\d+\.\w+$/.test(url) ? "tiles" : /preview-\d+/.exec(url)?.[0] ?? /immersion-\d+/.exec(url)?.[0] ?? (/previews-\d+(-\d+)?\.\w+$/.test(url) ? "preview sheet" : "other"));
 const report = { config, browser: null, gpu: null, phases: [], failures: [] };
 const profile = path.join(out, "chrome-profile");
 
