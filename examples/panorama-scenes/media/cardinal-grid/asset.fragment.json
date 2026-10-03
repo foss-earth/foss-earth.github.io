@@ -1,0 +1,103 @@
+{
+  "asset": {
+    "id": "cardinal-grid",
+    "revision": "cbe4eb82f3a6",
+    "type": "panorama-image",
+    "colorSpace": "srgb",
+    "alpha": "opaque",
+    "attribution": {
+      "text": "Generated cardinal and grid test panorama, FOSS Earth"
+    },
+    "representations": [
+      {
+        "id": "preview-32",
+        "role": "preview",
+        "projection": "cube",
+        "faceSize": 32,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 5614,
+        "faces": {
+          "px": "media/cardinal-grid/preview-32/px.jpg",
+          "nx": "media/cardinal-grid/preview-32/nx.jpg",
+          "py": "media/cardinal-grid/preview-32/py.jpg",
+          "ny": "media/cardinal-grid/preview-32/ny.jpg",
+          "pz": "media/cardinal-grid/preview-32/pz.jpg",
+          "nz": "media/cardinal-grid/preview-32/nz.jpg"
+        }
+      },
+      {
+        "id": "preview-64",
+        "role": "preview",
+        "projection": "cube",
+        "faceSize": 64,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 10492,
+        "faces": {
+          "px": "media/cardinal-grid/preview-64/px.jpg",
+          "nx": "media/cardinal-grid/preview-64/nx.jpg",
+          "py": "media/cardinal-grid/preview-64/py.jpg",
+          "ny": "media/cardinal-grid/preview-64/ny.jpg",
+          "pz": "media/cardinal-grid/preview-64/pz.jpg",
+          "nz": "media/cardinal-grid/preview-64/nz.jpg"
+        }
+      },
+      {
+        "id": "preview-128",
+        "role": "preview",
+        "projection": "cube",
+        "faceSize": 128,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 25312,
+        "faces": {
+          "px": "media/cardinal-grid/preview-128/px.jpg",
+          "nx": "media/cardinal-grid/preview-128/nx.jpg",
+          "py": "media/cardinal-grid/preview-128/py.jpg",
+          "ny": "media/cardinal-grid/preview-128/ny.jpg",
+          "pz": "media/cardinal-grid/preview-128/pz.jpg",
+          "nz": "media/cardinal-grid/preview-128/nz.jpg"
+        }
+      },
+      {
+        "id": "preview-256",
+        "role": "preview",
+        "projection": "cube",
+        "faceSize": 256,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 67454,
+        "faces": {
+          "px": "media/cardinal-grid/preview-256/px.jpg",
+          "nx": "media/cardinal-grid/preview-256/nx.jpg",
+          "py": "media/cardinal-grid/preview-256/py.jpg",
+          "ny": "media/cardinal-grid/preview-256/ny.jpg",
+          "pz": "media/cardinal-grid/preview-256/pz.jpg",
+          "nz": "media/cardinal-grid/preview-256/nz.jpg"
+        }
+      },
+      {
+        "id": "whole-1024",
+        "role": "immersion",
+        "projection": "equirectangular",
+        "width": 1024,
+        "height": 512,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 84980,
+        "url": "media/cardinal-grid/immersion-1024.jpg"
+      },
+      {
+        "id": "whole-2048",
+        "role": "immersion",
+        "projection": "equirectangular",
+        "width": 2048,
+        "height": 1024,
+        "mimeType": "image/jpeg",
+        "encodedBytes": 232181,
+        "url": "media/cardinal-grid/immersion-2048.jpg"
+      }
+    ]
+  },
+  "imagePose": {
+    "headingDeg": 0,
+    "pitchDeg": 0,
+    "rollDeg": 0
+  }
+}

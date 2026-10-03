@@ -1,0 +1,309 @@
+{
+  "format": "foss-earth-scene",
+  "version": 1,
+  "id": "campus-pair",
+  "revision": "1",
+  "title": "Test pair: two linked panoramas",
+  "requiredExtensions": [],
+  "extensions": {
+    "foss-earth.fixture": {
+      "purpose": "Two different images linked both ways, for the enter, look, link, exit and dispose path.",
+      "registration": "Synthetic test registration at the research's campus anchor, 44.974°, −93.235°. The photograph was not captured here and its north is not surveyed.",
+      "source": "scripts/build-panorama-examples.mjs"
+    }
+  },
+  "assets": [
+    {
+      "id": "buikslotermeerplein-512",
+      "revision": "f61e82625a7b",
+      "type": "panorama-image",
+      "colorSpace": "srgb",
+      "alpha": "opaque",
+      "attribution": {
+        "text": "Buikslotermeerplein by Greg Zaal, Poly Haven",
+        "license": "CC0-1.0",
+        "url": "https://polyhaven.com/a/buikslotermeerplein"
+      },
+      "representations": [
+        {
+          "id": "preview-32",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 32,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 6121,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-32/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-32/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-32/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-32/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-32/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-32/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-64",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 64,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 12004,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-64/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-64/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-64/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-64/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-64/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-64/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-128",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 128,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 32522,
+          "faces": {
+            "px": "media/buikslotermeerplein-512/preview-128/px.jpg",
+            "nx": "media/buikslotermeerplein-512/preview-128/nx.jpg",
+            "py": "media/buikslotermeerplein-512/preview-128/py.jpg",
+            "ny": "media/buikslotermeerplein-512/preview-128/ny.jpg",
+            "pz": "media/buikslotermeerplein-512/preview-128/pz.jpg",
+            "nz": "media/buikslotermeerplein-512/preview-128/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-512",
+          "role": "immersion",
+          "projection": "equirectangular",
+          "width": 512,
+          "height": 256,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 40572,
+          "url": "media/buikslotermeerplein-512/immersion-512.jpg"
+        }
+      ]
+    },
+    {
+      "id": "cardinal-grid",
+      "revision": "cbe4eb82f3a6",
+      "type": "panorama-image",
+      "colorSpace": "srgb",
+      "alpha": "opaque",
+      "attribution": {
+        "text": "Generated cardinal and grid test panorama, FOSS Earth"
+      },
+      "representations": [
+        {
+          "id": "preview-32",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 32,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 5614,
+          "faces": {
+            "px": "media/cardinal-grid/preview-32/px.jpg",
+            "nx": "media/cardinal-grid/preview-32/nx.jpg",
+            "py": "media/cardinal-grid/preview-32/py.jpg",
+            "ny": "media/cardinal-grid/preview-32/ny.jpg",
+            "pz": "media/cardinal-grid/preview-32/pz.jpg",
+            "nz": "media/cardinal-grid/preview-32/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-64",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 64,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 10492,
+          "faces": {
+            "px": "media/cardinal-grid/preview-64/px.jpg",
+            "nx": "media/cardinal-grid/preview-64/nx.jpg",
+            "py": "media/cardinal-grid/preview-64/py.jpg",
+            "ny": "media/cardinal-grid/preview-64/ny.jpg",
+            "pz": "media/cardinal-grid/preview-64/pz.jpg",
+            "nz": "media/cardinal-grid/preview-64/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-128",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 128,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 25312,
+          "faces": {
+            "px": "media/cardinal-grid/preview-128/px.jpg",
+            "nx": "media/cardinal-grid/preview-128/nx.jpg",
+            "py": "media/cardinal-grid/preview-128/py.jpg",
+            "ny": "media/cardinal-grid/preview-128/ny.jpg",
+            "pz": "media/cardinal-grid/preview-128/pz.jpg",
+            "nz": "media/cardinal-grid/preview-128/nz.jpg"
+          }
+        },
+        {
+          "id": "preview-256",
+          "role": "preview",
+          "projection": "cube",
+          "faceSize": 256,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 67454,
+          "faces": {
+            "px": "media/cardinal-grid/preview-256/px.jpg",
+            "nx": "media/cardinal-grid/preview-256/nx.jpg",
+            "py": "media/cardinal-grid/preview-256/py.jpg",
+            "ny": "media/cardinal-grid/preview-256/ny.jpg",
+            "pz": "media/cardinal-grid/preview-256/pz.jpg",
+            "nz": "media/cardinal-grid/preview-256/nz.jpg"
+          }
+        },
+        {
+          "id": "whole-1024",
+          "role": "immersion",
+          "projection": "equirectangular",
+          "width": 1024,
+          "height": 512,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 84980,
+          "url": "media/cardinal-grid/immersion-1024.jpg"
+        },
+        {
+          "id": "whole-2048",
+          "role": "immersion",
+          "projection": "equirectangular",
+          "width": 2048,
+          "height": 1024,
+          "mimeType": "image/jpeg",
+          "encodedBytes": 232181,
+          "url": "media/cardinal-grid/immersion-2048.jpg"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "pair-photo",
+      "type": "panorama",
+      "assetId": "buikslotermeerplein-512",
+      "title": "Test pair: photograph",
+      "description": "The test photograph, 40 m south of the anchor.",
+      "capture": {
+        "longitudeDeg": -93.235,
+        "latitudeDeg": 44.97363999964,
+        "height": null
+      },
+      "imagePose": {
+        "headingDeg": 0,
+        "pitchDeg": 0,
+        "rollDeg": 0
+      },
+      "marker": {
+        "mode": "ground-relative",
+        "eastM": 0,
+        "northM": 0,
+        "offsetM": 12,
+        "radiusMeters": 2
+      },
+      "initialView": {
+        "headingDeg": 0,
+        "pitchDeg": 0,
+        "verticalFovDeg": 60
+      },
+      "links": [
+        {
+          "id": "to-grid",
+          "target": "pair-grid",
+          "label": "Go to the cardinal grid",
+          "direction": {
+            "headingDeg": 0,
+            "pitchDeg": -5
+          }
+        }
+      ]
+    },
+    {
+      "id": "pair-grid",
+      "type": "panorama",
+      "assetId": "cardinal-grid",
+      "title": "Test pair: cardinal grid",
+      "description": "The generated cardinal image, 40 m north of the anchor.",
+      "capture": {
+        "longitudeDeg": -93.235,
+        "latitudeDeg": 44.974360000359994,
+        "height": null
+      },
+      "imagePose": {
+        "headingDeg": 0,
+        "pitchDeg": 0,
+        "rollDeg": 0
+      },
+      "marker": {
+        "mode": "ground-relative",
+        "eastM": 0,
+        "northM": 0,
+        "offsetM": 12,
+        "radiusMeters": 2,
+        "style": {
+          "outline": {
+            "color": "#facc15",
+            "widthPx": 3
+          }
+        }
+      },
+      "links": [
+        {
+          "id": "to-photo",
+          "target": "pair-photo",
+          "label": "Return to the photograph",
+          "direction": {
+            "headingDeg": 180,
+            "pitchDeg": -5
+          }
+        },
+        {
+          "id": "to-photo-facing-east",
+          "target": "pair-photo",
+          "label": "Photograph, facing east",
+          "arrivalView": {
+            "headingDeg": 90,
+            "pitchDeg": 0,
+            "verticalFovDeg": 70
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "both",
+      "title": "Both test images",
+      "members": [
+        "pair-photo",
+        "pair-grid"
+      ]
+    }
+  ],
+  "initialPanorama": "pair-photo",
+  "overview": {
+    "target": {
+      "longitudeDeg": -93.235,
+      "latitudeDeg": 44.974,
+      "height": null
+    },
+    "distanceMeters": 180,
+    "headingDeg": 90,
+    "pitchDeg": -25,
+    "verticalFovDeg": 60
+  },
+  "markerStyle": {
+    "outline": {
+      "color": "#ffffff",
+      "widthPx": 2
+    },
+    "hover": {
+      "scale": 1.25
+    }
+  }
+}
