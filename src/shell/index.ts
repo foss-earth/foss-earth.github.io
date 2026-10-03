@@ -40,6 +40,7 @@ export { createParameterControl, describeProvenance, type ParameterControlHandle
 export { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./settings/parameterList";
 export { createTrack, detailColour, type TrackFrame, type TrackHandle, type TrackOptions, type TrackRamp, type TrackThumb } from "./settings/track";
 export { createMapCacheSection, type MapCacheSectionHandle } from "./mapCacheSection";
+export { createSavedImagesSection, type SavedImagesSectionHandle } from "./savedImagesSection";
 export { createSavedSettingsSection, type SavedSettingsSectionHandle } from "./settings/savedSettings";
 export {
   createPresetStatus,

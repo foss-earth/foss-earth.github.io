@@ -11,6 +11,7 @@ import { SCENES_TAB } from "../settings/catalogue/scenes";
 import type { SceneController, SceneControllerState } from "../scenes/sceneController";
 import type { SceneEntryStatus, SceneStatus } from "../scenes/loadScene";
 import { createExternalLinkIcon } from "./externalLinkIcon";
+import { createSavedImagesSection } from "./savedImagesSection";
 import { createParameterSection, createSectionsElement, type ParameterSectionHandle } from "./settings/parameterSection";
 
 export interface ScenesPanelHandle {
@@ -82,11 +83,13 @@ function entryDetails(entry: SceneEntryStatus): string[] {
 export function createScenesPanel(options: { settings: SettingsRegistry; controller: SceneController }): ScenesPanelHandle {
   const { settings, controller } = options;
   const sectionHandles: ParameterSectionHandle[] = [];
-  const section = (id: string, main?: HTMLElement, showAll = true): HTMLElement => {
-    const handle = createParameterSection(settings, { tab: SCENES_TAB, section: id, showAll, ...(main ? { main } : {}) });
+  const section = (id: string, main?: HTMLElement, showAll = true, footer?: HTMLElement): HTMLElement => {
+    const handle = createParameterSection(settings, { tab: SCENES_TAB, section: id, showAll, ...(main ? { main } : {}), ...(footer ? { footer } : {}) });
     sectionHandles.push(handle);
     return handle.element;
   };
+  // The limit first, then what is kept within it.
+  const savedImages = createSavedImagesSection();
 
   // ─── Content ──────────────────────────────────────────────────────
   const content = el("div", "foss-earth-choice-panel foss-earth-scenes");
@@ -210,6 +213,7 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     { id: "scenes.motion", title: settings.getSectionTitle(SCENES_TAB, "motion"), element: section("motion"), defaultOpen: false },
     { id: "scenes.loading", title: settings.getSectionTitle(SCENES_TAB, "loading"), element: section("loading"), defaultOpen: false },
     { id: "scenes.tiles", title: settings.getSectionTitle(SCENES_TAB, "tiles"), element: section("tiles"), defaultOpen: false },
+    { id: "scenes.saved", title: settings.getSectionTitle(SCENES_TAB, "saved"), element: section("saved", undefined, true, savedImages.element), defaultOpen: false },
     { id: "scenes.credits", title: settings.getSectionTitle(SCENES_TAB, "credits"), element: section("credits", credits, false), defaultOpen: false },
   ]);
 
@@ -218,6 +222,7 @@ export function createScenesPanel(options: { settings: SettingsRegistry; control
     destroy() {
       off();
       for (const handle of sectionHandles) handle.destroy();
+      savedImages.destroy();
       sections.destroy();
     },
   };

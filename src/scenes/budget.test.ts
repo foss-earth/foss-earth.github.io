@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ResolvedRepresentation } from "./format";
-import { chooseRepresentation, createResourcePools, MIB, mipLevelCount, representationAroundPx, representationDecodedBytes, representationGpuBytes, rgba8Bytes } from "./budget";
+import { chooseRepresentation, createResourcePools, MIB, mipLevelCount, representationAroundPx, representationDecodedBytes, representationGpuBytes, rgba8Bytes, tileAtlasLayout, tiledCubeTileCount } from "./budget";
 
 const cube = (id: string, faceSize: number): ResolvedRepresentation => ({
   id, role: "preview", projection: "cube", mimeType: "image/jpeg", encodedBytes: 1000, faceSize,
@@ -112,5 +112,36 @@ describe("choosing a representation", () => {
     expect(choice?.representation.id).toBe("e4096");
     expect(choice?.next).toEqual({ representation: images[3], reason: "over the detail" });
     expect(chooseRepresentation(images, "any", Number.POSITIVE_INFINITY, () => null)).toMatchObject({ representation: images[3], next: null });
+  });
+});
+
+describe("a tiled cube's atlas", () => {
+  // As the tools prepare a panorama: 1536-texel faces in 192-texel tiles with a texel of gutter, four levels.
+  const prepared = { tileSize: 192, gutter: 1, faceSize: 1536 };
+  const tile = 4 * 194 * 194;
+
+  it("counts the tiles of every level", () => {
+    expect(tiledCubeTileCount(prepared)).toBe(6 * (1 + 4 + 16 + 64));
+    expect(tiledCubeTileCount({ tileSize: 192, faceSize: 192 })).toBe(6);
+  });
+
+  it("holds as many tiles as the memory allows, in rows the device's textures can take", () => {
+    const layout = tileAtlasLayout(prepared, 196 * tile)!;
+    expect(layout).toMatchObject({ stored: 194, slots: 196, perRow: 14, width: 14 * 194, height: 14 * 194 });
+    // The atlas, and the display table of 6C × 2C texels for C = 8 cells along a face.
+    expect(layout.gpuBytes).toBe(4 * (14 * 194) ** 2 + 4 * 6 * 8 * 2 * 8);
+    // A 4096 px limit: 21 tiles a side.
+    expect(tileAtlasLayout(prepared, 1024 * MIB, 4096)).toMatchObject({ perRow: 21, slots: 441 });
+    expect(tileAtlasLayout(prepared, tile - 1)).toBeNull();
+    expect(tileAtlasLayout(prepared, 1024 * MIB, 100)).toBeNull();
+  });
+
+  it("never has more slots than the cube has tiles, however much memory it may take", () => {
+    const layout = tileAtlasLayout(prepared, 1024 * MIB)!;
+    expect(layout.slots).toBe(510);
+    expect(layout.perRow * (layout.height / 194)).toBeGreaterThanOrEqual(510);
+    expect(layout.gpuBytes).toBeLessThan(80 * MIB);
+    // A small cube takes a small atlas.
+    expect(tileAtlasLayout({ tileSize: 192, gutter: 1, faceSize: 384 }, 1024 * MIB)).toMatchObject({ slots: 30, perRow: 6, height: 5 * 194 });
   });
 });

@@ -58,5 +58,7 @@ export {
   type SceneHistoryEntry,
 } from "./sceneHistory";
 export { createSceneController, type SceneController, type SceneControllerOptions, type SceneControllerState, type SceneExample } from "./sceneController";
+/** The scene images kept between visits (docs/scenes/format.md, "Saved images"): what a host may show or clear. */
+export { clearSceneMedia, inspectSceneMedia, type MediaGroupRecord, type MediaStoreSnapshot } from "./mediaStore";
 export type { LookState } from "./panoramaInput";
 export { PANORAMA_SETTINGS_TAB, PANORAMA_TAB, SCENE_PARAMETERS, SCENES_TAB } from "../settings/catalogue/scenes";
