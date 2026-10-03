@@ -526,8 +526,8 @@ real HTTP/2 at 2 Mbit/s a forward view was sharp after 1.3 s, where the current 
 its preview for the whole 10-second trace. It supports that design on a desktop only;
 nothing has run on a phone, which is the experiment it names next.
 
-**Built (2026-10-03).** After the prototype's package was tried by hand on phones and
-worked, tiled immersion went into production as the format's `tiled-cube` representation
+**Built (2026-10-03).** After the prototype's published package was tried by hand and
+reported working (the device and the results were not recorded), tiled immersion went into production as the format's `tiled-cube` representation
 ([format](../scenes/format.md#tiled-cubes)), in both warps: equi-angular, the default, and
 gnomonic, an ordinary cube map in the same tiles. The person chooses between them and the
 whole image with 360 image settings → Image → **Representation**. What changed from the
@@ -545,8 +545,12 @@ prototype:
   nothing read back to JavaScript, under the same colour contract as whole images (sRGB
   texture on WebGPU, decoded in the shader on WebGL).
 - **Preparation is `prepare-panorama.mjs --tiles`**, with the repository's JPEG encoder
-  (4:4:4, no optimized tables): tiles are about 18% larger than the prototype's
-  libjpeg-turbo 4:2:0 tiles of the same quality.
+  (jpeg-js: 4:4:4, standard Huffman tables) at the tour's quality 80. On the three
+  photographs the prototype measured, its tiles are 22% (Northrop Mall), 28% (Superblock)
+  and 35 to 37% (the bookstore) larger than the prototype's libjpeg-turbo 4:2:0 tiles with
+  optimized tables at the same quality, so a view takes about that much longer to sharpen
+  than the report's times. Encoding tiles 4:2:0 with optimized tables is the first thing to
+  win back.
 - **Its parameters** (Scenes → Tiled images) are the prototype's measured values: 196 tiles
   of atlas, six requests, two uploads a frame, a 5° margin.
 
@@ -560,7 +564,15 @@ UMN tour's own build, entering Northrop Mall, against its 6144 px image: 27 to 3
 renderer, tile edges within 1.3 dB of the whole image's on the same pixels. It found
 two defects the prototype's own page could not have: a shader parameter named `layout`,
 reserved in WGSL as in GLSL ES 3.00, and WebGL's default anisotropic filtering gathering
-texels from neighbouring atlas slots along tile edges. Phones remain checked by hand only.
+texels from neighbouring atlas slots along tile edges. The production version has not yet
+been tried on a phone.
+
+**Deployed in the UMN tour (2026-10-03).** Every photograph offers both warps, 1536-texel
+faces in 192-texel tiles, beside its whole images. On the live site, headlessly from a
+desktop's connection at a phone's viewport, Northrop Mall's view was covered by its tiles in
+0.5 to 1.1 s on WebGPU, WebGL 2 and WebGL 1. A scene that lists tiled cubes is refused by a
+loader from before them, which validated every projection strictly; the loader now skips a
+projection it does not know, so a later kind of image needs no ordering of releases.
 
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose

@@ -46,6 +46,10 @@ through request interception.
   sent each response at full speed: a server's log never shows a transfer cut short, and a
   page's own byte count is the measure. Load the page's script before throttling, or every
   run spends its first seconds downloading the bundle.
+- Every DevTools call through `scripts/lib/headlessChrome.mjs` gives up after 15 s, and an
+  awaited `Runtime.evaluate` holds its call open until the page's promise settles. Start a long
+  page task, store its result on `window`, and poll for it, as `panorama-campus.mjs`'s `job`
+  and `panorama-tiles.mjs`'s do; the prototype's calibration hit the same limit.
 - `performance.getEntriesByType("resource")` stops at 250 entries unless the page calls
   `performance.setResourceTimingBufferSize`.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
