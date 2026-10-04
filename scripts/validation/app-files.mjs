@@ -122,14 +122,18 @@ async function withBrowser(work) {
       if (from && message.method === "Runtime.exceptionThrown") errors.push(`${from}: ${p.exceptionDetails.exception?.description ?? p.exceptionDetails.text}`);
       else if (from === "page" && message.method === "Runtime.consoleAPICalled" && p.type === "error") errors.push(`page: ${p.args.map(entry => entry.value ?? entry.description).join(" ")}`);
       else if (liveUrl && from && message.method === "Network.requestWillBeSent" && isAppFile(p.request.url)) {
-        const entry = { url: new URL(p.request.url).pathname, from, at: Date.now(), answer: "network", bytes: 0 };
+        // Answered as its response says; a request whose response this session never sees, a worker script's, counts by its bytes.
+        const entry = { url: new URL(p.request.url).pathname, from, at: Date.now(), answer: null, bytes: 0 };
         byId.set(`${message.sessionId} ${p.requestId}`, entry);
         requests.push(entry);
       } else if (liveUrl && from && message.method === "Network.responseReceived") {
         const entry = byId.get(`${message.sessionId} ${p.requestId}`);
         if (entry) entry.answer = p.response.fromServiceWorker ? "worker" : p.response.fromDiskCache || p.response.fromPrefetchCache ? "browser cache" : "network";
       } else if (liveUrl && from && message.method === "Network.requestServedFromCache") { const entry = byId.get(`${message.sessionId} ${p.requestId}`); if (entry) entry.answer = "browser cache"; }
-      else if (liveUrl && from && message.method === "Network.loadingFinished") { const entry = byId.get(`${message.sessionId} ${p.requestId}`); if (entry) entry.bytes = p.encodedDataLength; }
+      else if (liveUrl && from && message.method === "Network.loadingFinished") {
+        const entry = byId.get(`${message.sessionId} ${p.requestId}`);
+        if (entry) { entry.bytes = p.encodedDataLength; entry.answer ??= entry.bytes > 0 ? "network" : "unknown"; }
+      }
       else if (!liveUrl && message.method === "Fetch.requestPaused") {
         // Browser-wide interception: no session.
         void (async () => {
@@ -208,12 +212,12 @@ async function phase(name, { send, page, requests, errors }, navigate, { awaitKe
     phase: name, startedMs, href: last?.href ?? null, controlled: Boolean(last?.controlled), scope: last?.scope ?? null,
     appFilesLoaded: (last?.loaded ?? []).filter(isAppFile).length, kept: last?.kept?.length ?? 0,
     appRequests: mine.length, fromNetwork: reached.length, networkBytes: reached.reduce((sum, each) => sum + (each.bytes ?? 0), 0),
-    ...(liveUrl ? { fromWorker: mine.filter(each => each.answer === "worker").length, fromBrowserCache: mine.filter(each => each.answer === "browser cache").length, workerFromNetwork: reached.filter(each => each.from === "worker").length } : {}),
+    ...(liveUrl ? { fromWorker: mine.filter(each => each.answer === "worker").length, fromBrowserCache: mine.filter(each => each.answer === "browser cache").length, unknown: mine.filter(each => each.answer === null || each.answer === "unknown").map(each => each.url), workerFromNetwork: reached.filter(each => each.from === "worker").length } : {}),
     networkFiles: [...new Set(reached.map(each => each.url))].slice(0, 20),
     cacheDisabled, errors: errors.splice(0),
   };
   report.phases.push(entry);
-  console.log(`${name}: app started after ${startedMs ?? "–"} ms; ${entry.appFilesLoaded} app files loaded, ${entry.fromNetwork} from the network (${(entry.networkBytes / 1024).toFixed(0)} KiB)${liveUrl ? `, ${entry.fromWorker} from the worker, ${entry.fromBrowserCache} from the browser's cache` : ""}; worker ${entry.controlled ? "in control" : "not in control"}, ${entry.kept} kept`);
+  console.log(`${name}: app started after ${startedMs ?? "–"} ms; ${entry.appFilesLoaded} app files loaded, ${entry.fromNetwork} from the network (${(entry.networkBytes / 1024).toFixed(0)} KiB)${liveUrl ? `, ${entry.fromWorker} from the worker, ${entry.fromBrowserCache} from the browser's cache${entry.unknown.length ? `, ${entry.unknown.length} with no bytes and no response this page saw (${entry.unknown.join(", ")})` : ""}` : ""}; worker ${entry.controlled ? "in control" : "not in control"}, ${entry.kept} kept`);
   return entry;
 }
 
