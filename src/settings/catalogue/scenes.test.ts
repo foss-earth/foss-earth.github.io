@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIB, rgba8Bytes } from "../../scenes/budget";
+import { MIB, rgba8Bytes, tileAtlasLayout } from "../../scenes/budget";
 import { createSettingsRegistry } from "../registry";
 import { PANORAMA_SETTINGS_TAB, PANORAMA_TAB, SCENE_PARAMETERS, SCENES_TAB } from "./scenes";
 
@@ -64,14 +64,19 @@ describe("the scene parameters' defaults", () => {
     const view = 28.25;
     expect(Math.ceil((510 * 194 * 194 * 4) / MIB * 4) / 4).toBe(all);
     expect(Math.ceil((196 * 194 * 194 * 4) / MIB * 4) / 4).toBe(view);
-    expect(tiles({ deviceMemoryGiB: 8, touch: true })).toMatchObject({ tiles: all, kept: all });
-    expect(tiles({ deviceMemoryGiB: 4, touch: false })).toMatchObject({ tiles: all, kept: all });
+    // What is kept is the whole atlas of the panorama left: a square of 23 × 23 slots and its table, more than the tiles themselves.
+    const atlas = tileAtlasLayout({ tileSize: 192, gutter: 1, faceSize: 1536 }, all * MIB)!;
+    expect(atlas.slots).toBe(510);
+    const kept = Math.ceil(atlas.gpuBytes / MIB * 4) / 4;
+    expect(kept).toBe(76);
+    expect(tiles({ deviceMemoryGiB: 8, touch: true })).toMatchObject({ tiles: all, kept });
+    expect(tiles({ deviceMemoryGiB: 4, touch: false })).toMatchObject({ tiles: all, kept });
     // A 32nd of 2 GiB is 64 MiB: most of a panorama, and nothing kept that is not shown.
     expect(tiles({ deviceMemoryGiB: 2 })).toMatchObject({ tiles: 64, kept: 0, from: "1/32 of the 2 GiB the browser reports" });
     expect(tiles({ deviceMemoryGiB: 0.5 })).toMatchObject({ tiles: view, kept: 0 });
     // A browser that does not say: a phone's, going by its touch screen, or one with room.
     expect(tiles({ deviceMemoryGiB: null, touch: true })).toMatchObject({ tiles: view, kept: 0 });
-    expect(tiles({ deviceMemoryGiB: null, touch: false })).toMatchObject({ tiles: all, kept: all });
+    expect(tiles({ deviceMemoryGiB: null, touch: false })).toMatchObject({ tiles: all, kept });
   });
 
   it("home what only matters inside a panorama in its tabs, and what the globe shows in Scenes", () => {
