@@ -26,7 +26,11 @@ build it is, in four places:
   with FOSS Earth 35ad0e3." The time is the build's, to the minute; the first commit is the
   app's own repository's and the second FOSS Earth's, in an app built on it from another
   repository. `-dirty` after a commit says the build had changes not committed.
-- **Settings → About**: the build's time, the two commits and the bundle, in full.
+- **Settings → About**: the build's time, the two commits and the bundle, in full. Its last
+  line, the site's latest deploy, is asked of GitHub as the page opens and is the site's, not
+  this page's: a page a browser kept from days before shows the newest deploy there too. Until
+  2026-10-04 it was labelled "Deploy", and an iPhone running the UMN tour's app of 2026-10-03
+  showed that day's deploy under it.
 - **The report**, in its `Build:` line, with whether the page is the published one.
 - **The page's source**, for the version a site publishes
   ([app-files.md](app-files.md#what-a-published-page-says)).

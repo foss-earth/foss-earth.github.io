@@ -284,7 +284,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.querySelector("#settingsSourceLine")?.textContent).toMatch(/^Source: [\w.-]+$/);
     expect(root.querySelector("#settingsBundleLine")?.textContent).toMatch(/^Bundle: (dev|[\w.]+-[\w-]{8}\.js)$/);
     await vi.waitFor(() => {
-      expect(root.querySelector("#settingsDeployLine")?.textContent).toBe("Deploy: 8b0ab4ed380c");
+      expect(root.querySelector("#settingsDeployLine")?.textContent).toBe("Site's latest deploy: 8b0ab4ed380c");
     });
     expect(mockState.configureOrbitTargetHeight).toHaveBeenCalledWith({
       resolveSurfaceHeightMeters: mockState.resolveAnchorHeightMeters,

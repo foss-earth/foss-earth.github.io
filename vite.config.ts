@@ -27,7 +27,9 @@ function getRepositorySlug(): string {
 }
 
 const sourceCommit = getGitOutput('git rev-parse --short=12 HEAD') ?? 'unknown'
-const sourceDirty = Boolean(getGitOutput('git status --short'))
+// What the app is built from: a change anywhere else, such as a note in TODO.md, does not change what runs, so it does not make the build "-dirty".
+const BUILT_FROM = ['index.html', 'src', 'public', 'vite', 'vite.config.ts', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json', 'package.json', 'package-lock.json']
+const sourceDirty = Boolean(getGitOutput(`git status --short -- ${BUILT_FROM.join(' ')}`))
 const sourceVersion = `${sourceCommit}${sourceDirty ? '-dirty' : ''}`
 
 // https://vite.dev/config/
