@@ -29,6 +29,10 @@ Leaving a panorama pulls back out of it, away from the direction the viewer face
 
 Zoom toward the pointer, or toward the centre of a pinch, as a setting beside today's zoom toward the view's centre. Prompt: [docs/camera-pivot-and-zoom-prompt.md](docs/camera-pivot-and-zoom-prompt.md).
 
+The log becomes a tab where the screen is too narrow for it beside the tab window: on an iPhone XS Max there is not room for both. Three layouts by width: two tab windows with the log between them where there is room for all three; else the log on the left and one tab window on the right; else one tab window with the log as one of its tabs.
+
+No check runs in Safari, and none runs the app already published against a scene about to be: both faults of 2026-10-03's phone trial were of those kinds. Run the checks that use `scripts/lib/headlessPage.mjs` in WebKit too, and have a content release load the new scene in the bundle that is live.
+
 Google 3D tiles step through every level of detail on the way down. Add a setting for loading only the level the view needs, which the user wants as the default. Also add an optional pulse on tiles still loading, and a loading bar, perhaps the outline of the map-source chip. Prompt: [docs/tile-loading-prompt.md](docs/tile-loading-prompt.md).
 
 A button that copies the camera's state (position, heading, pitch, distance, field of view) as text, for pasting into a script or sharing a view. Nothing records the camera in the URL today. 0SFS wants it for a script that renders its logo (its TODO.md, "branding").
