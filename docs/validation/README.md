@@ -76,7 +76,10 @@ through request interception.
 - `Fetch.enable` on a page's session does not reach a service worker: not the request for its
   script, so it fails to register and the app runs without it, nor the worker's own requests.
   On the browser's own session, with no session id, it reaches both; `app-files.mjs` does
-  that. A worker's navigation preload request is out of its reach either way, and fails as a
+  that. Do not watch a worker's own session with the `Network` domain: once a new version of
+  the worker took over, the page it controlled stopped answering. A page's resource timing
+  says what crossed the network instead: `transferSize` counts a file's bytes whether the page
+  or its worker fetched it, and `workerStart` says the worker answered. A worker's navigation preload request is out of its reach either way, and fails as a
   network error; the app's worker then asks for the page itself. So is the browser's check of
   a worker's script for a new version, so a build cannot show one version taking over from
   another: that is checked on the live site, from a copy of the profile of a run against the

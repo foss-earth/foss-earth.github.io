@@ -13,10 +13,13 @@
  * worker's as well as the page's, with no server and no cache headers, so a
  * file the worker does not keep is asked for every time: the reload and the
  * revisit must ask for none of the app's files. With `--url` it reads a live
- * site from Chrome's network events, the worker's included; the reload and
- * the revisit then run with the browser's HTTP cache turned off, as a visit
- * after the host's cached copies have gone stale, unless `--wait-min` waits
- * for that instead.
+ * site from the page's resource timing, which counts the bytes a file took
+ * over the network whether the page or the worker asked for them; the reload
+ * and the revisit then run with the browser's HTTP cache turned off, as a
+ * visit after the host's cached copies have gone stale, unless `--wait-min`
+ * waits for that instead. To check a new version taking over, give `--out` a
+ * folder holding a copy of the `chrome-profile` of a run against the version
+ * before.
  *
  *   node scripts/validation/app-files.mjs
  *   node scripts/validation/app-files.mjs --dist=../UMN-VR/UMN-VR.github.io/dist-app \
@@ -101,39 +104,14 @@ async function withBrowser(work) {
     const version = await chrome.send("Browser.getVersion");
     report.browser = version.product;
     try { report.gpu ??= (await chrome.send("SystemInfo.getInfo")).gpu?.auxAttributes?.glRenderer ?? null; } catch { /* reported as unknown */ }
-    /** Every request for an app file: who made it, and whether the network answered it. */
+    /** On a build, every request for an app file that reached the network: the page's and its worker's. */
     const requests = [];
     const errors = [];
-    const byId = new Map();
-    const workerSessions = new Set();
     let sessionId = null;
     const off = chrome.onEvent(message => {
       const p = message.params;
-      if (message.method === "Target.attachedToTarget" && p.targetInfo.type === "service_worker") {
-        workerSessions.add(p.sessionId);
-        void (async () => {
-          if (liveUrl) await chrome.send("Network.enable", {}, p.sessionId);
-          await chrome.send("Runtime.enable", {}, p.sessionId);
-          await chrome.send("Runtime.runIfWaitingForDebugger", {}, p.sessionId);
-        })().catch(() => {});
-        return;
-      }
-      const from = message.sessionId === sessionId ? "page" : workerSessions.has(message.sessionId) ? "worker" : null;
-      if (from && message.method === "Runtime.exceptionThrown") errors.push(`${from}: ${p.exceptionDetails.exception?.description ?? p.exceptionDetails.text}`);
-      else if (from === "page" && message.method === "Runtime.consoleAPICalled" && p.type === "error") errors.push(`page: ${p.args.map(entry => entry.value ?? entry.description).join(" ")}`);
-      else if (liveUrl && from && message.method === "Network.requestWillBeSent" && isAppFile(p.request.url)) {
-        // Answered as its response says; a request whose response this session never sees, a worker script's, counts by its bytes.
-        const entry = { url: new URL(p.request.url).pathname, from, at: Date.now(), answer: null, bytes: 0 };
-        byId.set(`${message.sessionId} ${p.requestId}`, entry);
-        requests.push(entry);
-      } else if (liveUrl && from && message.method === "Network.responseReceived") {
-        const entry = byId.get(`${message.sessionId} ${p.requestId}`);
-        if (entry) entry.answer = p.response.fromServiceWorker ? "worker" : p.response.fromDiskCache || p.response.fromPrefetchCache ? "browser cache" : "network";
-      } else if (liveUrl && from && message.method === "Network.requestServedFromCache") { const entry = byId.get(`${message.sessionId} ${p.requestId}`); if (entry) entry.answer = "browser cache"; }
-      else if (liveUrl && from && message.method === "Network.loadingFinished") {
-        const entry = byId.get(`${message.sessionId} ${p.requestId}`);
-        if (entry) { entry.bytes = p.encodedDataLength; entry.answer ??= entry.bytes > 0 ? "network" : "unknown"; }
-      }
+      if (message.sessionId === sessionId && message.method === "Runtime.exceptionThrown") errors.push(`page: ${p.exceptionDetails.exception?.description ?? p.exceptionDetails.text}`);
+      else if (message.sessionId === sessionId && message.method === "Runtime.consoleAPICalled" && p.type === "error") errors.push(`page: ${p.args.map(entry => entry.value ?? entry.description).join(" ")}`);
       else if (!liveUrl && message.method === "Fetch.requestPaused") {
         // Browser-wide interception: no session.
         void (async () => {
@@ -153,8 +131,7 @@ async function withBrowser(work) {
         })().catch(error => { if (!/Invalid InterceptionId/.test(error.message)) errors.push(`interception: ${error.message}`); });
       }
     });
-    // The worker's own requests, and its console, as well as the page's.
-    await chrome.send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true, filter: [{ type: "service_worker", exclude: false }, { type: "page", exclude: true }, { type: "iframe", exclude: true }] });
+    // Nothing attaches to the worker: DevTools' network events on a worker's session held up the pages it controls once a new version took over.
     if (!liveUrl) await chrome.send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
     const { targetId } = await chrome.send("Target.createTarget", { url: "about:blank" });
     ({ sessionId } = await chrome.send("Target.attachToTarget", { targetId, flatten: true }));
@@ -162,6 +139,7 @@ async function withBrowser(work) {
     const page = expression => evaluate(chrome, sessionId, expression);
     await send("Runtime.enable");
     await send("Page.enable");
+    // Only for turning the HTTP cache off; what reached the network is read from the page's resource timing.
     if (liveUrl) await send("Network.enable");
     await send("Emulation.setUserAgentOverride", { userAgent: `${version.userAgent} ${config.userAgentSuffix}` });
     await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: config.viewport.devicePixelRatio, mobile: config.viewport.devicePixelRatio > 2 });
@@ -184,6 +162,8 @@ const state = `(async () => {
     href: location.href, started: Boolean(${T}?.runtime),
     controlled: navigator.serviceWorker?.controller?.scriptURL ?? null, scope: registration?.scope ?? null, kept,
     loaded: performance.getEntriesByType("resource").map(entry => entry.name),
+    // Bytes over the network (transferSize), whoever asked for them, and whether the worker answered (workerStart).
+    timing: performance.getEntriesByType("resource").map(entry => ({ name: entry.name, transferSize: entry.transferSize, workerStart: entry.workerStart })),
   };
 })()`;
 
@@ -206,18 +186,19 @@ async function phase(name, { send, page, requests, errors }, navigate, { awaitKe
   // Files the app loads a little later, its workers' and its lazy parts', are counted too.
   await sleep(3000);
   last = await page(state).catch(error => ({ error: error.message }));
-  const mine = requests.filter(entry => entry.at >= started);
-  const reached = mine.filter(entry => entry.answer === "network");
+  // A build counts what reached its interception; a live site, what the page's resource timing says crossed the network.
+  const timing = (last?.timing ?? []).filter(each => isAppFile(each.name)).map(each => ({ url: new URL(each.name).pathname, bytes: each.transferSize, worker: each.workerStart > 0 }));
+  const reached = liveUrl ? timing.filter(each => each.bytes > 0) : requests.filter(each => each.at >= started);
   const entry = {
     phase: name, startedMs, href: last?.href ?? null, controlled: Boolean(last?.controlled), scope: last?.scope ?? null,
     appFilesLoaded: (last?.loaded ?? []).filter(isAppFile).length, kept: last?.kept?.length ?? 0,
-    appRequests: mine.length, fromNetwork: reached.length, networkBytes: reached.reduce((sum, each) => sum + (each.bytes ?? 0), 0),
-    ...(liveUrl ? { fromWorker: mine.filter(each => each.answer === "worker").length, fromBrowserCache: mine.filter(each => each.answer === "browser cache").length, unknown: mine.filter(each => each.answer === null || each.answer === "unknown").map(each => each.url), workerFromNetwork: reached.filter(each => each.from === "worker").length } : {}),
+    fromNetwork: reached.length, networkBytes: reached.reduce((sum, each) => sum + (each.bytes ?? 0), 0),
+    ...(liveUrl ? { fromWorker: timing.filter(each => each.worker && each.bytes === 0).length, fromBrowserCache: timing.filter(each => !each.worker && each.bytes === 0).length } : {}),
     networkFiles: [...new Set(reached.map(each => each.url))].slice(0, 20),
     cacheDisabled, errors: errors.splice(0),
   };
   report.phases.push(entry);
-  console.log(`${name}: app started after ${startedMs ?? "–"} ms; ${entry.appFilesLoaded} app files loaded, ${entry.fromNetwork} from the network (${(entry.networkBytes / 1024).toFixed(0)} KiB)${liveUrl ? `, ${entry.fromWorker} from the worker, ${entry.fromBrowserCache} from the browser's cache${entry.unknown.length ? `, ${entry.unknown.length} with no bytes and no response this page saw (${entry.unknown.join(", ")})` : ""}` : ""}; worker ${entry.controlled ? "in control" : "not in control"}, ${entry.kept} kept`);
+  console.log(`${name}: app started after ${startedMs ?? "–"} ms; ${entry.appFilesLoaded} app files loaded, ${entry.fromNetwork} from the network (${(entry.networkBytes / 1024).toFixed(0)} KiB)${liveUrl ? `, ${entry.fromWorker} from the worker, ${entry.fromBrowserCache} from the browser's cache` : ""}; worker ${entry.controlled ? "in control" : "not in control"}, ${entry.kept} kept`);
   return entry;
 }
 

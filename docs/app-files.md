@@ -77,16 +77,14 @@ runs without it.
 
 On 2026-10-03, on this machine's Chrome 154:
 
-| Build | App files loaded | First visit | Reload | Revisit |
+| Where | App files loaded | First visit | Reload | Revisit |
 | --- | ---: | --- | --- | --- |
-| UMN tour (`dist-app`) | 63 | all from the network; the worker kept all 63 | none from the network | none from the network |
-| FOSS Earth, no scene | 3 | all from the network; kept | none | none |
-| <https://umn-vr.github.io/tour/twin-cities/>, live | 63 | 1.66 MiB from the network; the worker kept all 63 from the browser's cache | 62 from the worker, none from the network | 62 from the worker, none from the network |
-| <https://foss-earth.github.io/>, live | 3 | 1.64 MiB from the network; kept from the browser's cache | 2 from the worker, none from the network | 2 from the worker, none from the network |
+| The UMN tour's build (`dist-app`) | 63 | all from the network, and again for the worker to keep, since the check sends no cache headers; all 63 kept | none from the network | none from the network |
+| <https://umn-vr.github.io/tour/twin-cities/>, a new visitor | 63 | 1.66 MiB from the network; all 63 kept | all 63 from the worker, none from the network | all 63 from the worker, none from the network |
+| The same, a visitor back after a deploy, with the old version's worker | 63 | the 5 files the deploy changed from the network, 1.48 MiB, and 58 from the old worker; the new one took over and kept all 63 | all 63 from the worker | all 63 from the worker |
+| <https://foss-earth.github.io/>, a new visitor | 3 | 1.64 MiB from the network; kept | all 3 from the worker | all 3 from the worker |
 
-On a build, the first visit's files were each asked for twice, once by the page and once by
-the worker keeping them, because the check sends no cache headers; on GitHub Pages the
-worker's copies came from the browser's cache, as the live rows show. The live reload and
-revisit ran with the browser's HTTP cache off, as a visit after its ten minutes would find it.
-The app's decode worker's script, one more file in each, is answered on the worker's own
-session, which the check does not follow; it counts no bytes from the network.
+The live reloads and revisits ran with the browser's HTTP cache off, as a visit after its ten
+minutes would find it. Every deploy of an app changes five of the tour's files: its main
+script carries the time it was built, and four others import it by its hashed name. A visitor
+back after a deploy downloads those, about 1.5 MiB, once.
