@@ -13,11 +13,12 @@
  * comparison can tell two pictures apart. It also checks that the sheet was
  * what loaded: one image request with sheets on, six with them off.
  *
- *   node scripts/validation/preview-sheet.mjs [--browser=chrome|firefox] [--renderers=webgpu,webgl2,webgl1] [--dist=<a build>]
+ *   node scripts/validation/preview-sheet.mjs [--browser=chrome|firefox|webkit] [--renderers=webgpu,webgl2,webgl1] [--dist=<a build>]
  *     [--out=<folder>] [--min-psnr=40] [--control-margin=10]
  *
  * Firefox runs WebGL 2 and WebGL 1 unless --renderers names others; its WebGL 1 is the
- * preference webgl.enable-webgl2 turned off.
+ * preference webgl.enable-webgl2 turned off. WebKit, Safari's engine as Playwright builds
+ * it, runs WebGL 2: it has no WebGPU, and nothing turns its WebGL 2 off.
  *
  * Output: build/validation/preview-sheet/<date>_<time>/ with report.json, summary.md and the screenshots.
  */
@@ -37,7 +38,7 @@ mkdirSync(out, { recursive: true });
 // The browser and its crash handler otherwise write to the system's temporary directory.
 process.env.TMPDIR = out;
 const browser = arg("browser", "chrome");
-const renderers = arg("renderers", browser === "firefox" ? "webgl2,webgl1" : "webgpu,webgl2,webgl1").split(",");
+const renderers = arg("renderers", browser === "firefox" ? "webgl2,webgl1" : browser === "webkit" ? "webgl2" : "webgpu,webgl2,webgl1").split(",");
 // The same picture twice encoded stays far above this; another face in its place does not. Test inputs, not runtime tuning.
 const minPsnrDb = Number(arg("min-psnr", "40"));
 const controlMarginDb = Number(arg("control-margin", "10"));

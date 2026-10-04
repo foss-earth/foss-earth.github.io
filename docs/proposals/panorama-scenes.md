@@ -712,7 +712,16 @@ faults that no check had, since every check ran in Chrome on a desktop.
   not known, and it has not been reproduced.
 
 What a scene works without goes in `extensions` from now on, and a check runs in Firefox
-before a release as well as in Chrome. No check runs in Safari.
+before a release as well as in Chrome.
+
+**What a phone can now say (2026-10-04).** Neither fault could be looked into from the
+phones: nothing said which version ran, on which renderer, or what a page was doing when it
+stopped. The app now keeps a trail of each visit, says so when one stopped without being
+closed, and gives a report to copy, from Settings → Diagnostics or with `?report` in the
+address ([docs/diagnostics.md](../diagnostics.md)). The orb check also runs in WebKit,
+Safari's engine as Playwright builds it: on WebGL 2 the orb from a sheet is 50.6 to 51.0 dB
+from the orb from its files, as in Chrome and Firefox. That build has no WebGPU and this
+Mac's memory, so it is not the iPhone: WebGPU in Safari and a phone's limits remain unchecked.
 
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose

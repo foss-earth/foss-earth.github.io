@@ -10,13 +10,30 @@ All of them drive Chrome through the DevTools protocol over pipes
 a software renderer (SwiftShader, llvmpipe) as a result. The page's own files are served
 through request interception.
 
-A check can run in Firefox too. [scripts/lib/headlessPage.mjs](../../scripts/lib/headlessPage.mjs)
-gives a check one page, with its requests answered by the check, a viewport, evaluation and a
-screenshot, the same whether the browser is Chrome or the installed Firefox, which
+A check can run in Firefox and in WebKit, Safari's engine, too.
+[scripts/lib/headlessPage.mjs](../../scripts/lib/headlessPage.mjs) gives a check one page, with
+its requests answered by the check, a viewport, evaluation and a screenshot, the same in all
+three. Firefox is the installed one, which
 [scripts/lib/headlessFirefox.mjs](../../scripts/lib/headlessFirefox.mjs) drives headless over
-WebDriver BiDi with a profile of its own in the run's folder. `preview-sheet.mjs` is the first
-to use it; a check that reaches for Chrome's protocol directly runs in Chrome only. Every
-check passed in Chrome on the day Firefox drew every orb of the UMN tour black.
+WebDriver BiDi with a profile of its own in the run's folder. WebKit is Playwright's build,
+installed as below. `preview-sheet.mjs` is the first to use it; a check that reaches for
+Chrome's protocol directly runs in Chrome only. Every check passed in Chrome on the day
+Firefox drew every orb of the UMN tour black.
+
+WebKit here is not Safari on a phone. It draws with WebGL 2 on this Mac's GPU, has no WebGPU
+(`navigator.gpu` is absent) and nothing that turns its WebGL 2 off, and its memory is this
+Mac's: it shows what Safari's engine does with the app's code, not what an iPhone's limits do.
+To install it inside the checkout (Playwright 1.55 brings WebKit 26.0, 268 MB):
+
+```sh
+npm install --prefix build/tools/playwright playwright
+PLAYWRIGHT_BROWSERS_PATH="$PWD/build/tools/playwright/browsers" build/tools/playwright/node_modules/.bin/playwright install webkit
+```
+
+On macOS 27 that second command downloaded the archive and then stopped while unpacking it.
+Unpacking by hand worked: `unzip` the `playwright-download-webkit-*.zip` it left in the
+temporary folder into `build/tools/playwright/browsers/webkit-2203/`, and add an empty file
+named `INSTALLATION_COMPLETE` there.
 
 | Harness | What it runs | Use it for |
 | --- | --- | --- |
@@ -26,7 +43,8 @@ check passed in Chrome on the day Firefox drew every orb of the UMN tour black.
 | [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out. Another app's scene too, such as the UMN tour's, against a panorama's whole image (options at the top of the script) |
 | [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) | The whole app with a scene, a Chrome profile kept between its browsers: a build served by intercepting requests, with no HTTP cache and every response held as long as asked, or a live site read from Chrome's network events | What a first visit, a reload, a look around a panorama and a revisit ask the network for, and how long each takes. On a build it fails when anything is asked for twice; `--set=scene.panorama.savedMiB=0` is its control. On a live site it reports how the host's cache headers behave, with `--wait-min` to let them go stale |
 | [scripts/validation/app-files.mjs](../../scripts/validation/app-files.mjs) | The whole app, a Chrome profile kept between its browsers: a build served by intercepting every request of the browser, its service worker's too, with no HTTP cache, or a live site read from Chrome's network events with the HTTP cache off | Which of the app's own files a first visit, a reload and a revisit ask the network for, and that its worker took over and kept them. On a build it fails when the reload or the revisit asks for one ([docs/app-files.md](../app-files.md)) |
-| [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 in Chrome, or with `--browser=firefox` on WebGL 2 and WebGL 1 in Firefox, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
+| [scripts/validation/diagnostics.mjs](../../scripts/validation/diagnostics.mjs) | The whole app with the `umn-tiles` example, or another app's build, no network, at a phone's screen size, one Chrome profile through a visit, a crash of its renderer (`Page.crash`) and the visits after | That the trail has the build, renderer, scene and 360 image entered; that Copy report copies them; that after the crash `?report` shows the stopped visit without starting a map and the next visit's log says so; and that a visit that was left says nothing ([docs/diagnostics.md](../diagnostics.md)) |
+| [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 in Chrome, with `--browser=firefox` on WebGL 2 and WebGL 1 in Firefox, or with `--browser=webkit` on WebGL 2 in WebKit, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
@@ -104,6 +122,18 @@ check passed in Chrome on the day Firefox drew every orb of the UMN tour black.
   `beforeRequestSent` phase, for a host that does not exist too, and the page is a secure
   context by its `https:` address, as with Chrome's `Fetch.fulfillRequest`. Ask Firefox to
   quit with `browser.close` and wait for it.
+- Playwright's `page.route` does not reach the requests a worker makes in WebKit: the app's
+  tile workers asked the real network, and two runs of one view then differed by the map
+  behind the orb (18 to 30 dB where they should be 51). `headlessPage.mjs` starts WebKit with a
+  proxy at an address nothing listens on, which refuses whatever the routing does not answer.
+  Playwright reads `PLAYWRIGHT_BROWSERS_PATH` as its module loads, so set it before that.
+- `Page.crash` kills a page's renderer as a phone's browser kills a page: no `pagehide`, no
+  code. The command never answers, so do not await it; `Inspector.targetCrashed` says it
+  happened, and `Page.navigate` on the same target then starts a new renderer with the
+  profile's `localStorage` as the crashed page left it. `diagnostics.mjs` does this.
+- With every other origin blocked, the map's tiles fail by the hundred, each with its own
+  address in the message. A check that reads the log or counts its lines has to expect one
+  line a kind of trouble, updated, which is what the app's `logStatus` keeps.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
 - `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that
