@@ -35,6 +35,8 @@ export interface AppFilesEnvironment {
   caches: Pick<CacheStorage, "open" | "has" | "delete"> | null;
   /** Calls `listener` with the app's files the page has loaded, then with each it loads later; returns a stop. */
   observeLoaded(listener: (urls: string[]) => void): () => void;
+  /** Calls `listener` when another worker takes control of the page, as a new version does; returns a stop. */
+  onControllerChange(listener: () => void): () => void;
   /** Runs `work` once the page has finished loading. */
   afterLoad(work: () => void): void;
 }
@@ -74,6 +76,11 @@ export function browserAppFilesEnvironment(): AppFilesEnvironment {
       observer.observe({ type: "resource", buffered: true });
       return () => observer.disconnect();
     },
+    onControllerChange(listener) {
+      if (!secure) return () => {};
+      navigator.serviceWorker.addEventListener("controllerchange", listener);
+      return () => navigator.serviceWorker.removeEventListener("controllerchange", listener);
+    },
     afterLoad(work) {
       if (document.readyState === "complete") queueMicrotask(work);
       else window.addEventListener("load", () => work(), { once: true });
@@ -89,6 +96,7 @@ export function keepAppFiles(settings: SettingsRegistry, environment: AppFilesEn
   let disposed = false;
   let started = false;
   let stopObserving = (): void => {};
+  let stopLoaded = (): void => {};
   // One change at a time, in the order the setting asked for them.
   let queue: Promise<void> = Promise.resolve();
 
@@ -103,7 +111,18 @@ export function keepAppFiles(settings: SettingsRegistry, environment: AppFilesEn
     if (disposed || settings.get(KEEP_APP_FILES) !== true) return;
     // What the page loaded before the worker controlled it, or around it, is in the browser's cache: the worker keeps it from there.
     stopObserving();
-    stopObserving = environment.observeLoaded(urls => ready.active?.postMessage({ type: KEEP_MESSAGE, urls }));
+    const observe = (): void => {
+      stopLoaded();
+      stopLoaded = environment.observeLoaded(urls => ready.active?.postMessage({ type: KEEP_MESSAGE, urls }));
+    };
+    observe();
+    // After a new version, the page loads the new files while the old worker still controls it, which does not list them; when the new one takes over, they are named again to it.
+    const stopChanges = environment.onControllerChange(observe);
+    stopObserving = () => {
+      stopLoaded();
+      stopLoaded = () => {};
+      stopChanges();
+    };
   }
 
   async function forget(): Promise<void> {

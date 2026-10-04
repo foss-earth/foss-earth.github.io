@@ -77,7 +77,10 @@ through request interception.
   script, so it fails to register and the app runs without it, nor the worker's own requests.
   On the browser's own session, with no session id, it reaches both; `app-files.mjs` does
   that. A worker's navigation preload request is out of its reach either way, and fails as a
-  network error; the app's worker then asks for the page itself.
+  network error; the app's worker then asks for the page itself. So is the browser's check of
+  a worker's script for a new version, so a build cannot show one version taking over from
+  another: that is checked on the live site, from a copy of the profile of a run against the
+  version before (`app-files.mjs --out=` a folder holding it).
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
 - `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that

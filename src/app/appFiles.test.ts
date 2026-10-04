@@ -16,6 +16,7 @@ function browser(worker: AppFilesEnvironment["worker"] = { url: WORKER }) {
   const stores = new Map<string, Map<string, Blob>>();
   let finishLoading: (() => void) | null = null;
   let observing = 0;
+  const changeListeners = new Set<() => void>();
   const container = {
     controller: null,
     async register(url: string, options?: RegistrationOptions) {
@@ -43,9 +44,10 @@ function browser(worker: AppFilesEnvironment["worker"] = { url: WORKER }) {
       },
     },
     observeLoaded: listener => { observing += 1; listener(LOADED); return () => { observing -= 1; }; },
+    onControllerChange: listener => { changeListeners.add(listener); return () => { changeListeners.delete(listener); }; },
     afterLoad: work => { finishLoading = work; },
   };
-  return { environment, posted, registered, stores, registration: () => registration, load: () => finishLoading?.(), observing: () => observing };
+  return { environment, posted, registered, stores, registration: () => registration, load: () => finishLoading?.(), observing: () => observing, takeOver: () => { for (const listener of [...changeListeners]) listener(); }, watchingChanges: () => changeListeners.size };
 }
 
 function registry() {
@@ -65,8 +67,13 @@ describe("keeping the app's files", () => {
     expect(b.registered).toEqual([{ url: WORKER, options: { scope: "/", updateViaCache: "none" } }]);
     expect(b.posted).toEqual([{ type: "foss-earth-keep", urls: LOADED }]);
     expect(b.observing()).toBe(1);
+    // A new version takes over after the page has loaded its files: they are named again, to it.
+    b.takeOver();
+    expect(b.posted).toEqual([{ type: "foss-earth-keep", urls: LOADED }, { type: "foss-earth-keep", urls: LOADED }]);
+    expect(b.observing()).toBe(1);
     keeper.dispose();
     expect(b.observing()).toBe(0);
+    expect(b.watchingChanges()).toBe(0);
   });
 
   it("turned off, tells the worker to stop, unregisters it and deletes what it kept; turned on, registers it again", async () => {
@@ -82,6 +89,7 @@ describe("keeping the app's files", () => {
     await keeper.settled();
     expect(b.posted.at(-1)).toEqual({ type: "foss-earth-forget" });
     expect(b.observing()).toBe(0);
+    expect(b.watchingChanges()).toBe(0);
     expect(b.registration()).toBeUndefined();
     expect(b.stores.has(STORE)).toBe(false);
     expect(await keeper.status()).toMatchObject({ installed: false, files: 0 });
@@ -89,6 +97,7 @@ describe("keeping the app's files", () => {
     settings.set(KEEP_APP_FILES, true);
     await keeper.settled();
     expect(b.registered).toHaveLength(2);
+    expect([b.observing(), b.watchingChanges()]).toEqual([1, 1]);
     keeper.dispose();
   });
 

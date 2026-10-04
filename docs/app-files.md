@@ -33,7 +33,9 @@ content's hash in its name (`index-BTEeolEJ.js`), so a copy kept under that name
   to compete with the app starting, and so it does not see the files the first visit loaded.
   The page tells it which of the app's files it loaded, then and later, and the worker keeps
   them from the browser's own cache, where they still are: nothing is downloaded twice on a
-  host that lets the browser keep a file for a while, as GitHub Pages does.
+  host that lets the browser keep a file for a while, as GitHub Pages does. After a new
+  version, the page loads its new files while the old worker still controls it, and the old
+  worker does not list them; when the new one takes over, the page names them again, to it.
 - **It covers the app's base.** It is registered for the folder the app is built for
   (`import.meta.env.BASE_URL`), not the page's own folder, so the workers the app starts from
   its `assets/` folder are answered too. On the UMN tour that is the whole site: the club's
