@@ -1,0 +1,1 @@
+import{pr as e}from"./viewer-BMGpkdmE.js";export{e as lightProxyVertexShaderWGSL};
