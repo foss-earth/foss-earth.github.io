@@ -53,6 +53,11 @@
             "ny": "media/cardinal-tiles/preview-64/ny.jpg",
             "pz": "media/cardinal-tiles/preview-64/pz.jpg",
             "nz": "media/cardinal-tiles/preview-64/nz.jpg"
+          },
+          "sheet": {
+            "id": "previews-64",
+            "x": 0,
+            "y": 0
           }
         },
         {
@@ -116,6 +121,17 @@
           "url": "media/cardinal-tiles/cube-tiles/"
         }
       ]
+    }
+  ],
+  "sheets": [
+    {
+      "id": "previews-64",
+      "revision": "e61c93a20450",
+      "mimeType": "image/jpeg",
+      "width": 384,
+      "height": 64,
+      "encodedBytes": 7479,
+      "url": "media/umn-tiles-previews-64.jpg"
     }
   ],
   "entities": [

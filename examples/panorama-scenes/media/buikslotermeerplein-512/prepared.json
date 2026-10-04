@@ -1,7 +1,7 @@
 {
   "tool": "scripts/prepare-panorama.mjs",
   "toolVersion": "1",
-  "scriptSha256": "b8ec3a3c778151cf4564840108fcc1d3f0b0c04b809f499cbb64de4495aaea32",
+  "scriptSha256": "9975fa188bdb6fbf1f4a353aef3f4133116360de65dbc3cd85a5772a3d276512",
   "libSha256": "4aeac1958ee2ff3417c3b84c785c9ee206fa9fcad2fd1fd782288652ab19d5e4",
   "node": "v26.9.0",
   "source": {
