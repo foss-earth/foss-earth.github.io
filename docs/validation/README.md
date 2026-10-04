@@ -127,6 +127,10 @@ named `INSTALLATION_COMPLETE` there.
   behind the orb (18 to 30 dB where they should be 51). `headlessPage.mjs` starts WebKit with a
   proxy at an address nothing listens on, which refuses whatever the routing does not answer.
   Playwright reads `PLAYWRIGHT_BROWSERS_PATH` as its module loads, so set it before that.
+  A service worker is out of the routing's reach too, and once the app's worker takes control
+  of the page, so is every request the page makes: inside a 360 image WebKit asked for no
+  tile, where Chrome asked for 24. `headlessPage.mjs` blocks service workers in WebKit. The
+  worker itself is tried against a live site, with the real network.
 - `Page.crash` kills a page's renderer as a phone's browser kills a page: no `pagehide`, no
   code. The command never answers, so do not await it; `Inspector.targetCrashed` says it
   happened, and `Page.navigate` on the same target then starts a new renderer with the

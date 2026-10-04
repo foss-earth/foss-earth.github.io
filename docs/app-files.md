@@ -93,4 +93,12 @@ The check runs in Chrome only. The live tour's worker was also tried in headless
 that day, by hand: the first visit downloaded the 63 files, 1.66 MiB, and the worker took
 control and kept all 63; two reloads started the app under the worker with nothing from the
 network. Firefox's resource timing does not say that its worker answered a file, so the kept
-files were counted in its cache. The worker has not been run in Safari.
+files were counted in its cache.
+
+It was tried in WebKit 26.0, Safari's engine as Playwright builds it, on 2026-10-04, by hand
+against the live tour: after the first visit the worker controlled the page and had kept all
+63 files, a reload took none of them from the network, and inside a 360 image entered then
+all 28 tiles in view loaded, which the worker lets by. That was so in three runs. In one
+other, the first after WebKit was installed, the first visit stayed at 4 of its 60 orbs; it
+did not happen again and is not explained. The worker has not been run in Safari itself, nor
+on a phone.
