@@ -684,6 +684,36 @@ asks the network for none of them however long ago the last one was
 ([docs/app-files.md](../app-files.md)). On the tour's build in headless Chrome, its first visit
 kept all 63 files it loaded, and the reload and a revisit in a new browser asked for none.
 
+**Two phones, the evening of the release (2026-10-03).** The first trial on phones found two
+faults that no check had, since every check ran in Chrome on a desktop.
+
+- **Firefox drew every orb black.** The loader cut each cube's faces out of the decoded sheet
+  with `createImageBitmap`'s rectangle. In Firefox such a bitmap says it is the face, 64 px
+  square, but WebGL uploads the whole sheet behind it: the upload is refused as too large for
+  the face's texture (`INVALID_VALUE`), and the face stays empty. Firefox 157 on this Mac did
+  the same as Firefox on the Android phone. The faces are now cut through a canvas, which
+  gives each a bitmap of its own pixels.
+  [preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) `--browser=firefox` drew
+  the orb from the sheet 6.5 to 9.2 dB from the orb from its files before, the black disc,
+  and 50.6 to 51.0 dB after on WebGL 2 and WebGL 1, as Chrome's three renderers still do.
+- **An iPhone showed "`$.sheets`: is not a property of this record" and no tour**, an hour
+  after the release. Safari was still showing the page of the day before from its cache,
+  whose loader knew no sheets, with the new scene: the release had counted on GitHub Pages'
+  ten minutes, and a browser restoring a tab does not ask again. Sheets had been added as
+  the scene's `sheets` and the cube's `sheet`, properties an older loader refuses. They are
+  now the extension `foss-earth.preview-sheets`, which an older loader skips
+  ([format.md](../scenes/format.md#preview-sheets)), and a sheet this loader cannot read is
+  a warning and its cubes load from their files. With the UMN tour's published bundles in
+  headless Chrome: the day before's read the scene as it was published and stopped with that
+  message and 60 more; it read the rewritten scene and showed all 60 orbs from their face
+  files, as did the evening's own bundle, and the new one showed them after the one request.
+  The page had also been crashing on that iPhone, an iPhone XS Max on iOS 18.2 with WebGPU
+  turned on in Safari's feature flags; which version of the app was running when it did is
+  not known, and it has not been reproduced.
+
+What a scene works without goes in `extensions` from now on, and a check runs in Firefox
+before a release as well as in Chrome. No check runs in Safari.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:

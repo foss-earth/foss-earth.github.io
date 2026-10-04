@@ -29,6 +29,8 @@ const representation = (doc: Record<string, unknown>, a: number, r: number) => (
 const INVALID: Mutation[] = [
   ["another version", doc => { doc.version = 2; }],
   ["an unknown top-level property", doc => { doc.tour = {}; }],
+  ["preview sheets as the scene's own property, as on 2026-10-03", doc => { doc.sheets = []; }],
+  ["a cube's place in a sheet as its own property", doc => { representation(doc, 1, 0).sheet = { id: "previews", x: 0, y: 0 }; }],
   ["an unknown marker property", doc => { (entity(doc, 0).marker as Record<string, unknown>).height = 4; }],
   ["a latitude out of range", doc => { (entity(doc, 0).capture as Record<string, unknown>).latitudeDeg = 91; }],
   ["longitude 180", doc => { (entity(doc, 0).capture as Record<string, unknown>).longitudeDeg = 180; }],

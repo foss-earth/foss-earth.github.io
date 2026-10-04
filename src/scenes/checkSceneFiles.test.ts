@@ -73,14 +73,14 @@ describe("checkSceneFiles on a scene with a preview sheet", () => {
   it("reports a sheet that is missing, another size, or not the bytes declared", () => {
     const sheetFile = /campus-pair-previews-64\.jpg$/;
     expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? null : bytes))).problems).toEqual([
-      { path: "$.sheets[previews-64].url", message: expect.stringMatching(/campus-pair-previews-64\.jpg does not exist$/) },
+      { path: "$.extensions.foss-earth.preview-sheets.sheets[previews-64].url", message: expect.stringMatching(/campus-pair-previews-64\.jpg does not exist$/) },
     ]);
     const face = new Uint8Array(readFileSync(new URL("media/cardinal-grid/preview-64/px.jpg", examples)));
     expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? face : bytes))).problems.map(problem => problem.path)).toEqual([
-      "$.sheets[previews-64].url", "$.sheets[previews-64].encodedBytes",
+      "$.extensions.foss-earth.preview-sheets.sheets[previews-64].url", "$.extensions.foss-earth.preview-sheets.sheets[previews-64].encodedBytes",
     ]);
     expect(checkSceneFiles(pair, reader((url, bytes) => (sheetFile.test(url) ? new Uint8Array([...bytes, 0]) : bytes))).problems).toEqual([
-      { path: "$.sheets[previews-64].encodedBytes", message: expect.stringMatching(/^declares \d+ bytes; the file holds \d+$/) },
+      { path: "$.extensions.foss-earth.preview-sheets.sheets[previews-64].encodedBytes", message: expect.stringMatching(/^declares \d+ bytes; the file holds \d+$/) },
     ]);
   });
 });

@@ -21,7 +21,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { addPreviewSheets, SHEET_PIXELS } from "./lib/previewSheet.mjs";
+import { addPreviewSheets, SHEET_PIXELS, sheetsOf } from "./lib/previewSheet.mjs";
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -48,7 +48,7 @@ const { document, files, cubes } = addPreviewSheets(before, {
   },
 });
 // A sheet the scene named and no longer does is its own file to remove.
-for (const sheet of before.sheets ?? []) {
+for (const sheet of sheetsOf(before)) {
   const file = path.resolve(folder, decodeURIComponent(sheet.url));
   if (file.startsWith(folder) && !files.some(each => each.url === sheet.url)) rmSync(file, { force: true });
 }

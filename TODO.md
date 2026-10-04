@@ -11,6 +11,12 @@ Automatic detail adjustment coarsens the map to its lowest detail: one short int
 
 Inside a 360 image the north button keeps the map's heading: turning the view does not turn its needle, and pressing it does not turn the view. Report: [bugs/north-button-in-panorama.md](bugs/north-button-in-panorama.md).
 
+On an iPhone XS Max (iOS 18.2.1, WebGPU turned on in Safari's feature flags) the UMN tour's page kept crashing on 2026-10-03. Not reproduced: no check runs in Safari, and which version of the app was running is not known, since Safari was showing the day before's page from its cache. To find out first: whether the current app still does it, and whether `?renderer=webgl2` does.
+
+A page a browser shows from its cache is an older version of the app for as long as the browser keeps it: an iPhone restoring a tab ran the day before's an hour after a release. The app's worker hears of a new version on every visit; the page could then say that a newer one is published and offer to reload, and reload by itself when its scene did not load.
+
+In Firefox every orb drawn from a preview sheet was black, and a viewer from before preview sheets refused a scene that had them. Fixed on 2026-10-03: [docs/proposals/panorama-scenes.md](docs/proposals/panorama-scenes.md), "Two phones, the evening of the release".
+
 A 360 image looked away from and back at loaded its tiles again, a reload downloaded every orb's previews again, and the map loaded every orb's largest preview. Fixed on 2026-10-03: [docs/proposals/panorama-scenes.md](docs/proposals/panorama-scenes.md), "Loading once".
 
 The dropdown on the tab strip draws behind the globe and the panorama viewer once many tabs push it out of the tab window. Fixed as part of [docs/panorama-mode-prompt.md](docs/panorama-mode-prompt.md).
