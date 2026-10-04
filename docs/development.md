@@ -92,6 +92,10 @@ application installed before the command existed needs `npm rebuild foss-earth` 
 - If the macOS firewall is on, allow Node's incoming connections when asked, or the phone
   cannot connect.
 
+When something goes wrong on the phone, Settings → Diagnostics → Copy report gives what the app
+knows as text, and `?report` in the address shows it when the app does not stay open:
+[diagnostics.md](diagnostics.md), which also says how to attach a browser's inspector to a phone.
+
 ## Quality checks
 
 ```sh

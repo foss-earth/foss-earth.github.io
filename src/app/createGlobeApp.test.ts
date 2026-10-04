@@ -200,7 +200,9 @@ beforeEach(() => {
         remove: mockState.removeObserver,
       },
     },
-    renderer: { mode: "webgl", requested: "auto" },
+    renderer: { mode: "webgl", requested: "auto", engine: { getInfo: () => ({ vendor: "mock", renderer: "gpu", version: "" }) } },
+    onDeviceLost: () => () => {},
+    onDeviceRestored: () => () => {},
     status: {
       mode: "raster-basemap",
       message: "USGS Imagery Topo raster basemap active.",
@@ -280,7 +282,7 @@ describe("createGlobeApp smoke behavior", () => {
       /^Build: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
     );
     expect(root.querySelector("#settingsSourceLine")?.textContent).toMatch(/^Source: [\w.-]+$/);
-    expect(root.querySelector("#settingsBundleLine")?.textContent).toMatch(/^Bundle: (dev|index-[\w-]+\.js)$/);
+    expect(root.querySelector("#settingsBundleLine")?.textContent).toMatch(/^Bundle: (dev|[\w.]+-[\w-]{8}\.js)$/);
     await vi.waitFor(() => {
       expect(root.querySelector("#settingsDeployLine")?.textContent).toBe("Deploy: 8b0ab4ed380c");
     });
@@ -479,6 +481,7 @@ describe("createGlobeApp smoke behavior", () => {
       ["presets", "Presets"],
       ["saved-settings", "Saved settings"],
       ["app-files", "App files"],
+      ["diagnostics", "Diagnostics"],
       ["about", "About"],
     ]);
     // The Renderer tab ends with Performance debug.

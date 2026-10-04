@@ -11,7 +11,7 @@ Automatic detail adjustment coarsens the map to its lowest detail: one short int
 
 Inside a 360 image the north button keeps the map's heading: turning the view does not turn its needle, and pressing it does not turn the view. Report: [bugs/north-button-in-panorama.md](bugs/north-button-in-panorama.md).
 
-On an iPhone XS Max (iOS 18.2.1, WebGPU turned on in Safari's feature flags) the UMN tour's page kept crashing on 2026-10-03. Not reproduced: no check runs in Safari, and which version of the app was running is not known, since Safari was showing the day before's page from its cache. To find out first: whether the current app still does it, and whether `?renderer=webgl2` does.
+On an iPhone XS Max (iOS 18.2.1, WebGPU turned on in Safari's feature flags) the UMN tour's page kept crashing on 2026-10-03. Not reproduced: which version of the app was running is not known, since Safari was showing the day before's page from its cache, and the WebKit the checks run has no WebGPU and a Mac's memory. The app now says what it was doing ([docs/diagnostics.md](docs/diagnostics.md)): after a crash, the next visit's log names the 360 image and the renderer, and Settings → Diagnostics → Copy report, or `?report` in the address, gives the trail. To find out first: that report from the phone, and whether `?renderer=webgl2` still crashes.
 
 A page a browser shows from its cache is an older version of the app for as long as the browser keeps it: an iPhone restoring a tab ran the day before's an hour after a release. The app's worker hears of a new version on every visit; the page could then say that a newer one is published and offer to reload, and reload by itself when its scene did not load.
 
@@ -31,7 +31,7 @@ Zoom toward the pointer, or toward the centre of a pinch, as a setting beside to
 
 The log becomes a tab where the screen is too narrow for it beside the tab window: on an iPhone XS Max there is not room for both. Three layouts by width: two tab windows with the log between them where there is room for all three; else the log on the left and one tab window on the right; else one tab window with the log as one of its tabs.
 
-No check runs in Safari, and none runs the app already published against a scene about to be: both faults of 2026-10-03's phone trial were of those kinds. Run the checks that use `scripts/lib/headlessPage.mjs` in WebKit too, and have a content release load the new scene in the bundle that is live.
+No check runs the app already published against a scene about to be, and only the orb check runs in Firefox and WebKit: both faults of 2026-10-03's phone trial were of those kinds. Have a content release load the new scene in the bundle that is live, and move the checks that reach for Chrome's protocol (`panorama-tiles.mjs`, `scene-revisit.mjs`) onto `scripts/lib/headlessPage.mjs` so they run in all three.
 
 Google 3D tiles step through every level of detail on the way down. Add a setting for loading only the level the view needs, which the user wants as the default. Also add an optional pulse on tiles still loading, and a loading bar, perhaps the outline of the map-source chip. Prompt: [docs/tile-loading-prompt.md](docs/tile-loading-prompt.md).
 

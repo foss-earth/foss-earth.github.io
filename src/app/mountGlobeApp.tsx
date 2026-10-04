@@ -9,9 +9,16 @@ import "../windowing/styles/windowing.css";
 import { createRoot } from "react-dom/client";
 import { WindowOverlay, type WindowOverlayHandle } from "../shell/WindowOverlay";
 import { trackViewportInsets } from "../shell/viewportInsets";
-import { createGlobeApp, type GlobeAppHandle, type GlobeAppOptions } from "./createGlobeApp";
+import { getAppSettings } from "../settings/appSettings";
+import { createGlobeApp, getAppIdentity, type GlobeAppHandle, type GlobeAppOptions } from "./createGlobeApp";
+import { showReportOnly, wantsReportOnly } from "./reportOnly";
 
 export async function mountGlobeApp(rootElement: HTMLElement, options: Omit<GlobeAppOptions, "overlayApiRef"> = {}): Promise<GlobeAppHandle> {
+  // `?report`: the diagnostics report and nothing else, for an app that stops before its settings can be reached. The app never starts.
+  if (wantsReportOnly(window.location.search)) {
+    showReportOnly(rootElement, { settings: getAppSettings(), identity: getAppIdentity() });
+    return new Promise<GlobeAppHandle>(() => {});
+  }
   // Lift the fixed HUD clear of any browser toolbar overlaying the page bottom.
   trackViewportInsets();
   // Filled once the overlay mounts; the toolbar buttons read it when clicked.

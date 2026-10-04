@@ -35,3 +35,39 @@
 :root[data-theme="light"] .globe-shell {
   background: #e2e8f0;
 }
+
+/* `?report`: the diagnostics report alone, with no map behind it (src/app/reportOnly.ts). */
+.foss-earth-report-only {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  background: #040914;
+  color: #e2e8f0;
+  font: 14px/1.4 system-ui, sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.foss-earth-report-only h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.foss-earth-report-only p {
+  margin: 0;
+}
+
+.foss-earth-report-only a {
+  color: var(--globe-accent-bright);
+}
+
+.foss-earth-report-only textarea {
+  min-height: 50vh;
+  background: rgba(148, 163, 184, 0.08);
+  color: inherit;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}

@@ -110,7 +110,7 @@ Every setting lives in exactly one place, a section of a tab.
   rate, Depth range and Performance debug; the Scenes tab is Content, Orbs,
   Motion, Loading and memory, Tiled images, Saved images and Credits; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
-  is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings, App files and About. Map and
+  is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings, App files, Diagnostics and About. Map and
   Renderer add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.
