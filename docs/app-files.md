@@ -209,10 +209,10 @@ phone's screen size, on FOSS Earth's own build and on the UMN tour's:
 | An older copy under the app's worker | Chrome only: the worker let the question and the reload through, and the copy reloaded itself once |
 
 All of them passed in Chrome 154, Firefox 157 and WebKit 26.0, the last case in Chrome, which
-alone lets the check answer a service worker's requests (FOSS Earth's build:
-`2026-10-04_145234`, `_145306`, `_145338`; the tour's: `_145430`, `_145501`, `_145533`). With
-the question asked on every visit, `app-files.mjs` on the tour's build still counted no app
-file from the network on a reload and a revisit.
+alone lets the check answer a service worker's requests, on the code as committed (FOSS Earth's
+build: `2026-10-04_152138`, `_152210`, `_152242`; the tour's: `_152330`, `_152400`,
+`_152432`). With the question asked on every visit, `app-files.mjs` on the tour's build still
+counted no app file from the network on a reload and a revisit (`2026-10-04_152504`).
 
 The browser's copy here is the check's stand-in. What Safari on a phone does when it restores
 a tab, and whether a page there reloads itself out of that copy, has not been seen: the
