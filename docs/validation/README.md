@@ -10,6 +10,14 @@ All of them drive Chrome through the DevTools protocol over pipes
 a software renderer (SwiftShader, llvmpipe) as a result. The page's own files are served
 through request interception.
 
+A check can run in Firefox too. [scripts/lib/headlessPage.mjs](../../scripts/lib/headlessPage.mjs)
+gives a check one page, with its requests answered by the check, a viewport, evaluation and a
+screenshot, the same whether the browser is Chrome or the installed Firefox, which
+[scripts/lib/headlessFirefox.mjs](../../scripts/lib/headlessFirefox.mjs) drives headless over
+WebDriver BiDi with a profile of its own in the run's folder. `preview-sheet.mjs` is the first
+to use it; a check that reaches for Chrome's protocol directly runs in Chrome only. Every
+check passed in Chrome on the day Firefox drew every orb of the UMN tour black.
+
 | Harness | What it runs | Use it for |
 | --- | --- | --- |
 | [scripts/validation/panorama-webgl.mjs](../../scripts/validation/panorama-webgl.mjs) | A standalone fixture: the panorama renderer and uploader in forced WebGL 1 and WebGL 2 contexts | Shader colour, orientation, depth and upload bounds on each WebGL version. [Details](panorama-webgl.md) |
@@ -18,7 +26,7 @@ through request interception.
 | [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out. Another app's scene too, such as the UMN tour's, against a panorama's whole image (options at the top of the script) |
 | [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) | The whole app with a scene, a Chrome profile kept between its browsers: a build served by intercepting requests, with no HTTP cache and every response held as long as asked, or a live site read from Chrome's network events | What a first visit, a reload, a look around a panorama and a revisit ask the network for, and how long each takes. On a build it fails when anything is asked for twice; `--set=scene.panorama.savedMiB=0` is its control. On a live site it reports how the host's cache headers behave, with `--wait-min` to let them go stale |
 | [scripts/validation/app-files.mjs](../../scripts/validation/app-files.mjs) | The whole app, a Chrome profile kept between its browsers: a build served by intercepting every request of the browser, its service worker's too, with no HTTP cache, or a live site read from Chrome's network events with the HTTP cache off | Which of the app's own files a first visit, a reload and a revisit ask the network for, and that its worker took over and kept them. On a build it fails when the reload or the revisit asks for one ([docs/app-files.md](../app-files.md)) |
-| [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
+| [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 in Chrome, or with `--browser=firefox` on WebGL 2 and WebGL 1 in Firefox, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
@@ -84,6 +92,18 @@ through request interception.
   a worker's script for a new version, so a build cannot show one version taking over from
   another: that is checked on the live site, from a copy of the profile of a run against the
   version before (`app-files.mjs --out=` a folder holding it).
+- In Firefox, a bitmap made with `createImageBitmap(bitmap, x, y, width, height)` reports the
+  rectangle's size, but WebGL uploads the whole image behind it: `texSubImage2D` without a
+  size fails with `INVALID_VALUE`, leaving the texture empty, and with a size it uploads the
+  image's top left corner, the wrong picture and no error. Chrome uploads the rectangle. A
+  bitmap drawn into a canvas and taken from it (`transferToImageBitmap`) is its own pixels in
+  both (Firefox 157, 2026-10-03).
+- Firefox's WebGL 1 is the preference `webgl.enable-webgl2` set to false. Its resource timing
+  gives `transferSize` but leaves `workerStart` at 0 for a file its service worker answered.
+- Firefox's WebDriver BiDi answers a request with `network.provideResponse` at the
+  `beforeRequestSent` phase, for a host that does not exist too, and the page is a secure
+  context by its `https:` address, as with Chrome's `Fetch.fulfillRequest`. Ask Firefox to
+  quit with `browser.close` and wait for it.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
 - `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that

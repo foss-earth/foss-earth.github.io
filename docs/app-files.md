@@ -88,3 +88,9 @@ The live reloads and revisits ran with the browser's HTTP cache off, as a visit 
 minutes would find it. Every deploy of an app changes five of the tour's files: its main
 script carries the time it was built, and four others import it by its hashed name. A visitor
 back after a deploy downloads those, about 1.5 MiB, once.
+
+The check runs in Chrome only. The live tour's worker was also tried in headless Firefox 157
+that day, by hand: the first visit downloaded the 63 files, 1.66 MiB, and the worker took
+control and kept all 63; two reloads started the app under the worker with nothing from the
+network. Firefox's resource timing does not say that its worker answered a file, so the kept
+files were counted in its cache. The worker has not been run in Safari.
