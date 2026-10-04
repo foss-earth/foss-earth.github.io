@@ -50,6 +50,30 @@ describe("the scene parameters' defaults", () => {
     }
   });
 
+  it("hold every tile of a panorama, and keep the one left, only where the device has room; elsewhere what is looked at", () => {
+    const tiles = (context: Parameters<ReturnType<typeof registry>["setDeviceContext"]>[0]) => {
+      const settings = registry(8192);
+      settings.setDeviceContext(context);
+      return {
+        tiles: number(settings, "scene.panorama.tileMemoryMiB"), kept: number(settings, "scene.panorama.keptGpuMiB"),
+        from: settings.inspect("scene.panorama.tileMemoryMiB").defaultDerivedFrom,
+      };
+    };
+    // 510 tiles of 194 texels; a phone's view and its margin, 196.
+    const all = 73.25;
+    const view = 28.25;
+    expect(Math.ceil((510 * 194 * 194 * 4) / MIB * 4) / 4).toBe(all);
+    expect(Math.ceil((196 * 194 * 194 * 4) / MIB * 4) / 4).toBe(view);
+    expect(tiles({ deviceMemoryGiB: 8, touch: true })).toMatchObject({ tiles: all, kept: all });
+    expect(tiles({ deviceMemoryGiB: 4, touch: false })).toMatchObject({ tiles: all, kept: all });
+    // A 32nd of 2 GiB is 64 MiB: most of a panorama, and nothing kept that is not shown.
+    expect(tiles({ deviceMemoryGiB: 2 })).toMatchObject({ tiles: 64, kept: 0, from: "1/32 of the 2 GiB the browser reports" });
+    expect(tiles({ deviceMemoryGiB: 0.5 })).toMatchObject({ tiles: view, kept: 0 });
+    // A browser that does not say: a phone's, going by its touch screen, or one with room.
+    expect(tiles({ deviceMemoryGiB: null, touch: true })).toMatchObject({ tiles: view, kept: 0 });
+    expect(tiles({ deviceMemoryGiB: null, touch: false })).toMatchObject({ tiles: all, kept: all });
+  });
+
   it("home what only matters inside a panorama in its tabs, and what the globe shows in Scenes", () => {
     const home = (id: string) => SCENE_PARAMETERS.find(spec => spec.id === id)!.home;
     expect(home("scene.panorama.immersionWidth")).toEqual({ tab: PANORAMA_TAB, section: "detail", level: "main" });

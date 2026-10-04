@@ -478,6 +478,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
       ["presets", "Presets"],
       ["saved-settings", "Saved settings"],
+      ["app-files", "App files"],
       ["about", "About"],
     ]);
     // The Renderer tab ends with Performance debug.

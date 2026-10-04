@@ -552,8 +552,8 @@ prototype:
   than the report's times. Encoding tiles 4:2:0 with optimized tables is the first thing to
   win back.
 - **Its parameters** (Scenes → Tiled images) are the prototype's measured values: six
-  requests, two uploads a frame, a 5° margin. Its 196 tiles of atlas became 510; see "Loading
-  once" below.
+  requests, two uploads a frame, a 5° margin. Its 196 tiles of atlas became 510 where the
+  device has room; see "Loading once" and "What stays on the GPU" below.
 
 `src/scenes/tiles/` holds the geometry, the exact selection, the scheduler and the tiled
 source; `src/engine/babylon/panorama/panoramaTileAtlas.ts` the atlas. The whole app was
@@ -609,9 +609,10 @@ What was built for it, all in `src/scenes/`:
   preview, whole image and tile is kept in IndexedDB under its asset's revision and read from
   there before the network is asked. Scenes → Saved images holds the limit, what is kept and
   the clear button.
-- **An atlas with a slot for every tile**, up to the tile memory, whose default now holds all
-  510 tiles of a prepared cube (73.25 MiB, about what the 6144 px whole image takes). Within a
-  panorama nothing is evicted, so nothing is loaded twice.
+- **An atlas with a slot for every tile**, up to the tile memory, whose default holds all 510
+  tiles of a prepared cube (73.25 MiB, about what the 6144 px whole image takes) where the
+  device has room for them. Within such a panorama nothing is evicted, so nothing is loaded
+  twice; on a device with less, see "What stays on the GPU" below.
 - **Orbs load what they are drawn at.** An orb keeps its smallest preview until it is drawn,
   on screen, with more pixels than that has texels; then it loads the preview its size asks
   for, the largest orb first. Entering asks for the largest as the entry begins.
@@ -650,8 +651,38 @@ fails, as it should: every reload and revisit asks again.
 
 What it does not cover: the orbs' fly-in could not be timed on the tour's build, since the
 harness serves no map and the tour's orbs stand on its ground; nothing here has run on a
-phone; and the app's own files are still downloaded again after ten minutes on GitHub Pages,
-1.5 MiB a visit, which only a service worker or another host can stop.
+phone; and the app's own files were still downloaded again after ten minutes on GitHub Pages,
+1.5 MiB a visit, until a service worker kept them (below).
+
+**What stays on the GPU (2026-10-03).** On a device with little graphics memory the GPU should
+hold what is looked at, and the disk the rest. Every part of that is a setting, with a default
+from what the browser says of the device:
+
+- **Tile memory** (Scenes → Tiled images) holds every tile of a panorama where 1/32 of the
+  device's memory, as the browser reports it, holds them: as the map's imagery takes for its
+  own budget. Below that it is that share, and never less than the prototype's 196 tiles, a
+  phone's view and its margin. A browser that does not report its memory gets every tile,
+  unless it is a touch screen's, which is most often a phone's. Tiles out of the view then
+  give up their slots, and a look back reads them from the saved images.
+- **Kept on the GPU when not shown** (Scenes → Loading and memory) is what images nobody shows
+  may keep, the least recently used given up first: the tiles of the panorama left, a preview
+  an orb no longer shows. Its default keeps the panorama left where the tile memory holds
+  every tile, and nothing otherwise. Before it, such images stayed until their room was
+  needed, which on a renderer with 16384 px textures could be 1.5 GiB.
+- **Sharper orb previews kept for** (Scenes → Orbs): an orb drawn smaller again, or off the
+  screen, goes back to the preview its size needs after 10 s, and gives the sharper one up.
+
+On the tour's build with responses held 100 ms, with the tile memory at 196 tiles and nothing
+kept, Northrop Mall's four views held 82 to 86 tiles each. Turning back to the first asked the
+network for nothing: its tiles came back from the saved images, and the view was complete in
+0.9 s. On a revisit, every view asked for nothing and was complete in 0.8 to 0.9 s
+([scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) with
+`--set=scene.panorama.tileMemoryMiB=28.25,scene.panorama.keptGpuMiB=0`).
+
+**The app's own files (2026-10-03).** A service worker keeps them on the device, so a visit
+asks the network for none of them however long ago the last one was
+([docs/app-files.md](../app-files.md)). On the tour's build in headless Chrome, its first visit
+kept all 63 files it loaded, and the reload and a revisit in a new browser asked for none.
 
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose

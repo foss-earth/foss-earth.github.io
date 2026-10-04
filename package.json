@@ -21,7 +21,8 @@
     "./scenes/schema.json": "./src/scenes/foss-earth-scene-1.schema.json",
     "./settings": "./src/settings/index.ts",
     "./smoothElevation": "./src/terrain/smoothElevation.ts",
-    "./style.css": "./src/styles/globe.css"
+    "./style.css": "./src/styles/globe.css",
+    "./vite": "./vite/appFiles.ts"
   },
   "bin": {
     "foss-earth-qr": "scripts/lan-qr.mjs"

@@ -17,6 +17,7 @@ through request interception.
 | [scripts/validation/panorama-input.mjs](../../scripts/validation/panorama-input.mjs) | The whole app with real mouse, wheel and trackpad events | Panorama input, hover, outlines, the panorama tab |
 | [scripts/validation/panorama-tiles.mjs](../../scripts/validation/panorama-tiles.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1 (a second Chrome with `--disable-webgl2`) | Tiled cubes and the whole image against the source at the directions the shader drew, a seam score on tile edges, every crossfade, the outlines and the flight out. Another app's scene too, such as the UMN tour's, against a panorama's whole image (options at the top of the script) |
 | [scripts/validation/scene-revisit.mjs](../../scripts/validation/scene-revisit.mjs) | The whole app with a scene, a Chrome profile kept between its browsers: a build served by intercepting requests, with no HTTP cache and every response held as long as asked, or a live site read from Chrome's network events | What a first visit, a reload, a look around a panorama and a revisit ask the network for, and how long each takes. On a build it fails when anything is asked for twice; `--set=scene.panorama.savedMiB=0` is its control. On a live site it reports how the host's cache headers behave, with `--wait-min` to let them go stale |
+| [scripts/validation/app-files.mjs](../../scripts/validation/app-files.mjs) | The whole app, a Chrome profile kept between its browsers: a build served by intercepting every request of the browser, its service worker's too, with no HTTP cache, or a live site read from Chrome's network events with the HTTP cache off | Which of the app's own files a first visit, a reload and a revisit ask the network for, and that its worker took over and kept them. On a build it fails when the reload or the revisit asks for one ([docs/app-files.md](../app-files.md)) |
 | [scripts/validation/preview-sheet.mjs](../../scripts/validation/preview-sheet.mjs) | The whole app with the `umn-tiles` example, no network, on WebGPU, WebGL 2 and WebGL 1, its orb drawn 256 px across from four sides and from above | An orb drawn from a preview sheet against the same orb from its own face files, with the next view as the control, and that the sheet was the one request made |
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
@@ -72,6 +73,11 @@ through request interception.
 - A harness that serves no map leaves ground-relative orbs unplaced, and an unplaced orb is
   entered with a fade, not a flight. To time a flight in, use a scene whose orbs are
   capture-relative with a height, such as `umn-tiles`.
+- `Fetch.enable` on a page's session does not reach a service worker: not the request for its
+  script, so it fails to register and the app runs without it, nor the worker's own requests.
+  On the browser's own session, with no session id, it reaches both; `app-files.mjs` does
+  that. A worker's navigation preload request is out of its reach either way, and fails as a
+  network error; the app's worker then asks for the page itself.
 - WebGPU's canvas on this Mac reads back BGRA, WebGL's bottom row first; a comparison across
   backends has to find out which, as `run-gpu-checks.mjs` does.
 - `layout` is a reserved word in WGSL as well as in GLSL ES 3.00: a shader parameter of that
