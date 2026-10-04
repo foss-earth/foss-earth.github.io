@@ -21,6 +21,21 @@ That's it. A minute or so later, https://foss-earth.github.io/ serves the new bu
 
 The command does not run lint or tests; run `npm run ci` first.
 
+## Put the prototype back after each deploy
+
+`gh-pages -d dist` replaces the whole branch, and with it the progressive 360° prototype's
+phone package, which is published beside the app at `/eac-prototype/`. Put it back straight
+after every deploy:
+
+```sh
+npx gh-pages -d build/benchmarks/eac-progressive-prototype/package -e eac-prototype --add -m "Publish the prototype's phone package"
+```
+
+The package is kept in this checkout's `build/`. If it is gone, `export-package.mjs` makes it
+again ([the prototype's README](../benchmarks/eac-progressive-prototype/README.md#testing-by-hand)).
+On 2026-10-04 the prototype was missing from the site for the 30 seconds between the two
+pushes, and the branch then held the same 6,144 files as before the deploy.
+
 The deploy is manual and runs from your machine. There is no GitHub Actions workflow in this
 repository, so pushing to `main` does **not** republish the site — you have to run the command.
 
@@ -48,8 +63,19 @@ curl -s https://foss-earth.github.io/ | grep -o 'src="[^"]*"'
 ```
 
 The script path should start with `/assets/`, and requesting it on `https://foss-earth.github.io`
-should also return `200`. Hard-refresh in the browser — Pages caches aggressively and a normal
-reload will happily serve you the previous build.
+should also return `200`. The page also says which build it is; the time and commit should be
+the build you just made:
+
+```sh
+curl -s -A foss-earth-check/1.0 https://foss-earth.github.io/ | grep -o '<meta name="foss-earth[^>]*>'
+```
+
+In a browser, the log's first line says the same: "App built 2026-10-04 20:32 UTC from
+d538bfa." A browser can still show a page it kept from before the deploy. A page from
+2026-10-04 on asks the site which version is published, and reloads itself into the new one,
+or says so with a button once it has been touched
+([app-files.md](app-files.md#the-page-and-a-browsers-copy-of-it)). A hard refresh still
+works for a page from before then.
 
 ## Troubleshooting
 
