@@ -10,6 +10,19 @@
       "purpose": "Two different images linked both ways, for the enter, look, link, exit and dispose path.",
       "registration": "Synthetic test registration at the research's campus anchor, 44.974°, −93.235°. The photograph was not captured here and its north is not surveyed.",
       "source": "scripts/build-panorama-examples.mjs"
+    },
+    "foss-earth.preview-sheets": {
+      "sheets": [
+        {
+          "id": "previews-64",
+          "revision": "82bd91401d19",
+          "mimeType": "image/jpeg",
+          "width": 384,
+          "height": 128,
+          "encodedBytes": 15821,
+          "url": "media/campus-pair-previews-64.jpg"
+        }
+      ]
     }
   },
   "assets": [
@@ -56,10 +69,12 @@
             "pz": "media/buikslotermeerplein-512/preview-64/pz.jpg",
             "nz": "media/buikslotermeerplein-512/preview-64/nz.jpg"
           },
-          "sheet": {
-            "id": "previews-64",
-            "x": 0,
-            "y": 0
+          "extensions": {
+            "foss-earth.preview-sheets": {
+              "id": "previews-64",
+              "x": 0,
+              "y": 0
+            }
           }
         },
         {
@@ -131,10 +146,12 @@
             "pz": "media/cardinal-grid/preview-64/pz.jpg",
             "nz": "media/cardinal-grid/preview-64/nz.jpg"
           },
-          "sheet": {
-            "id": "previews-64",
-            "x": 0,
-            "y": 64
+          "extensions": {
+            "foss-earth.preview-sheets": {
+              "id": "previews-64",
+              "x": 0,
+              "y": 64
+            }
           }
         },
         {
@@ -190,17 +207,6 @@
           "url": "media/cardinal-grid/immersion-2048.jpg"
         }
       ]
-    }
-  ],
-  "sheets": [
-    {
-      "id": "previews-64",
-      "revision": "82bd91401d19",
-      "mimeType": "image/jpeg",
-      "width": 384,
-      "height": 128,
-      "encodedBytes": 15821,
-      "url": "media/campus-pair-previews-64.jpg"
     }
   ],
   "entities": [
