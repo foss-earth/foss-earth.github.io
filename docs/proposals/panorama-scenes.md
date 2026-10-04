@@ -723,6 +723,12 @@ Safari's engine as Playwright builds it: on WebGL 2 the orb from a sheet is 50.6
 from the orb from its files, as in Chrome and Firefox. That build has no WebGPU and this
 Mac's memory, so it is not the iPhone: WebGPU in Safari and a phone's limits remain unchecked.
 
+Both fixes and the diagnostics were deployed on 2026-10-04, here and in the UMN tour, whose
+content had gone out the evening before. On the live tour, headlessly at a phone's viewport:
+Firefox 157 and WebKit 26 each showed all 60 orbs with their photographs after the one
+request for the sheet, and asked for no image on a reload; WebKit inside Northrop Mall showed
+all 28 tiles in view; and Chrome's crash check passed.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:

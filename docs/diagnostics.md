@@ -122,8 +122,20 @@ says in its log that the last one stopped without being closed, inside that imag
 report shows that visit's renderer and steps. A visit that was left, the control, makes the
 next one say nothing.
 
-Not checked: any of it in Safari or on a phone. A page hidden and then let go is tested with a
-stand-in for the browser, not in one.
+With `--url` the same check runs against a live site over the network. On 2026-10-04 it
+passed on <https://foss-earth.github.io/?scene=umn-tiles> and on the UMN tour, where the visit
+after the crash said: "The last visit stopped without being closed, 11 s after it opened or
+later; it was at: scene umn-twin-cities, revision 4b89d4e2af09, inside the 360 image
+northrop-mall". Opening the tour and entering a photograph was 12 steps there, 15 with the
+network cut off, and the report 2 KB.
+
+In WebKit, Safari's engine as Playwright builds it, the live tour's log had no error line and
+its report said "Errors nothing handled: none" through a first visit and a reload, though
+WebKit reports each request a reload cuts off as a failed load: those are handled.
+
+Not checked: the crash itself in any browser but Chrome, which alone has a command for it;
+any of it in Safari or on a phone. A page hidden and then let go is tested with a stand-in for
+the browser, not in one.
 
 ## A browser's own tools
 

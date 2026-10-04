@@ -16,8 +16,10 @@
  *
  *   node scripts/validation/diagnostics.mjs [--dist=<a build>] [--content=<a folder of the files the build leaves out>]
  *     [--path=/] [--query=scene=umn-tiles] [--orb=umn-tiles-orb] [--out=<folder>]
+ *   node scripts/validation/diagnostics.mjs --url=<a live page> [--query=…] [--orb=…]
  *
  * The UMN tour: --dist=<tour>/dist-app --content=<tour>/public --path=/tour/twin-cities/ --query= --orb=<a panorama's id>
+ * With --url nothing is built or intercepted: the live site is asked, over the network.
  *
  * Output: build/validation/diagnostics/<date>_<time>/ with report.json, summary.md, the reports copied and a screenshot.
  */
@@ -35,19 +37,20 @@ const out = arg("out") ? path.resolve(arg("out")) : newOutputDirectory("validati
 mkdirSync(out, { recursive: true });
 // Chrome and its crash handler otherwise write to the system's temporary directory.
 process.env.TMPDIR = out;
+const live = arg("url") ? new URL(arg("url")) : null;
 const dist = arg("dist") ? path.resolve(arg("dist")) : path.join(out, "dist");
 const content = arg("content") ? path.resolve(arg("content")) : null;
-if (!arg("dist")) {
+if (!arg("dist") && !live) {
   console.log("Building the app…");
   await build({ root, logLevel: "warn", build: { outDir: dist, emptyOutDir: true } });
 }
-const pagePath = arg("path", "/");
-const query = new URLSearchParams(arg("query", "scene=umn-tiles"));
+const pagePath = live ? live.pathname : arg("path", "/");
+const query = new URLSearchParams(arg("query", live ? live.search.slice(1) : "scene=umn-tiles"));
 query.set("panoramaTest", "1");
 const orb = arg("orb", "umn-tiles-orb");
 // A phone's screen: the report has to be reachable on it.
 const VIEWPORT = { width: 414, height: 896 };
-const ORIGIN = "https://foss-earth.test";
+const ORIGIN = live ? live.origin : "https://foss-earth.test";
 const URL_OF_APP = `${ORIGIN}${pagePath}?${query}`;
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".wasm": "application/wasm" };
 const T = "window.__fossEarthPanoramaTest";
@@ -92,7 +95,7 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await send("Inspector.enable");
-  await send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
+  if (!live) await send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
   await send("Emulation.setUserAgentOverride", { userAgent: `${version.userAgent} foss-earth-check/1.0` });
   await send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 2, mobile: true });
   await send("Emulation.setTouchEmulationEnabled", { enabled: true });
@@ -134,7 +137,7 @@ try {
   const steps = await stepsOf();
   report.visits.first = { previous: first.previous, steps };
   expect(first.previous === null && !first.log.some(text => LAST_VISIT.test(text)), "a first visit has no earlier one to speak of", `a first visit spoke of an earlier one: ${JSON.stringify(first.previous)}`);
-  for (const [what, pattern] of [["the page and its build", /^Opened https:\/\/foss-earth\.test.*; build .*, bundle [\w.]+-[\w-]{8}\.js$/], ["the renderer and its GPU", /^Renderer (webgpu|webgl2|webgl) \(asked for \w+\)/], ["the scene", /^Scene [\w.-]+, revision .+: \d+ 360 images$/], ["the 360 image entered", new RegExp(`^Inside the 360 image ${orb}$`)]]) {
+  for (const [what, pattern] of [["the page and its build", /^Opened https:\/\/.*; build .*, bundle [\w.]+-[\w-]{8}\.js$/], ["the renderer and its GPU", /^Renderer (webgpu|webgl2|webgl) \(asked for \w+\)/], ["the scene", /^Scene [\w.-]+, revision .+: \d+ 360 images$/], ["the 360 image entered", new RegExp(`^Inside the 360 image ${orb}$`)]]) {
     expect(steps.some(text => pattern.test(text)), `the trail has ${what}`, `the trail lacks ${what}: ${JSON.stringify(steps)}`);
   }
   console.log(`  ${steps.length} steps so far`);

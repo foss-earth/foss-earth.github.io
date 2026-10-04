@@ -95,10 +95,16 @@ control and kept all 63; two reloads started the app under the worker with nothi
 network. Firefox's resource timing does not say that its worker answered a file, so the kept
 files were counted in its cache.
 
+On 2026-10-04 the tour's app was deployed again, and a visitor holding the worker of the
+evening before took the 6 files that deploy changed from the network, 1.50 MiB, and 57 from
+the old worker; the new worker kept all 63, and the reload and the revisit took none from the
+network (`2026-10-04_123800-update-path`).
+
 It was tried in WebKit 26.0, Safari's engine as Playwright builds it, on 2026-10-04, by hand
 against the live tour: after the first visit the worker controlled the page and had kept all
 63 files, a reload took none of them from the network, and inside a 360 image entered then
-all 28 tiles in view loaded, which the worker lets by. That was so in three runs. In one
-other, the first after WebKit was installed, the first visit stayed at 4 of its 60 orbs; it
-did not happen again and is not explained. The worker has not been run in Safari itself, nor
+all 28 tiles in view loaded, which the worker lets by. That was so in five runs, three on the
+app of the evening before and two on that day's. In one other, the first after WebKit was
+installed, the first visit stayed at 4 of its 60 orbs; it did not happen again and is not
+explained. The worker has not been run in Safari itself, nor
 on a phone.
