@@ -6,7 +6,8 @@
  * has to say so, with the step the killed one had reached.
  *
  * It checks that:
- *   - the visit's trail has the page, the renderer, the scene and the 360 image entered;
+ *   - the visit's trail has the page, the app's build and commit, the renderer, the scene and the 360 image
+ *     entered, and its log says which version runs;
  *   - Settings → Diagnostics → Copy report copies a report with them, on a phone's screen;
  *   - after the renderer is crashed, the address with ?report shows that visit's trail without
  *     starting the map, and leaves it for the app;
@@ -137,9 +138,10 @@ try {
   const steps = await stepsOf();
   report.visits.first = { previous: first.previous, steps };
   expect(first.previous === null && !first.log.some(text => LAST_VISIT.test(text)), "a first visit has no earlier one to speak of", `a first visit spoke of an earlier one: ${JSON.stringify(first.previous)}`);
-  for (const [what, pattern] of [["the page and its build", /^Opened https:\/\/.*; build .*, bundle [\w.]+-[\w-]{8}\.js$/], ["the renderer and its GPU", /^Renderer (webgpu|webgl2|webgl) \(asked for \w+\)/], ["the scene", /^Scene [\w.-]+, revision .+: \d+ 360 images$/], ["the 360 image entered", new RegExp(`^Inside the 360 image ${orb}$`)]]) {
+  for (const [what, pattern] of [["the page", /^Opened https:\/\//], ["the app's build and commit", /^› App built \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from \S+/], ["the renderer and its GPU", /^Renderer (webgpu|webgl2|webgl) \(asked for \w+\)/], ["the scene", /^Scene [\w.-]+, revision .+: \d+ 360 images$/], ["the 360 image entered", new RegExp(`^Inside the 360 image ${orb}$`)]]) {
     expect(steps.some(text => pattern.test(text)), `the trail has ${what}`, `the trail lacks ${what}: ${JSON.stringify(steps)}`);
   }
+  expect(first.log.some(text => /^App built \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from \S+/.test(text)), `the log says which version runs: "${first.log.find(text => /^App built /.test(text))}"`, `the log does not say which version runs: ${JSON.stringify(first.log)}`);
   console.log(`  ${steps.length} steps so far`);
 
   await page(`document.querySelector("#settingsButton").click(); true`);
@@ -189,7 +191,7 @@ try {
   expect(second.previous?.state.endsWith(`inside the 360 image ${orb}`), `and as having been at: ${second.previous?.state}`, `without the 360 image it was in: ${JSON.stringify(second.previous?.state)}`);
   const line = second.log.find(text => LAST_VISIT.test(text));
   expect(Boolean(line), `the log says: "${line}"`, `the log does not say the last visit stopped: ${JSON.stringify(second.log)}`);
-  expect(/^The visit before, opened .*, stopped without being closed, while shown\. Build .* renderer (webgpu|webgl2|webgl)\.$/m.test(secondReport) && secondReport.includes(`  It was at: ${second.previous?.state}`), "the report shows the visit before, its renderer and where it was", "the report does not show the visit before");
+  expect(/^The visit before, opened .*, stopped without being closed, while shown\. App built .* renderer (webgpu|webgl2|webgl)\.$/m.test(secondReport) && secondReport.includes(`  It was at: ${second.previous?.state}`), "the report shows the visit before, its renderer and where it was", "the report does not show the visit before");
 
   // ─── The control: a visit that was left says nothing to the next ───
   console.log("The page is left, and opened again");

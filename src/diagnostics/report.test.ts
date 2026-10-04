@@ -18,6 +18,11 @@ const parts = (over: Partial<ReportParts> = {}): ReportParts => ({
 });
 
 describe("the report", () => {
+  it("names FOSS Earth's commit beside the app's own, in an app built on it from another repository", () => {
+    expect(buildReport(parts({ fossEarth: "35ad0e3f1c2a" })).split("\n")[2]).toBe("Build: 2026-10-04T15:00:00.000Z · source 1a2b3c4d5e6f · FOSS Earth 35ad0e3f1c2a · bundle twinCities-C9TYTT-e.js");
+    expect(buildReport(parts({ fossEarth: "" })).split("\n")[2]).toBe("Build: 2026-10-04T15:00:00.000Z · source 1a2b3c4d5e6f · bundle twinCities-C9TYTT-e.js");
+  });
+
   it("says what ran, on what, how it is set, what this visit did and how the one before ended", () => {
     expect(buildReport(parts())).toBe([
       "FOSS Earth report, 2026-10-04T16:00:00.000Z",

@@ -59,6 +59,8 @@ const LEDGER: Record<string, [Kind, string]> = {
   "src/camera/cameraState.ts#DEADZONE_DEG": ["guard", "Orbit steps smaller than this are noise in a gesture stream, and would only redraw the map."],
   "src/camera/cameraState.ts#MAX_ORBIT_HEIGHT_SMOOTHING_DELTA_MS": ["guard", "Caps the time step after a stalled frame, so the orbit target does not jump."],
   "src/camera/cameraState.ts@(this.camera as unknown as { fov: number }).fov ?? 0.8": ["parameter", "camera.fieldOfView"],
+  "src/app/publishedVersion.ts#ANSWER_WAIT_MS": ["guard", "How long the site may take to answer with the page before the question of which version is published is given up until the next time; the page is a few kilobytes."],
+  "src/app/publishedVersion.ts#CHECK_PUBLISHED_EVERY_DEFAULT": ["parameter", "app.checkPublishedEvery"],
   "src/diagnostics/errorCapture.ts#STACK_LINES": ["tool", "How much of an unhandled error's stack the diagnostics report quotes: where it was thrown and who called that."],
   "src/diagnostics/sessionTrail.ts#PING_WAIT_MS": ["guard", "How long a visit waits for a page open beside it to say it is still open, before its trail counts as one that stopped; an open page answers in a few milliseconds."],
   "src/diagnostics/sessionTrail.ts#STEP_CHARS": ["tool", "A trail step is one line of the diagnostics report: a console message of pages is cut to it. diagnostics.trailSteps says how many are kept."],

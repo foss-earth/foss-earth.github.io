@@ -22,6 +22,8 @@ export interface ReportParts {
   page: string;
   build: string;
   source: string;
+  /** FOSS Earth's commit, in an app built on it from another repository. */
+  fossEarth?: string;
   bundle: string;
   userAgent: string;
   screen: { width: number; height: number; devicePixelRatio: number; touch: boolean };
@@ -59,7 +61,7 @@ export function buildReport(parts: ReportParts): string {
   const lines: string[] = [
     `FOSS Earth report, ${parts.at.toISOString()}`,
     `Page: ${parts.page}`,
-    `Build: ${parts.build} · source ${parts.source} · bundle ${parts.bundle}`,
+    `Build: ${parts.build} · source ${parts.source}${parts.fossEarth ? ` · FOSS Earth ${parts.fossEarth}` : ""} · bundle ${parts.bundle}`,
     `Browser: ${parts.userAgent}`,
     `Screen: ${screen.width} × ${screen.height} CSS px at ${screen.devicePixelRatio}×, ${screen.touch ? "touch" : "no touch"}; ${device.cores ?? "unknown"} cores; memory ${device.memoryGiB === null ? "not reported" : `${device.memoryGiB} GiB or more`}`,
     `Renderer: ${renderer.mode} (asked for ${renderer.asked})${renderer.fallbackReason ? `; fell back: ${renderer.fallbackReason}` : ""}; largest texture ${renderer.maxTextureSize ?? "unknown"} px; lost ${renderer.lost} ${renderer.lost === 1 ? "time" : "times"} this visit`,

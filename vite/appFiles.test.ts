@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { APP_FILES_WORKER, appFiles, appFilesWorker } from "./appFiles";
+import { BUILD_STAMP_META, buildStampOf } from "../src/app/buildStamp";
+import { APP_FILES_WORKER, APP_SOURCE_META, appFiles, appFilesWorker, buildStamp, FOSS_EARTH_SOURCE_META, fossEarthSource } from "./appFiles";
 
 const ORIGIN = "https://tour.test";
 const SCRIPT = "assets/twinCities-SkvAwjjw.js";
@@ -174,6 +175,47 @@ describe("the appFiles Vite plugin", () => {
     const config = appFiles().config as unknown as ConfigHook;
     expect(config({}, { command: "build", mode: "production" }).define.__FOSS_EARTH_APP_FILES__).toBe(JSON.stringify(APP_FILES_WORKER));
     expect(config({}, { command: "serve", mode: "development" }).define.__FOSS_EARTH_APP_FILES__).toBe('""');
+  });
+
+  it("stamps each page of a build with the time and the commit the app's About shows, and no page while developing", () => {
+    type HtmlHook = () => { tag: string; attrs: Record<string, string>; injectTo: string }[];
+    const define = { __BUILD_TIME__: JSON.stringify("2026-10-04T17:33:49.408Z"), __SOURCE_VERSION__: JSON.stringify("a2c6c2894e12") };
+    const built = appFiles();
+    // An app of another repository, built in a folder of its own.
+    const defined = (built.config as unknown as ConfigHook)({ define, root: "/somewhere/else" }, { command: "build", mode: "production" }).define;
+    const tags = (built.transformIndexHtml as unknown as HtmlHook)();
+    expect(tags.slice(0, 2)).toEqual([
+      { tag: "meta", attrs: { name: BUILD_STAMP_META, content: "2026-10-04T17:33:49.408Z" }, injectTo: "head" },
+      { tag: "meta", attrs: { name: APP_SOURCE_META, content: "a2c6c2894e12" }, injectTo: "head" },
+    ]);
+    // FOSS Earth's own commit, where this checkout is one: the app is told it, and the page carries it.
+    const fossEarth = fossEarthSource();
+    expect(JSON.parse(defined.__FOSS_EARTH_SOURCE__)).toBe(fossEarth);
+    expect(tags.slice(2)).toEqual(fossEarth ? [{ tag: "meta", attrs: { name: FOSS_EARTH_SOURCE_META, content: fossEarth }, injectTo: "head" }] : []);
+    // As Vite writes such tags, the app reads the build's time back and no other.
+    expect(buildStampOf(`<head>${[...tags].reverse().map(tag => `<meta name="${tag.attrs.name}" content="${tag.attrs.content}">`).join("")}</head>`)).toBe("2026-10-04T17:33:49.408Z");
+
+    const served = appFiles();
+    (served.config as unknown as ConfigHook)({ define }, { command: "serve", mode: "development" });
+    expect((served.transformIndexHtml as unknown as HtmlHook)()).toEqual([]);
+  });
+
+  it("names FOSS Earth's commit only in an app of another repository: in its own app, the app's source is it", () => {
+    const own = (appFiles().config as unknown as ConfigHook)({}, { command: "build", mode: "production" }).define;
+    expect(JSON.parse(own.__FOSS_EARTH_SOURCE__)).toBe("");
+    expect(fossEarthSource()).toMatch(/^([0-9a-f]{12}(-dirty)?)?$/);
+    // A folder that is not a checkout of its own, as a copy installed from a package inside an app's repository.
+    expect(fossEarthSource(new URL("../src/app", import.meta.url).pathname)).toBe("");
+    expect(fossEarthSource("/")).toBe("");
+  });
+
+  it("stamps a build whose config names no build time with its own", () => {
+    const before = Date.now();
+    for (const define of [undefined, {}, { __BUILD_TIME__: "not JSON" }, { __BUILD_TIME__: "42" }, { __BUILD_TIME__: '""' }]) {
+      const stamp = Date.parse(buildStamp(define));
+      expect(stamp).toBeGreaterThanOrEqual(before);
+      expect(stamp).toBeLessThanOrEqual(Date.now());
+    }
   });
 
   it("writes the worker beside the build's pages, and warns of files it cannot keep", () => {

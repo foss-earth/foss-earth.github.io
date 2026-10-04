@@ -27,12 +27,14 @@ describe("the report-only page", () => {
     settings.register(FOSS_EARTH_PARAMETERS);
     const root = document.createElement("div");
     document.body.append(root);
-    showReportOnly(root, { settings, identity: { build: "2026-10-04T15:00:00.000Z", source: "1a2b3c4d", bundle: "twinCities-DWWktTbX.js" } });
+    showReportOnly(root, { settings, identity: { build: "2026-10-04T15:00:00.000Z", source: "1a2b3c4d", fossEarth: "9f8e7d6c5b4a", bundle: "twinCities-DWWktTbX.js" } });
     await settle();
     expect(root.querySelector("h1")?.textContent).toBe("Report");
     expect(root.querySelector(".foss-earth-diagnostics-section p")?.textContent).toMatch(/^The last visit stopped without being closed, 42 s after it opened or later; it was at: scene umn-twin-cities/);
     const report = root.querySelector("textarea")!.value;
-    expect(report).toContain("Build: 2026-10-04T15:00:00.000Z · source 1a2b3c4d · bundle twinCities-DWWktTbX.js");
+    expect(report).toContain("Build: 2026-10-04T15:00:00.000Z · source 1a2b3c4d · FOSS Earth 9f8e7d6c5b4a · bundle twinCities-DWWktTbX.js");
+    // This test's page carries no build stamp, as a development build.
+    expect(report).toContain("Published: This page does not say which build it is");
     expect(report).toContain("Renderer: not started (asked for not started)");
     expect(report).toContain("for the report only: the map was not started");
     expect(report).toContain("stopped without being closed, while shown. Build b, bundle twinCities-C9TYTT-e.js, renderer webgpu.");

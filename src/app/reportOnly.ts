@@ -9,6 +9,8 @@ import { createSessionTrail, TRAIL_STEPS_DEFAULT } from "../diagnostics/sessionT
 import type { SettingsRegistry } from "../settings/registry";
 import { createDiagnosticsSection } from "../shell/diagnosticsSection";
 import { settingsNotAtDefaults } from "./appDiagnostics";
+import type { AppIdentity } from "./appIdentity";
+import { describePublishedVersion, readPublishedVersion } from "./publishedVersion";
 
 /** The address parameter. */
 export const REPORT_ONLY_PARAMETER = "report";
@@ -22,23 +24,25 @@ export function addressWithoutReport(href: string): string {
   return url.href;
 }
 
-export function showReportOnly(rootElement: HTMLElement, options: { settings: SettingsRegistry; identity: { build: string; source: string; bundle: string } }): void {
+export function showReportOnly(rootElement: HTMLElement, options: { settings: SettingsRegistry; identity: AppIdentity }): void {
   const { settings, identity } = options;
   // Read, not written: the page may be opened again, and the app's next visit is still told of the one that stopped.
   const trail = createSessionTrail({ app: () => "", kept: () => false, limit: () => TRAIL_STEPS_DEFAULT, readOnly: true });
   trail.step(`Opened ${reportPage(location.href)} for the report only: the map was not started`);
   const previous = trail.previous();
+  // Asked and never acted on: this page is here to be read, so it does not reload itself.
+  const published = readPublishedVersion(settings);
   const report = async (): Promise<string> => {
     const context = settings.getDeviceContext();
     return buildReport({
       at: new Date(),
       page: reportPage(location.href),
-      build: identity.build, source: identity.source, bundle: identity.bundle,
+      build: identity.build, source: identity.source, fossEarth: identity.fossEarth, bundle: identity.bundle,
       userAgent: navigator.userAgent,
       screen: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio, touch: context.touch },
       device: { cores: context.hardwareConcurrency, memoryGiB: context.deviceMemoryGiB },
       renderer: { asked: "not started", mode: "not started", driver: null, maxTextureSize: null, fallbackReason: null, lost: 0 },
-      state: [],
+      state: [`Published: ${describePublishedVersion(await published, Date.now())}`],
       settings: settingsNotAtDefaults(settings),
       steps: trail.steps(),
       errors: [],

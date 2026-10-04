@@ -1,4 +1,5 @@
 import type { AppFilesStatus } from "../app/appFiles";
+import { describePublishedVersion, type PublishedVersionWatch } from "../app/publishedVersion";
 
 export interface AppFilesSectionHandle {
   element: HTMLElement;
@@ -27,22 +28,65 @@ export function describeAppFiles(status: AppFilesStatus | null): string {
   return `${counted(status)} of the app kept on this device. ${status.controlling ? "This visit takes them from there." : "The next visit takes them from there."}`;
 }
 
+/** What the section reads of the published version, and asks of it (publishedVersion.ts). */
+export type PublishedVersionSource = Pick<PublishedVersionWatch, "state" | "subscribe" | "ask" | "reload" | "now">;
+
+function button(label: string): HTMLButtonElement {
+  const element = document.createElement("button");
+  element.type = "button";
+  element.className = "foss-earth-choice foss-earth-parameter__action";
+  element.textContent = label;
+  return element;
+}
+
 /**
- * Settings → App files: what of the app's own files this device keeps,
- * beside the switch that turns keeping them on and off (app.keepFiles). Laid
- * out as the scene images' section (savedImagesSection.ts).
+ * Settings → App files: what of the app's own files this device keeps, and
+ * whether this page is the version of the app the site publishes, beside the
+ * parameters that decide both (app.*). Laid out as the scene images' section
+ * (savedImagesSection.ts).
  */
-export function createAppFilesSection(source: { status(): Promise<AppFilesStatus> }): AppFilesSectionHandle {
+export function createAppFilesSection(source: { status(): Promise<AppFilesStatus> }, published?: PublishedVersionSource): AppFilesSectionHandle {
   const element = document.createElement("div");
   element.className = "foss-earth-map-cache-section foss-earth-app-files-section";
   element.setAttribute("aria-label", "App files");
   const summary = paragraph(describeAppFiles(null));
   summary.setAttribute("role", "status");
-  const how = paragraph("A service worker of this site's own keeps them and answers for them; it lets everything else through. The page itself always comes from the network, so a new version of the app shows on the next visit.");
+  const how = paragraph("A service worker of this site's own keeps them and answers for them; it lets everything else through. It does not keep the page itself: a browser asks the network for a page it opens, but one that restores a tab may show its own copy from days before, with the app of that day.");
   element.append(summary, how);
 
   let disposed = false;
+  let asking = false;
+  let stopVersion = (): void => {};
+  let renderVersion = (): void => {};
+  if (published) {
+    const version = paragraph("");
+    version.setAttribute("role", "status");
+    const ask = button("Ask now");
+    const reload = button("Reload to use the published version");
+    renderVersion = (): void => {
+      const state = published.state();
+      version.textContent = asking ? "Asking the site which version is published…" : describePublishedVersion(state, published.now());
+      ask.disabled = asking || state.kind === "unstamped" || state.kind === "off";
+      reload.hidden = state.kind !== "older";
+    };
+    ask.addEventListener("click", () => {
+      asking = true;
+      renderVersion();
+      const done = (): void => {
+        asking = false;
+        if (!disposed) renderVersion();
+      };
+      void published.ask().then(done, done);
+    });
+    reload.addEventListener("click", () => published.reload());
+    stopVersion = published.subscribe(() => { if (!disposed) renderVersion(); });
+    renderVersion();
+    element.append(version, ask, reload);
+  }
+
   const refresh = (): void => {
+    // How long ago the site was asked moves on.
+    renderVersion();
     void source.status().then(status => {
       if (!disposed) summary.textContent = describeAppFiles(status);
     }, () => {
@@ -59,6 +103,7 @@ export function createAppFilesSection(source: { status(): Promise<AppFilesStatus
     element,
     destroy() {
       disposed = true;
+      stopVersion();
       window.clearInterval(timer);
       element.remove();
     },

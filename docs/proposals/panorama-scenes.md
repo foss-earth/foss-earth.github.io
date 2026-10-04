@@ -729,6 +729,29 @@ Firefox 157 and WebKit 26 each showed all 60 orbs with their photographs after t
 request for the sheet, and asked for no image on a reload; WebKit inside Northrop Mall showed
 all 28 tiles in view; and Chrome's crash check passed.
 
+**The phones again, and which app they ran (2026-10-04).** Tried that afternoon, both phones
+showed the tour, and the iPhone's page stopped after five minutes. Its Settings tab had three
+sections: Presets, Saved settings and About. Every app since the evening of 2026-10-03 has App
+files there, and that day's has Diagnostics too, so the iPhone was running the app built on
+2026-10-03 at 05:33 UTC, four releases old, from Safari's copy of the page: the same page as
+the evening before, now working because the scene had been rewritten for it. None of two
+days' work had run on that phone: not the one request for the previews, not the worker, not
+the limits on what the GPU holds, not the diagnostics, whose report could not be found
+because it was not there. The crash after five minutes was that old app's. Nothing told the
+person, and nothing in an app already published can: a browser that holds a copy of such a
+page shows it until the tab is reloaded.
+
+An app built from now on can tell. Each page of a build carries its build's time, the app asks
+the site for its own page as it starts, and a page older than the published one reloads
+itself while nobody has touched it, once, or says so in its log with a button
+([docs/app-files.md](../app-files.md#the-page-and-a-browsers-copy-of-it)). The app also says
+which version it is in the first line of its log, with the commits it was built from, the
+app's own and FOSS Earth's ([docs/diagnostics.md](../diagnostics.md#which-version-runs)).
+[published-version.mjs](../../scripts/validation/published-version.mjs) plays the phone's
+case in Chrome, Firefox and WebKit: the check answers the browser's requests for the page
+with a copy two days older and the app's own question with the published page. What Safari
+on a phone does when it restores a tab is still the phone's to show.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:

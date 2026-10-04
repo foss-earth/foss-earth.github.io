@@ -92,6 +92,9 @@ application installed before the command existed needs `npm rebuild foss-earth` 
 - If the macOS firewall is on, allow Node's incoming connections when asked, or the phone
   cannot connect.
 
+The log's first line says which version the phone runs: the build's time and its commits. A
+phone that comes back to a tab may show its own copy of an older page; a page built with the
+`appFiles` plugin notices and reloads itself ([app-files.md](app-files.md#the-page-and-a-browsers-copy-of-it)).
 When something goes wrong on the phone, Settings → Diagnostics → Copy report gives what the app
 knows as text, and `?report` in the address shows it when the app does not stay open:
 [diagnostics.md](diagnostics.md), which also says how to attach a browser's inspector to a phone.

@@ -13,6 +13,7 @@ import type { GameLog, GameLogEntry, GameLogLine } from "../log/createGameLog";
 import type { SceneControllerState } from "../scenes/sceneController";
 import type { SettingsRegistry } from "../settings/registry";
 import { formatValue } from "../settings/values";
+import { describeAppIdentity, describeAppIdentityBriefly, type AppIdentity } from "./appIdentity";
 
 export const TRAIL_KEPT = "diagnostics.trail";
 export const TRAIL_STEPS = "diagnostics.trailSteps";
@@ -35,7 +36,7 @@ export interface AppDiagnosticsOptions {
   /** The app's log. The diagnostics' own `log` prints to it and records each line. */
   log: GameLog;
   settings: SettingsRegistry;
-  identity: { build: string; source: string; bundle: string };
+  identity: AppIdentity;
   /** For tests: the browser as the trail uses it. */
   trailEnvironment?: TrailEnvironment;
   /** For tests: where errors, the console, visibility and leaving are heard. */
@@ -76,7 +77,7 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
   const stops: (() => void)[] = [];
 
   const trail = createSessionTrail({
-    app: () => `Build ${identity.build}, bundle ${identity.bundle}, renderer ${runtime?.renderer.mode ?? "not started"}.`,
+    app: () => `${describeAppIdentity(identity)}, renderer ${runtime?.renderer.mode ?? "not started"}.`,
     kept: () => settings.get(TRAIL_KEPT) !== false,
     limit: () => { const steps = settings.get(TRAIL_STEPS); return typeof steps === "number" ? steps : TRAIL_STEPS_DEFAULT; },
     ...(options.trailEnvironment ? { environment: options.trailEnvironment } : {}),
@@ -111,7 +112,9 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
     },
   };
 
-  trail.step(`Opened ${reportPage(typeof location === "undefined" ? "" : location.href)}; build ${identity.build}, bundle ${identity.bundle}`);
+  trail.step(`Opened ${reportPage(typeof location === "undefined" ? "" : location.href)}`);
+  // Which version runs, said where a person sees it as the app opens: a device with no console has no other way to tell.
+  log.print({ text: `${describeAppIdentityBriefly(identity)}.` });
 
   // An error nothing handled: one log line each, counted when it comes again.
   const errors = new Map<string, { error: CapturedError; count: number; line: GameLogLine }>();
@@ -219,6 +222,7 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
         page: reportPage(location.href),
         build: identity.build,
         source: identity.source,
+        fossEarth: identity.fossEarth,
         bundle: identity.bundle,
         userAgent: navigator.userAgent,
         screen: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio, touch: context.touch },

@@ -1,8 +1,8 @@
 # Diagnostics
 
 When the app goes wrong on a device with no console, a phone above all, the app itself has to
-say what happened. It keeps a trail of each visit, tells the next visit when one stopped
-without being closed, and gives a report to copy.
+say what happened. It says which version it is as it opens, keeps a trail of each visit, tells
+the next visit when one stopped without being closed, and gives a report to copy.
 
 ## Why
 
@@ -13,6 +13,26 @@ stopped. A page that a browser kills, as a phone does to one that takes too much
 no code as it goes, so there is nothing to ask afterwards unless it wrote things down first.
 Until then the app caught no unhandled error, said nothing when the GPU's device was lost, and
 left the renderer's warnings (a refused shader, a GPU error) in a console a phone does not show.
+
+## Which version runs
+
+A device shows what it has, which is not always what was published: on 2026-10-04 an iPhone
+was still running the UMN tour's app of two days and four releases before, from Safari's copy
+of the page, and it took the sections missing from its Settings tab to tell
+([app-files.md](app-files.md#the-page-and-a-browsers-copy-of-it)). So the app says which
+build it is, in four places:
+
+- **The log's first line, as the app opens**: "App built 2026-10-04 19:45 UTC from a2c6c28
+  with FOSS Earth 35ad0e3." The time is the build's, to the minute; the first commit is the
+  app's own repository's and the second FOSS Earth's, in an app built on it from another
+  repository. `-dirty` after a commit says the build had changes not committed.
+- **Settings → About**: the build's time, the two commits and the bundle, in full.
+- **The report**, in its `Build:` line, with whether the page is the published one.
+- **The page's source**, for the version a site publishes
+  ([app-files.md](app-files.md#what-a-published-page-says)).
+
+A page that is older than the published one reloads itself, or says so
+([app-files.md](app-files.md#the-page-and-a-browsers-copy-of-it)).
 
 ## Getting a report
 
@@ -30,38 +50,43 @@ The report is made on the device and sent nowhere. A key in an address is left o
 ## What a report holds
 
 ```text
-FOSS Earth report, 2026-10-04T16:58:58.569Z
-Page: https://example.org/?scene=umn-tiles
-Build: 2026-10-04T16:58:54.282Z · source 4be0fffd7ed6 · bundle index-DK8y-rWx.js
+FOSS Earth report, 2026-10-04T19:47:20.124Z
+Page: https://example.org/tour/
+Build: 2026-10-04T19:45:33.269Z · source a2c6c2894d5b · FOSS Earth 35ad0e3f8037 · bundle twinCities-BAnPt2WQ.js
 Browser: Mozilla/5.0 (…)
 Screen: 414 × 896 CSS px at 2×, touch; 10 cores; memory 16 GiB or more
 Renderer: webgpu (asked for auto); largest texture 8192 px; lost 0 times this visit
 GPU: apple, metal-3, Apple M5
-Scene: umn-tiles, revision 1, 1 360 images, immersive, inside umn-tiles-orb; 0 warnings
-App files: 3 files (1.6 MB) of the app kept on this device. This visit takes them from there.
+Scene: umn-twin-cities, revision 4b89d4e2af09, 60 360 images, immersive, inside northrop-mall; 0 warnings
+Published: This page is the published version of the app, built 2026-10-04T19:45:33.269Z; the site was asked 12 s ago.
+App files: 63 files (1.7 MB) of the app kept on this device. This visit takes them from there.
 
 Settings: all at their defaults.
 
 Errors nothing handled: none.
 
 This visit, oldest first:
-      0.2 s  Opened https://example.org/?scene=umn-tiles; build …, bundle index-DK8y-rWx.js
+      0.2 s  Opened https://example.org/tour/
+      0.2 s  › App built 2026-10-04 19:45 UTC from a2c6c28 with FOSS Earth 35ad0e3.
       0.8 s  Renderer webgpu (asked for auto); apple, metal-3, Apple M5
-      0.8 s  Scene umn-tiles, revision 1: 1 360 images
+      0.8 s  Scene umn-twin-cities, revision 4b89d4e2af09: 60 360 images
       0.9 s  ! USGS Imagery Topo is active, but some tiles failed to load: Failed to fetch (…/8/92/61) (167 times, the last at 1.3 s)
-      2.3 s  Inside the 360 image umn-tiles-orb
+      2.3 s  Inside the 360 image northrop-mall
 
-The visit before, opened 2026-10-04T16:58:55.632Z, stopped without being closed, while shown. Build …, bundle index-DK8y-rWx.js, renderer webgpu.
-  It was at: scene umn-tiles, revision 1, inside the 360 image umn-tiles-orb
+The visit before, opened 2026-10-04T19:46:55.632Z, stopped without being closed, while shown. App built 2026-10-04T19:45:33.269Z from a2c6c2894d5b with FOSS Earth 35ad0e3f8037, bundle twinCities-BAnPt2WQ.js, renderer webgpu.
+  It was at: scene umn-twin-cities, revision 4b89d4e2af09, inside the 360 image northrop-mall
       0.2 s  Opened …
 ```
 
-- **Build, source and bundle** say which version ran. A browser can show a page it kept from
-  an earlier day, with that day's app.
+- **Build, source, FOSS Earth and bundle** say which version ran: the build's time, the
+  commit of the app's own repository, FOSS Earth's in an app of another repository, and the
+  page's built script. **Published** says whether that is the version the site publishes: a
+  browser can show a page it kept from an earlier day, with that day's app.
 - **Settings not at their defaults** are the parameters a person, the address or a preset set:
   what makes this visit differ from a first one.
-- **The steps** are what the visit did, in order: the page opened, the renderer and its GPU,
-  the scene, each 360 image entered and left, each line of the log, the page hidden and shown.
+- **The steps** are what the visit did, in order: the page opened, which version it is, the
+  renderer and its GPU, the scene, each 360 image entered and left, each line of the log, the
+  page hidden and shown.
 - **Troubles** are steps too: a warning or an error of the log, an unhandled error or promise
   rejection, a warning or an error written to the console. Each kind is one step, at the place
   of its first time, with how many times and when last, whatever address or number it names, so
@@ -103,7 +128,7 @@ Settings → Diagnostics:
 | Parameter | Default | |
 | --- | --- | --- |
 | Remember how a visit ended (`diagnostics.trail`) | on | Off removes this visit's trail from the device; this visit's report still has its steps |
-| Steps kept (`diagnostics.trailSteps`) | 80 | A step is one line of at most 300 characters, 24 KB at most in all. Opening an example scene and entering its 360 image is 15 steps |
+| Steps kept (`diagnostics.trailSteps`) | 80 | A step is one line of at most 300 characters, 24 KB at most in all. Opening an example scene and entering its 360 image is 16 steps |
 
 ## Using it in an app
 
@@ -114,9 +139,9 @@ uses the parts from `foss-earth/diagnostics`: `createSessionTrail`, `captureErro
 ## Checked
 
 [scripts/validation/diagnostics.mjs](../scripts/validation/diagnostics.mjs) runs a build in
-headless Chrome at a phone's screen size: a visit enters a 360 image, and Settings →
-Diagnostics → Copy report copies a report with the build, the renderer, the GPU, the scene and
-the image entered. Chrome's own `Page.crash` then kills the renderer. The address with
+headless Chrome at a phone's screen size: a visit's log says which version runs, it enters a
+360 image, and Settings → Diagnostics → Copy report copies a report with the build, the
+renderer, the GPU, the scene and the image entered. Chrome's own `Page.crash` then kills the renderer. The address with
 `?report` shows the trail of the visit that stopped and starts no map; the app's next visit
 says in its log that the last one stopped without being closed, inside that image, and its
 report shows that visit's renderer and steps. A visit that was left, the control, makes the

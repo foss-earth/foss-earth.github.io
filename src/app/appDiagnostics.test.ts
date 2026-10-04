@@ -40,12 +40,18 @@ function start(browser = fakeBrowser(), name = "a") {
   const fakeConsole = { warn: (...values: unknown[]) => { written.push(values.join(" ")); }, error: (...values: unknown[]) => { written.push(values.join(" ")); } };
   const environment = browser.page(name);
   const diagnostics = startAppDiagnostics({
-    log, settings, identity: { build: "2026-10-04T15:00:00.000Z", source: "1a2b3c4d", bundle: "twinCities-C9TYTT-e.js" },
+    log, settings, identity: { build: "2026-10-04T15:00:00.000Z", source: "1a2b3c4d", fossEarth: "9f8e7d6c5b4a", bundle: "twinCities-C9TYTT-e.js" },
     trailEnvironment: environment, page: page as unknown as Window, console: fakeConsole,
   });
   const texts = (): string[] => diagnostics.trail.steps().map(step => `${step.text}${step.count ? ` ×${step.count}` : ""}`);
-  return { diagnostics, settings, lines, page, fakeConsole, written, environment, browser, texts };
+  /** The log's lines after the first, which says which version of the app this is. */
+  const said = (): GameLogEntry[] => lines.slice(1);
+  return { diagnostics, settings, lines, said, page, fakeConsole, written, environment, browser, texts };
 }
+
+/** What the app says of itself as it opens, and what its trail's record says in full. */
+const WHO = "App built 2026-10-04 15:00 UTC from 1a2b3c4 with FOSS Earth 9f8e7d6";
+const WHO_IN_FULL = "App built 2026-10-04T15:00:00.000Z from 1a2b3c4d with FOSS Earth 9f8e7d6c5b4a, bundle twinCities-C9TYTT-e.js";
 
 function fakeRuntime(over: Partial<DiagnosedRuntime["renderer"]> = {}) {
   const lost = new Set<() => void>();
@@ -64,45 +70,52 @@ const sceneState = (active: string | null, revision = "r1"): SceneControllerStat
 });
 
 describe("the app's diagnostics", () => {
+  it("says which version of the app runs as it opens, in the log and the trail", () => {
+    const { lines, texts } = start();
+    expect(lines).toEqual([{ text: `${WHO}.` }]);
+    expect(texts()).toEqual(["Opened http://localhost:3000/", `› ${WHO}.`]);
+  });
+
   it("makes a step of the page, the renderer, each log line and the end of a download, not of its progress", () => {
-    const { diagnostics, lines, texts } = start();
+    const { diagnostics, said, texts } = start();
     diagnostics.attachRuntime(fakeRuntime().runtime);
     const line = diagnostics.log.print({ text: "Loading the tour", tone: "progress", progress: 0.1 });
     line.update({ text: "Loading the tour: 30 of 60", tone: "progress", progress: 0.5 });
     line.update({ text: "The tour: 60 of 60 panorama previews", tone: "success" });
     diagnostics.log.print({ text: "Google 3D tiles could not be loaded", tone: "warning" });
     expect(texts()).toEqual([
-      "Opened http://localhost:3000/; build 2026-10-04T15:00:00.000Z, bundle twinCities-C9TYTT-e.js",
+      "Opened http://localhost:3000/",
+      `› ${WHO}.`,
       "Renderer webgpu (asked for auto); apple, metal-3",
       "› Loading the tour",
       "✓ The tour: 60 of 60 panorama previews",
       "! Google 3D tiles could not be loaded",
     ]);
     // The log shows what it was given.
-    expect(lines.map(entry => entry.text)).toEqual(["The tour: 60 of 60 panorama previews", "Google 3D tiles could not be loaded"]);
+    expect(said().map(entry => entry.text)).toEqual(["The tour: 60 of 60 panorama previews", "Google 3D tiles could not be loaded"]);
   });
 
   it("prints an error nothing handled once, counts it when it comes again, and keeps console warnings out of the log", () => {
-    const { diagnostics, lines, page, fakeConsole, written, texts } = start();
+    const { diagnostics, said, page, fakeConsole, written, texts } = start();
     for (let turn = 0; turn < 5; turn++) page.fire("error", { message: "Uncaught TypeError: x is not a function", filename: "https://tour.test/assets/app-1a2b3c4d.js", lineno: 1, colno: 2, error: new TypeError("x is not a function") });
-    expect(lines).toEqual([{ text: "The app met an error it did not handle, 4 times: TypeError: x is not a function (app-1a2b3c4d.js:1:2). Settings → Diagnostics has a report to copy.", tone: "error" }]);
+    expect(said()).toEqual([{ text: "The app met an error it did not handle, 4 times: TypeError: x is not a function (app-1a2b3c4d.js:1:2). Settings → Diagnostics has a report to copy.", tone: "error" }]);
     fakeConsole.warn("WebGPU uncaptured error (1): shader refused");
     expect(written).toEqual(["WebGPU uncaptured error (1): shader refused"]);
-    expect(lines).toHaveLength(1);
-    expect(texts().slice(1)).toEqual(["Unhandled error: TypeError: x is not a function at app-1a2b3c4d.js:1:2 ×5", "console.warn: WebGPU uncaptured error (1): shader refused"]);
+    expect(said()).toHaveLength(1);
+    expect(texts().slice(2)).toEqual(["Unhandled error: TypeError: x is not a function at app-1a2b3c4d.js:1:2 ×5", "console.warn: WebGPU uncaptured error (1): shader refused"]);
     diagnostics.destroy();
     fakeConsole.warn("after");
-    expect(texts()).toHaveLength(3);
+    expect(texts()).toHaveLength(4);
   });
 
   it("says in the log when the GPU's device is lost and when it is back", () => {
-    const { diagnostics, lines } = start();
+    const { diagnostics, said } = start();
     const gpu = fakeRuntime({ requested: "webgpu", mode: "webgl2", fallbackReason: "WebGPU is not available" });
     diagnostics.attachRuntime(gpu.runtime);
     expect(diagnostics.trail.steps().at(-1)?.text).toBe("Renderer webgl2 (asked for webgpu); fell back: WebGPU is not available; apple, metal-3");
     gpu.lose();
     gpu.restore();
-    expect(lines.map(entry => [entry.tone, entry.text.split(":")[0].split(".")[0]])).toEqual([["warning", "The GPU stopped drawing for this page"], ["success", "The GPU is drawing for this page again"]]);
+    expect(said().map(entry => [entry.tone, entry.text.split(":")[0].split(".")[0]])).toEqual([["warning", "The GPU stopped drawing for this page"], ["success", "The GPU is drawing for this page again"]]);
   });
 
   it("makes a step of the scene, of each 360 image entered and of coming back to the map", () => {
@@ -113,7 +126,7 @@ describe("the app's diagnostics", () => {
     diagnostics.sceneChanged(sceneState("northrop-mall"));
     diagnostics.sceneChanged(sceneState("northrop-mall"));
     diagnostics.sceneChanged(sceneState(null));
-    expect(texts().slice(1)).toEqual(["Scene tour, revision r1: 3 360 images", "Inside the 360 image northrop-mall", "Back on the map"]);
+    expect(texts().slice(2)).toEqual(["Scene tour, revision r1: 3 360 images", "Inside the 360 image northrop-mall", "Back on the map"]);
   });
 
   it("keeps where the visit is in its record, for the visit after a page that stops", () => {
@@ -130,7 +143,7 @@ describe("the app's diagnostics", () => {
     const { page, browser, environment } = start();
     environment.flush();
     const record = () => JSON.parse([...browser.items.values()][0]) as { closed: boolean; hidden: boolean; app: string };
-    expect(record()).toMatchObject({ closed: false, hidden: false, app: "Build 2026-10-04T15:00:00.000Z, bundle twinCities-C9TYTT-e.js, renderer not started." });
+    expect(record()).toMatchObject({ closed: false, hidden: false, app: `${WHO_IN_FULL}, renderer not started.` });
     page.fire("pagehide");
     expect(record().closed).toBe(true);
     page.fire("pageshow", { persisted: true });
@@ -149,10 +162,10 @@ describe("the app's diagnostics", () => {
       if (end === "closed") trail.setClosed(true);
       if (end === "hidden") trail.setHidden(true);
       before.close();
-      const { diagnostics, lines } = start(browser, "after");
+      const { diagnostics, said } = start(browser, "after");
       await browser.settle();
       expect((await diagnostics.previous())?.ended).toBe(end);
-      expect(lines.map(entry => entry.text)).toEqual(warned
+      expect(said().map(entry => entry.text)).toEqual(warned
         ? ["The last visit stopped without being closed, 42 s after it opened or later; it was at: scene tour, revision r1, inside the 360 image northrop-mall; its last step: Inside the 360 image northrop-mall. Settings → Diagnostics has a report to copy."]
         : []);
     }
