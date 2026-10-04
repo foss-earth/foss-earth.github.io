@@ -162,6 +162,10 @@ In WebKit, Safari's engine as Playwright builds it, the live tour's log had no e
 its report said "Errors nothing handled: none" through a first visit and a reload, though
 WebKit reports each request a reload cuts off as a failed load: those are handled.
 
+After the release of 2026-10-04 at 15:32 it passed again on the live tour, whose log's first
+line said "App built 2026-10-04 20:32 UTC from 54b9bea with FOSS Earth d538bfa"
+(`2026-10-04_153525`).
+
 Not checked: the crash itself in any browser but Chrome, which alone has a command for it;
 any of it in Safari or on a phone. A page hidden and then let go is tested with a stand-in for
 the browser, not in one.

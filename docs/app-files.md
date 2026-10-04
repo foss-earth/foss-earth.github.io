@@ -177,7 +177,10 @@ files were counted in its cache.
 On 2026-10-04 the tour's app was deployed again, and a visitor holding the worker of the
 evening before took the 6 files that deploy changed from the network, 1.50 MiB, and 57 from
 the old worker; the new worker kept all 63, and the reload and the revisit took none from the
-network (`2026-10-04_123800-update-path`).
+network (`2026-10-04_123800-update-path`). At 15:32 that day it was deployed with the version
+check below, and a visitor holding the 12:33 worker took the 5 files that deploy changed,
+1.49 MiB, and 58 from the old worker; the reload and the revisit took none
+(`2026-10-04_153700-update-path`).
 
 It was tried in WebKit 26.0, Safari's engine as Playwright builds it, on 2026-10-04, by hand
 against the live tour: after the first visit the worker controlled the page and had kept all
@@ -217,3 +220,11 @@ counted no app file from the network on a reload and a revisit (`2026-10-04_1525
 The browser's copy here is the check's stand-in. What Safari on a phone does when it restores
 a tab, and whether a page there reloads itself out of that copy, has not been seen: the
 iPhone that showed the fault holds a page from before this, which cannot do it.
+
+It was deployed on 2026-10-04 at 15:32, on this site and the UMN tour. On the live tour, at a
+phone's viewport in Chrome 154, Firefox 157 and WebKit 26, the page found itself to be the
+published version, and its log's first line said "App built 2026-10-04 20:32 UTC from 54b9bea
+with FOSS Earth d538bfa". Asking cost 300 bytes in Chrome, which was told the page had not
+changed, and 1.7 KiB in Firefox and WebKit, which took the page again; on this site, 300
+bytes in Chrome. A page reloading itself out of an older copy is first possible at the release
+after this one.

@@ -752,6 +752,13 @@ case in Chrome, Firefox and WebKit: the check answers the browser's requests for
 with a copy two days older and the app's own question with the published page. What Safari
 on a phone does when it restores a tab is still the phone's to show.
 
+This was deployed on 2026-10-04 at 15:32, here and in the UMN tour. On the live tour, in
+Chrome, Firefox and WebKit at a phone's viewport, the page found itself to be the published
+version and its log's first line said "App built 2026-10-04 20:32 UTC from 54b9bea with FOSS
+Earth d538bfa"; a visitor holding the worker of the release before took the 5 files this one
+changed once, and the crash check passed. The iPhone's tab still holds the page of 2026-10-03
+and has to be reloaded by hand once: only a page from this release on can reload itself.
+
 Bind each baseline orb's own cube texture/material in a per-orb draw; group only
 orbs that actually share compatible resources. Thin instances alone cannot choose
 arbitrary independent textures. Later cube arrays need six layers per panorama:
