@@ -1,1 +1,0 @@
-import{pr as e}from"./viewer-BiBm8lHp.js";export{e as lightProxyVertexShaderWGSL};
