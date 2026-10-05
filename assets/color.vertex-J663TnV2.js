@@ -1,0 +1,1 @@
+import{sr as e}from"./viewer-PdCZrQXC.js";export{e as colorVertexShader};
