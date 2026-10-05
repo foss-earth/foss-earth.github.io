@@ -11,6 +11,11 @@ export {
   type RuntimeMode,
   NAVIGATION_PRESENTATION_LAYER,
 } from "../engine/babylon/createBabylonRuntime";
+export {
+  whenMeshesReady,
+  type ReadinessTimers,
+  type WhenMeshesReadyOptions,
+} from "../engine/babylon/sceneUpdates";
 export type {
   EcefVector,
   NavigationAcquisition,

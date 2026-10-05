@@ -79,6 +79,32 @@ choice of one among several is the same pill around a radio button
 (`.foss-earth-choice`, built by `createChoiceGroup`), as in the Map and Renderer
 tabs.
 
+### Dropdowns fit their own text
+
+A dropdown (`<select>`) is as wide as its own text, which is its longest option
+and its arrow, and no wider: it is a word in the paragraph, not a bar across it.
+Never stretch one to its row, its column or its panel: no `width: 100%`, no
+`flex: 1`, no grid column that sizes it. Inside a grid cell or a flex column, set
+`justify-self: start` or `align-self: flex-start` with `width: auto`, because both
+layouts stretch their items by default.
+
+```css
+select {
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+}
+```
+
+`max-width: 100%` lets it shrink on a panel too narrow for its longest option,
+where the browser cuts the shown option short; that is the only width change
+allowed. A dropdown sized to its row leaves a long empty box after "Auto", reads
+as a text field, and puts its arrow a panel's width away from the word it
+changes. It is sized by its options, not by the one showing, so choosing a
+longer one does not move the controls after it. 0sfs's aircraft level of detail,
+FOSS Earth's airport position and runway, and gamepad-tools' profile and
+controller lists follow it.
+
 ## One home for every control
 
 Every setting lives in exactly one place, a section of a tab.

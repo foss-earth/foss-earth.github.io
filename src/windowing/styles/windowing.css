@@ -373,9 +373,13 @@
   grid-template-columns: 60px minmax(0, 1fr);
   justify-self: stretch;
 }
+/* A dropdown is as wide as its own text - its longest option - and never
+   stretched to its row or column; it may shrink to fit a narrow panel.
+   docs/ui-layout.md. */
 .foss-earth-airport-controls select {
-  min-width: 0; width: 100%; padding: 8px; border: 1px solid currentColor;
-  border-radius: 4px; color: inherit; background: var(--panel-bg, #18202e); font: inherit;
+  justify-self: start; min-width: 0; width: auto; max-width: 100%; padding: 8px;
+  border: 1px solid currentColor; border-radius: 4px; color: inherit;
+  background: var(--panel-bg, #18202e); font: inherit;
 }
 .foss-earth-airport-controls a { color: inherit; }
 
