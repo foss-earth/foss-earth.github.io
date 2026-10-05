@@ -271,13 +271,13 @@ describe("createGlobeApp smoke behavior", () => {
     expect(Array.from(root.querySelector(".hud-bar")?.children ?? []).slice(0, 3).map((el) => el.id)).toEqual([
       "northButton",
       "helpButton",
-      "settingsButton",
+      "perfMetricsPill",
     ]);
     const hudChildren = Array.from(root.querySelector(".hud-bar")?.children ?? []);
     const inputModeControl = root.querySelector("#inputModeButton")?.closest(".input-mode-control");
     expect(inputModeControl).not.toBeNull();
-    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#themeButton") as Element) + 1);
-    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#rendererModePill") as Element) - 1);
+    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#themeButton") as Element) - 1);
+    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#rendererModePill") as Element) + 1);
     expect(root.querySelector("#settingsBuildLine")?.textContent).toMatch(
       /^Build: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
     );
@@ -296,13 +296,10 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.querySelector("#hudStatus")?.textContent).toBe("44.9778°N 93.2650°W h017° p71° z600m");
     expect(Array.from(root.querySelectorAll("#perfMetricsPill .perf-chip")).map((el) => el.textContent)).toEqual([
       "60fps",
-      "43MB",
     ]);
     expect(root.querySelector('#perfMetricsPill [data-perf-metric="activeMeshes"]')).toBeNull();
     expect(root.querySelector('#perfMetricsPill [data-perf-metric="tiles"]')).toBeNull();
-    expect(root.querySelector<HTMLElement>('#perfMetricsPill [data-perf-metric="memory"]')?.title).toBe(
-      "Approximate JavaScript heap memory currently used by the page.",
-    );
+    expect(root.querySelector('#perfMetricsPill [data-perf-metric="memory"]')).toBeNull();
     expect(mockState.resolveAnchorHeight).toHaveBeenCalledWith({ x: 1, y: 0, z: 0 });
     expect(mockState.compassUpdate).toHaveBeenCalledWith({ x: 9, y: 0, z: 0 }, 600);
   });
@@ -493,7 +490,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(performance.querySelector(".foss-earth-parameter-section__toggle")).not.toBeNull();
   });
 
-  it("shows every toolbar button until one is hidden in Interface → Toolbar, and remembers it", async () => {
+  it("offers the toolbar buttons for fitting until one is hidden in Interface → Toolbar, and remembers it", async () => {
     const first = await createAppUnderTest();
     for (const id of ["helpButton", "settingsButton", "themeButton"]) {
       expect(first.root.querySelector<HTMLElement>(`#${id}`)!.hidden).toBe(false);
@@ -505,16 +502,80 @@ describe("createGlobeApp smoke behavior", () => {
     const help = parameterInput(sectionElement(first.app.interfaceSections, "toolbar"), "interface.toolbar.help");
     expect(help.checked).toBe(true);
     help.click();
-    expect(first.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
+    expect(first.root.querySelector("#helpButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
     expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values).toMatchObject({ "interface.toolbar.help": false });
     first.app.destroy();
 
     const { resetAppSettings } = await import("../settings/appSettings");
     resetAppSettings();
     const second = await createAppUnderTest();
-    expect(second.root.querySelector<HTMLElement>("#helpButton")!.hidden).toBe(true);
+    expect(second.root.querySelector("#helpButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
     expect(parameterInput(sectionElement(second.app.interfaceSections, "toolbar"), "interface.toolbar.help").checked).toBe(false);
     expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
+  });
+
+  it("reflects automatic fitting in the controls and preserves equal-value explicit choices and resets", async () => {
+    let width = 300;
+    let nextFrame = 0;
+    const originalRequestFrame = globalThis.requestAnimationFrame;
+    const originalCancelFrame = globalThis.cancelAnimationFrame;
+    const frames = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); return nextFrame; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
+    const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const w = this.classList.contains("hud-bar") ? width : this.id === "mapSourceSlot" ? 100
+        : this.id === "rendererModePill" ? 65 : this.id === "hudStatus" ? 300
+          : this.dataset.perfMetric ? 50 : 30;
+      return { width: w, height: 28, top: 0, left: 0, right: w, bottom: 28, x: 0, y: 0, toJSON() {} };
+    });
+    const flush = async () => {
+      for (let index = 0; index < 4; index++) {
+        await Promise.resolve();
+        const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(0);
+      }
+    };
+    const { getAppSettings } = await import("../settings/appSettings");
+    const settings = getAppSettings();
+    settings.setHostDefault("interface.toolbar.theme", false, "the host prefers its theme control in the tab");
+    const { app, root } = await createAppUnderTest();
+    try {
+      mockState.frameCallback?.();
+      await flush();
+      const input = root.querySelector<HTMLElement>(".input-mode-control")!;
+      const section = sectionElement(app.interfaceSections, "toolbar");
+      document.body.append(section);
+      const toggle = parameterInput(section, "interface.toolbar.inputMode");
+      expect(toggle.checked).toBe(false);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(root.querySelector("#themeButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
+
+      settings.set("interface.toolbar.inputMode", false);
+      await flush();
+      expect(input.hasAttribute("data-hud-choice-hidden")).toBe(true);
+      settings.reset("interface.toolbar.inputMode");
+      await flush();
+      expect(input.hasAttribute("data-hud-choice-hidden")).toBe(false);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+
+      toggle.click();
+      await flush();
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(settings.inspect("interface.toolbar.inputMode").provenance).toBe("user");
+      expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.inputMode"]).toBe(true);
+      width = 180;
+      window.dispatchEvent(new Event("resize"));
+      await flush();
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      settings.reset("interface.toolbar.inputMode");
+      await flush();
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+    } finally {
+      app.destroy();
+      geometry.mockRestore();
+      vi.stubGlobal("requestAnimationFrame", originalRequestFrame);
+      vi.stubGlobal("cancelAnimationFrame", originalCancelFrame);
+    }
   });
 
   it("keeps input method settings only in Controls, where its toolbar button leads", async () => {
@@ -529,7 +590,7 @@ describe("createGlobeApp smoke behavior", () => {
 
     document.body.append(sectionElement(app.interfaceSections, "toolbar"));
     parameterInput(sectionElement(app.interfaceSections, "toolbar"), "interface.toolbar.inputMode").click();
-    expect(root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(true);
+    expect(root.querySelector(".input-mode-control")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
     // jsdom reports a fine pointer and no touch: a desktop, so the choice is there.
     const pointer = inputMethod.querySelector<HTMLButtonElement>(".input-mode-toggle-option:not(.is-active)")!;
     pointer.click();

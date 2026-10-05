@@ -326,13 +326,19 @@ export function createSceneHud(options: {
     shownCredits = key;
     credits.replaceChildren(...shown.map(credit => {
       const text = credit.license ? `${credit.text} \u00b7 ${credit.license}` : credit.text;
-      if (!credit.url) return el("span", "hud-chip scene-credit-chip", text);
-      const link = el("a", "hud-chip hud-chip-button scene-credit-chip", text);
+      const label = el("span", "scene-credit-chip__text", text);
+      if (!credit.url) {
+        const chip = el("span", "hud-chip scene-credit-chip");
+        chip.title = text;
+        chip.append(label);
+        return chip;
+      }
+      const link = el("a", "hud-chip hud-chip-button scene-credit-chip");
       link.href = credit.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.title = `Panorama: ${text}. Opens its source.`;
-      link.append(createExternalLinkIcon());
+      link.append(label, createExternalLinkIcon());
       return link;
     }));
   });

@@ -19,7 +19,8 @@ export function createStatusHud(element: HTMLElement): StatusHudHandle {
     const hdgStr = `h${String(Math.round(((headingDeg % 360) + 360) % 360)).padStart(3, "0")}\u00B0`;
     const pitchStr = `p${String(Math.round(pitchDeg)).padStart(2, "0")}\u00B0`;
     const zoomStr = `z${formatZoom(zoomMeters)}`;
-    element.textContent = `${latStr} ${lonStr} ${hdgStr} ${pitchStr} ${zoomStr}`;
+    const text = `${latStr} ${lonStr} ${hdgStr} ${pitchStr} ${zoomStr}`;
+    if (element.textContent !== text) element.textContent = text;
   }
 
   function destroy(): void {

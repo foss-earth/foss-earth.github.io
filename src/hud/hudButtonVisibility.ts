@@ -2,13 +2,13 @@ import { getAppSettings } from "../settings/appSettings";
 
 /**
  * Which of the globe's toolbar buttons are shown: the `interface.toolbar.*`
- * parameters. Every one is shown until the user hides it in Settings, because
- * a first-time visitor cannot be expected to know that + opens the same things.
+ * parameters. Unchosen buttons fit in one row by priority; explicit choices
+ * stay shown or hidden. The tabs remain available under +.
  */
-export type HudButtonId = "help" | "settings" | "theme" | "inputMode";
+export type HudButtonId = "help" | "renderer" | "inputMode" | "theme" | "settings" | "position";
 export type HudButtonVisibility = Record<HudButtonId, boolean>;
 
-export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "settings", "theme", "inputMode"];
+export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "renderer", "inputMode", "theme", "settings", "position"];
 
 /** @deprecated The record key before the settings registry; migrated into `interface.toolbar.*`. */
 export const HUD_BUTTON_VISIBILITY_STORAGE_KEY = "foss-earth.hudButtons";

@@ -56,9 +56,9 @@ paragraph.
 }
 ```
 
-The HUD bar is the reference (`.hud-bar` in `src/styles/hud.css`): north, help,
-settings, theme, input method, renderer and position sit side by side at their
-own widths and wrap on a narrow screen. In Renderer → Performance debug,
+The HUD bar is the reference (`.hud-bar` in `src/styles/hud.css`): its items
+sit side by side at their own widths, with default visibility fitted to one row
+as described below. Items the person explicitly enables can wrap. In Renderer → Performance debug,
 `.settings-metric-menu` does the same for toggles.
 
 Do not lay a set of controls out in fixed columns: no `grid-template-columns:
@@ -104,6 +104,36 @@ changes. It is sized by its options, not by the one showing, so choosing a
 longer one does not move the controls after it. 0sfs's aircraft level of detail,
 FOSS Earth's airport position and runway, and gamepad-tools' profile and
 controller lists follow it.
+
+## The HUD defaults to one row
+
+The bottom-left toolbar fits its default items into one row, using the space
+between the screen's left safe edge and the detail rail and attribution chip
+on the right. Measure the widths of those items and their gaps; the available
+space changes with the provider, its attribution, the current view and the
+viewport. Do not use a phone breakpoint or a fixed estimate of the chip's
+width.
+
+Default visibility follows this priority, highest first:
+
+| Priority | Item | Why |
+| --- | --- | --- |
+| 0 | North (`N`) | The only shortcut for resetting heading |
+| 1 | Help (`?`) | A new visitor needs to learn the controls and tabs |
+| 2 | FPS | Useful feedback for anyone |
+| 3 | WebGPU / WebGL 1 / WebGL 2 | Explains which renderer is drawing when FPS is low |
+| 4 | Input method | Most useful on a desktop, where more width is usually available |
+| 5 | Theme | Also available in Interface → Toolbar |
+| 6 | Settings | Also available as a tab under + |
+| 7 | Camera position (`lat/lon/h/p/z`) | Also available in the Location tab |
+
+Hide the lowest-priority default items first until the row fits, and bring
+them back in priority order when space returns. Fitting does not change the
+person's saved choices. An item explicitly hidden stays hidden; an item
+explicitly enabled stays shown, even when the person's choices need another
+row. The detail rail and attribution chip reserve their actual width before
+the default toolbar items are fitted. Their space must not be spent on a
+lower-priority shortcut.
 
 ## One home for every control
 
@@ -156,9 +186,11 @@ Every setting lives in exactly one place, a section of a tab.
   is a bar in its own colour, labelled under the track, hollow while waived; a
   requirement stripes the part of the range it refuses. `createTrack` draws all
   of them.
-- Every toolbar button is shown until the user hides it in Interface → Toolbar,
-  because a first-time visitor does not know that + opens the same tabs. Hiding a
-  button never hides what it opened; its tab stays under +.
+- Interface → Toolbar holds toolbar button visibility; Renderer → Performance
+  debug holds the performance readouts. Default items fit by the priority above; the person's explicit choices take
+  precedence. Hiding a button never hides what it opened; its tab stays under
+  +. The same section holds the theme toggle, with both light and dark icons,
+  so theme remains changeable when its toolbar shortcut does not fit.
 - The menu under a tab strip's + is drawn outside its panel, in the overlay's own
   layer, fixed to the window where the + button is. The panel clips what passes
   its edges, and with many tabs the + sits at the strip's right end, so a menu
@@ -236,8 +268,10 @@ when it has a square one and its name, that toggles the Map tab. The second
 links to the provider's attribution page, marked with the external-link icon
 (`createExternalLinkIcon`: a box open at its top-right corner, an arrow leaving
 through the gap). Each half fills the chip to its
-rounded edge and lights up whole on hover; nothing underlines. Because it is part of the bar, it wraps with
-the bar on a narrow screen instead of covering it.
+rounded edge and lights up whole on hover; nothing underlines. It reserves its
+width beside the default toolbar's single row. When the person's explicit
+toolbar choices require wrapping, it remains part of the bar's layout rather
+than covering other controls.
 
 A provider whose logo spells its name, such as CARTO, shows that logo instead of
 the mark and name (`wordmark`), followed by the basemap's own name, "Positron".

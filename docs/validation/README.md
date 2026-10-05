@@ -54,6 +54,7 @@ named `INSTALLATION_COMPLETE` there.
 | [benchmarks/eac-progressive-prototype/run-gpu-checks.mjs](../../benchmarks/eac-progressive-prototype/run-gpu-checks.mjs) | The progressive 360° prototype's page on WebGL 1, WebGL 2 and WebGPU, put into hard states (seams, cube corners, mixed levels) and read back | What the GPU draws against an independent CPU renderer and a closed-form pattern. [Details](../../benchmarks/eac-progressive-prototype/README.md) |
 | [benchmarks/eac-progressive-prototype/run-http.mjs](../../benchmarks/eac-progressive-prototype/run-http.mjs) | The same page over real HTTP/2 from a static server on 127.0.0.1, with Chrome's network emulation, calibrated | Tile delivery against the current whole-image path; frames, caches, failures |
 | [scripts/check-shell-layout.mjs](../../scripts/check-shell-layout.mjs) | The shell's dock and log in Chromium through Playwright | Layout regressions |
+| [scripts/check-hud-layout.mjs](../../scripts/check-hud-layout.mjs) | The shared toolbar, detail rail and map or panorama attribution in headless Chromium, with synthetic data and no server or GPU | Priority order, one-row defaults at phone widths, refitting, explicit choices and wrapping, and long credit truncation |
 
 - A forced WebGL 1 context needs either an engine built with `disableWebGL2Support` (the
   fixtures) or Chrome started with `--disable-webgl2` (`scene-ab --webgl1`). The app's

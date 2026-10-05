@@ -37,8 +37,8 @@ export default defineConfig({
   base,
   test: {
     setupFiles: ['./src/test/setup.ts'],
-    // build/ is scratch: it can hold other checkouts, such as bisect worktrees, whose tests are not this tree's.
-    exclude: [...configDefaults.exclude, 'build/**'],
+    // Scratch and app-managed worktrees hold other checkouts, whose tests are not this tree's.
+    exclude: [...configDefaults.exclude, 'build/**', '.delta/**'],
   },
   define: {
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

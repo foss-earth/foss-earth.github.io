@@ -93,6 +93,16 @@ const secret: ParameterSpec = {
   sensitive: true,
 };
 
+const toolbarVisibility: ParameterSpec = {
+  ...waiver,
+  id: "test.toolbar",
+  label: "Toolbar item",
+  description: "Shows a toolbar item when there is room, unless explicitly chosen.",
+  default: true,
+  persistDefault: true,
+  session: false,
+};
+
 const all = [budget, range, mode, cap, waiver, secret];
 
 function registry(storage = memoryStorage(), extra: Parameters<typeof createSettingsRegistry>[0] = {}) {
@@ -129,6 +139,70 @@ describe("settings registry", () => {
     const reloaded = registry(storage);
     expect(reloaded.get("test.range")).toEqual({ min: 2, max: 32 });
     expect(reloaded.inspect("test.range").provenance).toBe("user");
+  });
+
+  it("retains an explicit default choice through reload and forgets it on reset", () => {
+    const storage = memoryStorage();
+    const settings = registry(storage);
+    settings.register([toolbarVisibility]);
+    const stateChanged = vi.fn();
+    const valueChanged = vi.fn();
+    settings.subscribe(stateChanged);
+    settings.watch(toolbarVisibility.id, valueChanged);
+
+    expect(settings.inspect(toolbarVisibility.id).provenance).toBe("default");
+    expect(settings.set(toolbarVisibility.id, true)).toEqual({ ok: true });
+    expect(settings.inspect(toolbarVisibility.id)).toMatchObject({ value: true, provenance: "user", layers: { saved: { value: true } } });
+    expect(record(storage).values).toEqual({ [toolbarVisibility.id]: true });
+    expect(stateChanged).toHaveBeenCalledExactlyOnceWith(new Set([toolbarVisibility.id]));
+    expect(valueChanged).not.toHaveBeenCalled();
+
+    const reloaded = registry(storage);
+    reloaded.register([toolbarVisibility]);
+    expect(reloaded.inspect(toolbarVisibility.id)).toMatchObject({ value: true, provenance: "user" });
+
+    settings.reset(toolbarVisibility.id);
+    expect(settings.inspect(toolbarVisibility.id)).toMatchObject({ value: true, provenance: "default" });
+    expect(record(storage).values).toEqual({});
+    expect(stateChanged).toHaveBeenCalledTimes(2);
+    expect(valueChanged).not.toHaveBeenCalled();
+    reloaded.reload();
+    expect(reloaded.inspect(toolbarVisibility.id).provenance).toBe("default");
+  });
+
+  it("keeps a chosen default when the host changes its default, including preset choices", () => {
+    const storage = memoryStorage();
+    const settings = registry(storage);
+    settings.register([toolbarVisibility]);
+    settings.setHostDefault(toolbarVisibility.id, false, "a narrow screen");
+    settings.set(toolbarVisibility.id, false, { preset: "Hide toolbar item" });
+    expect(settings.inspect(toolbarVisibility.id)).toMatchObject({ value: false, provenance: "preset", preset: "Hide toolbar item" });
+    expect(record(storage).presets).toEqual({ [toolbarVisibility.id]: "Hide toolbar item" });
+
+    settings.setHostDefault(toolbarVisibility.id, true, "a wider screen");
+    expect(settings.get(toolbarVisibility.id)).toBe(false);
+    settings.reset(toolbarVisibility.id);
+    expect(settings.inspect(toolbarVisibility.id)).toMatchObject({ value: true, provenance: "host-default" });
+    expect(record(storage).values).toEqual({});
+    expect(record(storage).presets ?? {}).toEqual({});
+  });
+
+  it("retains an explicit session default only for the current registry", () => {
+    const storage = memoryStorage();
+    const settings = registry(storage);
+    const sessionVisibility = { ...toolbarVisibility, session: true };
+    settings.register([sessionVisibility]);
+    settings.set(sessionVisibility.id, true);
+    expect(settings.inspect(sessionVisibility.id)).toMatchObject({ value: true, provenance: "user" });
+    expect(record(storage).values).toEqual({});
+    settings.setHostDefault(sessionVisibility.id, false, "a narrow screen");
+    expect(settings.get(sessionVisibility.id)).toBe(true);
+    settings.reset(sessionVisibility.id);
+    expect(settings.inspect(sessionVisibility.id)).toMatchObject({ value: false, provenance: "host-default" });
+
+    const next = registry(storage);
+    next.register([sessionVisibility]);
+    expect(next.inspect(sessionVisibility.id)).toMatchObject({ value: true, provenance: "default" });
   });
 
   it("refuses invalid values instead of repairing them", () => {

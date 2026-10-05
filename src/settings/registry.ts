@@ -18,7 +18,7 @@ import type {
 } from "./types";
 import { copyValue, formatValue, isNumberRange, parseValue, sameValue, validateValue } from "./values";
 
-/** One versioned record per application origin, holding values that differ from their defaults. */
+/** One versioned record per application origin, holding saved parameter values. */
 export const SETTINGS_STORAGE_KEY = "foss-earth.settings.v1";
 const RECORD_VERSION = 1;
 /** `?set.<id>=<value>` sets a parameter for this session. */
@@ -449,13 +449,14 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
   function writeSaved(spec: ParameterSpec, value: ParameterValue, preset: string | undefined): void {
     urlValues.delete(spec.id);
     droppedNotes.delete(spec.id);
+    const forgetDefault = !spec.persistDefault && sameValue(value, currentDefault(spec));
     if (spec.session) {
-      if (sameValue(value, currentDefault(spec))) sessionValues.delete(spec.id);
+      if (forgetDefault) sessionValues.delete(spec.id);
       else sessionValues.set(spec.id, copyValue(value));
       return;
     }
     const presetsById = { ...(record.presets ?? {}) };
-    if (sameValue(value, currentDefault(spec))) {
+    if (forgetDefault) {
       delete record.values[spec.id];
       delete presetsById[spec.id];
     } else {

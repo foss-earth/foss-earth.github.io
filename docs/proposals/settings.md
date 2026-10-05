@@ -81,6 +81,7 @@ interface ParameterSpec<T> {
   step?: number;
   scale?: "linear" | "log2";  // how the control spaces values
   default: T | ((context: DeviceContext) => { value: T; derivedFrom: string });
+  persistDefault?: boolean;   // retain an explicit choice equal to the default
   home: { tab: TabId; section: string; level: "main" | "all" };
   auto?: AutoSpec<T>;         // present when the program may adapt it
   appliesLive: boolean;       // false: takes effect on next start, and says so
@@ -109,7 +110,12 @@ enabled, moves the effective value inside the range the winning layer set.
 ### Persistence
 
 One versioned record per application origin, `foss-earth.settings.v1`, holding
-only values that differ from their defaults, keyed by parameter id. Hosts keep
+saved values keyed by parameter id. Normally only values that differ from their
+defaults are saved. A parameter with `persistDefault: true` also retains an
+explicit choice equal to its default: toolbar visibility uses this to distinguish
+the user's choice from a default that adapts to the available width. Reset forgets
+the choice and returns to the default. A session parameter retains it only until
+the page reloads. Hosts keep
 their parameters in the same record under their own prefix (`osfs.`). The
 existing scattered keys migrate once (table in [Migration](#migration)) and are
 then left in place for one release for rollback, as `foss-earth.map-detail.v1`
@@ -391,8 +397,9 @@ The registry is `foss-earth/settings` (`src/settings/`); the controls are in
   ids (`mapSource`, `tiles`, `elevationSource`, `terrainSource`, `renderer`,
   `rasterImagery`, `key`, `googleKey`), and follows the record when another
   tab saves it. `createSettingsRegistry` makes an isolated one.
-- The record is `foss-earth.settings.v1`: `values` (only values that differ
-  from their default), `presets` (which preset set a value), `migrated` (legacy
+- The record is `foss-earth.settings.v1`: `values` (values that differ from
+  their default, plus explicit defaults for `persistDefault` parameters),
+  `presets` (which preset set a value), `migrated` (legacy
   keys already read) and `userPresets`.
 - Layers, lowest to highest: the registered default, a host default
   (`setHostDefault`), the saved value (the user's or a preset's), a URL value

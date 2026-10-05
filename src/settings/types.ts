@@ -139,6 +139,8 @@ export interface ParameterSpec<T extends ParameterValue = ParameterValue> {
   default: T | ((context: DeviceContext) => DerivedDefault<T>);
   /** Why the default is what it is. */
   defaultReason: string;
+  /** Keeps an explicit choice equal to the default in the saved layer; reset forgets it. */
+  persistDefault?: boolean;
   home: ParameterHome;
   auto?: AutoSpec;
   /** False: the value takes effect on the next start, and the UI says so. */

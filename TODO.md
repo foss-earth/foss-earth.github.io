@@ -23,6 +23,10 @@ The dropdown on the tab strip draws behind the globe and the panorama viewer onc
 
 features
 
+Explain the UI's windows and tabs in Help: how + opens a tab, how toolbar buttons open and close their tabs, how tabs move between windows, and how to close or minimize them. A narrow screen may hide a toolbar shortcut to keep the bar to one row, so the explanation must show how to reach the same tab through +.
+
+Replace the camera status readout's `z` with `a` for altitude. Today's `z` is zoom distance, so this needs a meaningful camera altitude and its units, not just a label change. Work out the altitude reference and keep its readout consistent with the Location tab before changing it.
+
 A panorama opens as a tab, "360: <title>", with its details and a detail slider that defaults to the most detailed image. Closing the tab or Esc leaves it, and the × goes. A panorama shows its own set of tabs, and a "360 image settings" tab takes the viewing settings out of Scenes. This blocks the UMN tour. Prompt: [docs/panorama-mode-prompt.md](docs/panorama-mode-prompt.md).
 
 Leaving a panorama pulls back out of it, away from the direction the viewer faces. It is a setting, on by default. Prompt: [docs/panorama-exit-animation-prompt.md](docs/panorama-exit-animation-prompt.md).
