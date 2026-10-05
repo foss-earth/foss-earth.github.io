@@ -74,6 +74,40 @@ describe("parameter section", () => {
     expect(reset.disabled).toBe(true);
   });
 
+  it("shows compact choice icons and symbols in one control row with full accessible and help labels", () => {
+    const { settings, section, control } = setup();
+    settings.register([{
+      ...base,
+      id: "t.visibility", label: "Visibility", description: "Show, fit automatically, or hide.", unit: "none", kind: "choice", default: "auto",
+      choices: [{ id: "on", label: "On", icon: "toggle-on" }, { id: "auto", label: "Auto", shortLabel: "A" }, { id: "off", label: "Off", icon: "toggle-off" }],
+      home: { tab: "map", section: "loading", level: "main" },
+    }]);
+    const visibility = control("t.visibility");
+    const header = visibility.querySelector(".foss-earth-parameter__header")!;
+    expect(visibility.classList.contains("foss-earth-parameter--compact-choice")).toBe(true);
+    expect([...header.children].map(child => child.className)).toEqual([
+      "foss-earth-choices__heading", "foss-earth-parameter__pills", "foss-earth-parameter__actions",
+    ]);
+    const labels = [...visibility.querySelectorAll<HTMLLabelElement>(".foss-earth-parameter__pills label")];
+    expect(labels.map(label => label.textContent)).toEqual(["", "A", ""]);
+    expect(labels.map(label => Boolean(label.querySelector('svg[aria-hidden="true"]')))).toEqual([true, false, true]);
+    expect(labels.map(label => label.title)).toEqual(["On", "Auto", "Off"]);
+    expect(labels.map(label => label.querySelector("input")!.getAttribute("aria-label"))).toEqual(["On", "Auto", "Off"]);
+    expect(input(visibility, 'input[value="auto"]').checked).toBe(true);
+    input(visibility, 'input[value="on"]').click();
+    expect(settings.get("t.visibility")).toBe("on");
+    visibility.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!.click();
+    const explanation = document.getElementById(visibility.querySelector(".foss-earth-parameter__help-button")!.getAttribute("aria-controls")!)!;
+    expect(explanation.textContent).toContain("Now On (set by you). Default Auto:");
+    visibility.querySelector<HTMLButtonElement>(".foss-earth-parameter__reset")!.click();
+    expect(settings.get("t.visibility")).toBe("auto");
+    expect(input(visibility, 'input[value="auto"]').checked).toBe(true);
+    // Ordinary choice groups keep their full labels and separate row of pills.
+    expect(control("t.mode").classList.contains("foss-earth-parameter--compact-choice")).toBe(false);
+    expect(control("t.mode").querySelector(".foss-earth-parameter__pills")!.parentElement).toBe(control("t.mode"));
+    section.destroy();
+  });
+
   it("shows explanation and defaults only on help, closing on re-click, Escape or outside", () => {
     const { settings, section, control } = setup();
     const flag = control("t.flag");
@@ -227,6 +261,50 @@ describe("parameter section", () => {
     const { settings, control } = setup();
     settings.register([{ ...base, id: "host.waiver", label: "Waiver", description: "A host switch.", unit: "none", kind: "boolean", default: false, session: true, home: { tab: "map", section: "loading", level: "main" } }]);
     expect(control("host.waiver")).not.toBeNull();
+  });
+
+  it("shows guarded numeric fields only while their editor is enabled, including Show all", () => {
+    const settings = createSettingsRegistry({ storage: memoryStorage() });
+    settings.register([
+      { ...base, id: "t.editPriorities", label: "Edit priorities", description: "Show priorities.", unit: "none", kind: "boolean", default: false, home: { tab: "other", section: "external", level: "main" } },
+      { ...base, id: "t.priority", label: "Priority", description: "Lower comes first.", unit: "count", kind: "number", numberControl: "field", bounds: () => ({ min: 0, max: 99 }), step: 1, default: 2, visibleWhen: { id: "t.editPriorities", value: true }, home: { tab: "interface", section: "guarded", level: "main" } },
+      { ...base, id: "t.extraPriority", label: "Extra priority", description: "Lower comes first.", unit: "count", kind: "number", numberControl: "field", default: 4, visibleWhen: { id: "t.editPriorities", value: true }, home: { tab: "interface", section: "guarded", level: "all" } },
+    ]);
+    const section = createParameterSection(settings, { tab: "interface", section: "guarded" });
+    document.body.append(section.element);
+    const main = section.element.querySelector<HTMLElement>(".foss-earth-parameter-section__main")!;
+    const showAll = section.element.querySelector<HTMLInputElement>(".foss-earth-parameter-section__toggle input")!;
+    if (!showAll.checked) showAll.click();
+    expect(section.element.querySelector('[data-parameter="t.priority"]')).toBeNull();
+    expect(section.element.querySelector('[data-parameter="t.extraPriority"]')).toBeNull();
+    expect(settings.list({ tab: "interface", section: "guarded" })).toHaveLength(2);
+    // The guard is in another tab: its change still rebuilds both views.
+    settings.set("t.editPriorities", true);
+    const priority = main.querySelector<HTMLElement>('[data-parameter="t.priority"]')!;
+    expect(priority).not.toBeNull();
+    expect(priority.querySelector('input[type="range"]')).toBeNull();
+    const field = input(priority, 'input[type="number"]');
+    expect([field.value, field.min, field.max, field.step]).toEqual(["2", "0", "99", "1"]);
+    const list = section.element.querySelector(".foss-earth-parameter-list")!;
+    expect(list.querySelector('[data-parameter="t.priority"]')).not.toBeNull();
+    expect(list.querySelector('[data-parameter="t.extraPriority"]')).not.toBeNull();
+    field.value = "7";
+    field.dispatchEvent(new Event("change"));
+    expect(settings.get("t.priority")).toBe(7);
+    field.value = "100";
+    field.dispatchEvent(new Event("change"));
+    expect(settings.get("t.priority")).toBe(7);
+    const tooltipId = priority.querySelector(".foss-earth-parameter__help-button")!.getAttribute("aria-controls")!;
+    expect(document.getElementById(tooltipId)!.hidden).toBe(false);
+    settings.set("t.editPriorities", false);
+    expect(section.element.querySelector('[data-parameter="t.priority"]')).toBeNull();
+    expect(section.element.querySelector('[data-parameter="t.extraPriority"]')).toBeNull();
+    expect(document.getElementById(tooltipId)).toBeNull();
+    expect(settings.get("t.priority")).toBe(7);
+    expect(settings.export().values["t.priority"]).toBe(7);
+    settings.set("t.editPriorities", true);
+    expect(input(main.querySelector<HTMLElement>('[data-parameter="t.priority"]')!, 'input[type="number"]').value).toBe("7");
+    section.destroy();
   });
 
   it("lists every parameter under Show all parameters, with its default, provenance, reset and source", () => {

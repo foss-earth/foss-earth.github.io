@@ -112,8 +112,9 @@ enabled, moves the effective value inside the range the winning layer set.
 One versioned record per application origin, `foss-earth.settings.v1`, holding
 saved values keyed by parameter id. Normally only values that differ from their
 defaults are saved. A parameter with `persistDefault: true` also retains an
-explicit choice equal to its default: toolbar visibility uses this to distinguish
-the user's choice from a default that adapts to the available width. Reset forgets
+explicit choice equal to its default: toolbar visibility retains an explicit Auto
+choice, so a later host default does not override it. Fitting follows the named
+On, Auto or Off value regardless of its provenance. Reset forgets
 the choice and returns to the default. A session parameter retains it only until
 the page reloads. Hosts keep
 their parameters in the same record under their own prefix (`osfs.`). The
@@ -162,6 +163,13 @@ Only a few control types are needed; each has one implementation in
   has the same colour on the HUD rail and in the Map tab. Budget tracks use a
   neutral ramp; colour is not decoration.
 - **Choice pills** for discrete choices, and **switches** for on/off.
+- **Toolbar visibility** is a three-way choice: On (switch icon), Auto (`A`),
+  Off (switch icon). All toolbar indicators have their control in Interface →
+  Toolbar. Auto fits by priority; On can wrap; Off hides. These are named values,
+  with older saved booleans migrated to On or Off.
+- **Toolbar priorities** use compact numeric fields, revealed only while Edit
+  priorities is on. This toggle defaults off and controls visibility in both the
+  main section and Show all parameters; saved priorities still apply when hidden.
 - **Readings** beside a budget: the live value it bounds, in the same unit.
 
 Every section has a **Show all parameters** toggle. Off, it shows the main

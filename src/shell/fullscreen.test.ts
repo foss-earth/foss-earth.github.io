@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  canRequestFullscreen, isStandaloneDisplay, onFullscreenChange, prefersHomeScreenInstall,
+  attachFullscreenButton, canRequestFullscreen, isStandaloneDisplay, onFullscreenChange, prefersHomeScreenInstall,
   readFullscreenEveryVisit, readFullscreenPromptDismissed, toggleFullscreen,
   writeFullscreenEveryVisit, writeFullscreenPromptDismissed,
 } from "./fullscreen";
@@ -81,6 +81,51 @@ describe("fullscreen capability", () => {
     release();
     document.dispatchEvent(new Event("fullscreenchange"));
     expect(listener).toHaveBeenCalledOnce();
+  });
+});
+
+describe("fullscreen toolbar button", () => {
+  it("hides the button where page fullscreen is unavailable", () => {
+    const button = document.createElement("button");
+    const detach = attachFullscreenButton(button);
+    expect(button.hidden).toBe(true);
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    detach();
+  });
+
+  it("enters and leaves fullscreen from the click gesture and follows browser changes", async () => {
+    stubFullscreenApi();
+    const button = document.createElement("button");
+    const detach = attachFullscreenButton(button);
+    expect(button.hidden).toBe(false);
+    expect(button.title).toBe("Enter fullscreen");
+
+    button.click();
+    expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: "hide" });
+    document.dispatchEvent(new Event("fullscreenchange"));
+    expect(button.title).toBe("Leave fullscreen");
+    expect(button.getAttribute("aria-label")).toBe("Leave fullscreen");
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+
+    button.click();
+    expect(exitFullscreen).toHaveBeenCalledOnce();
+    document.dispatchEvent(new Event("webkitfullscreenchange"));
+    expect(button.title).toBe("Enter fullscreen");
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+
+    // A refused browser request must not claim fullscreen or reject unhandled.
+    requestFullscreen.mockRejectedValueOnce(new Error("Fullscreen refused"));
+    button.click();
+    await Promise.resolve();
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+
+    detach();
+    requestFullscreen.mockClear();
+    button.click();
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    fullscreenElement = document.documentElement;
+    document.dispatchEvent(new Event("fullscreenchange"));
+    expect(button.getAttribute("aria-pressed")).toBe("false");
   });
 });
 

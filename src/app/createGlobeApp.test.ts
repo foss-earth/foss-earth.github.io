@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GlobeViewState } from "../engine/types";
 import { createFrameProfileSession } from "../perf/frameProfileSession";
+import { PERFORMANCE_METRIC_DEFINITIONS } from "../hud/performanceChips";
 
 // Node 26+ ships an experimental localStorage global that is undefined when
 // --localStorage-file is not provided, shadowing jsdom's own implementation.
@@ -126,6 +127,12 @@ const viewState: GlobeViewState = {
 function parameterInput(section: HTMLElement | undefined, id: string): HTMLInputElement {
   const input = section?.querySelector<HTMLInputElement>(`[data-parameter="${id}"] input`);
   if (!input) throw new Error(`No control for ${id}`);
+  return input;
+}
+
+function hudChoice(section: HTMLElement, id: string, mode: "on" | "auto" | "off"): HTMLInputElement {
+  const input = section.querySelector<HTMLInputElement>(`[data-parameter="${id}"] input[value="${mode}"]`);
+  if (!input) throw new Error(`No ${mode} choice for ${id}`);
   return input;
 }
 
@@ -310,6 +317,10 @@ describe("createGlobeApp smoke behavior", () => {
     const group = root.querySelector("#perfMetricsPill")!;
     const fps = group.querySelector('[data-perf-metric="fps"]');
     expect(fps).not.toBeNull();
+    const number = fps!.querySelector(".perf-chip__value");
+    const unit = fps!.querySelector(".perf-chip__unit");
+    expect(number?.textContent).toBe("60");
+    expect(unit?.textContent).toBe("fps");
     const observer = new MutationObserver(() => {});
     observer.observe(group, { childList: true });
     const snapshot = mockState.perfUpdate.mock.results.at(-1)?.value;
@@ -317,15 +328,18 @@ describe("createGlobeApp smoke behavior", () => {
     mockState.frameCallback?.();
     expect(group.querySelector('[data-perf-metric="fps"]')).toBe(fps);
     expect(fps?.textContent).toBe("45fps");
+    expect(fps?.querySelector(".perf-chip__value")).toBe(number);
+    expect(fps?.querySelector(".perf-chip__unit")).toBe(unit);
+    expect(fps?.getAttribute("aria-label")).toBe("FPS: 45");
     expect(observer.takeRecords()).toHaveLength(0);
     observer.disconnect();
   });
 
   it("toggles hidden performance metrics from settings", async () => {
     const { root, app } = await createAppUnderTest();
-    const performance = performanceSection(app);
-    const activeMeshesInput = parameterInput(performance, "interface.performanceHud.activeMeshes");
-    const tilesInput = parameterInput(performance, "interface.performanceHud.tiles");
+    const toolbar = sectionElement(app.interfaceSections, "toolbar");
+    const activeMeshesInput = hudChoice(toolbar, "interface.performanceHud.activeMeshes", "on");
+    const tilesInput = hudChoice(toolbar, "interface.performanceHud.tiles", "on");
 
     expect(activeMeshesInput?.checked).toBe(false);
     expect(tilesInput?.checked).toBe(false);
@@ -485,7 +499,11 @@ describe("createGlobeApp smoke behavior", () => {
     const rendererSections = [...app.rendererTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
     expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.clipping", "renderer.experiments", "renderer.performance"]);
     const performance = performanceSection(app);
-    expect(performance.querySelector('[data-parameter="interface.performanceHud.fps"]')).not.toBeNull();
+    expect(performance.querySelector('[data-parameter^="interface.performanceHud."]')).toBeNull();
+    const toolbar = sectionElement(app.interfaceSections, "toolbar");
+    for (const { id: metric } of PERFORMANCE_METRIC_DEFINITIONS) {
+      expect(toolbar.querySelector(`[data-parameter="interface.performanceHud.${metric}"]`)).not.toBeNull();
+    }
     // Every section can list all its parameters.
     expect(performance.querySelector(".foss-earth-parameter-section__toggle")).not.toBeNull();
   });
@@ -497,24 +515,48 @@ describe("createGlobeApp smoke behavior", () => {
     }
     expect(first.root.querySelector<HTMLElement>(".input-mode-control")!.hidden).toBe(false);
 
-    // A checkbox only reports a change while it is in the document, as it is once the tab is open.
+    // Radio choices are mounted as they are once the tab is open.
     document.body.append(sectionElement(first.app.interfaceSections, "toolbar"));
-    const help = parameterInput(sectionElement(first.app.interfaceSections, "toolbar"), "interface.toolbar.help");
-    expect(help.checked).toBe(true);
+    const toolbar = sectionElement(first.app.interfaceSections, "toolbar");
+    expect(hudChoice(toolbar, "interface.toolbar.help", "auto").checked).toBe(true);
+    const help = hudChoice(toolbar, "interface.toolbar.help", "off");
     help.click();
     expect(first.root.querySelector("#helpButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
-    expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values).toMatchObject({ "interface.toolbar.help": false });
+    expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values).toMatchObject({ "interface.toolbar.help": "off" });
     first.app.destroy();
 
     const { resetAppSettings } = await import("../settings/appSettings");
     resetAppSettings();
     const second = await createAppUnderTest();
     expect(second.root.querySelector("#helpButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
-    expect(parameterInput(sectionElement(second.app.interfaceSections, "toolbar"), "interface.toolbar.help").checked).toBe(false);
+    expect(hudChoice(sectionElement(second.app.interfaceSections, "toolbar"), "interface.toolbar.help", "off").checked).toBe(true);
     expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
   });
 
-  it("keeps defaults enabled during fitting and preserves explicit choices and resets", async () => {
+  it("uses the shared fullscreen button and exposes its toolbar visibility choice", async () => {
+    const enabled = Object.getOwnPropertyDescriptor(document, "fullscreenEnabled");
+    const request = document.documentElement.requestFullscreen;
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value: true });
+    document.documentElement.requestFullscreen = requestFullscreen;
+    const { app, root } = await createAppUnderTest();
+    try {
+      const button = root.querySelector<HTMLButtonElement>("#fullscreenButton")!;
+      expect(button.hidden).toBe(false);
+      expect(hudChoice(sectionElement(app.interfaceSections, "toolbar"), "interface.toolbar.fullscreen", "auto").checked).toBe(true);
+      button.click();
+      expect(requestFullscreen).toHaveBeenCalledExactlyOnceWith({ navigationUI: "hide" });
+      app.destroy();
+      button.click();
+      expect(requestFullscreen).toHaveBeenCalledOnce();
+    } finally {
+      if (enabled) Object.defineProperty(document, "fullscreenEnabled", enabled);
+      else Reflect.deleteProperty(document, "fullscreenEnabled");
+      document.documentElement.requestFullscreen = request;
+    }
+  });
+
+  it("fits Auto, pins On and hides Off independently of saved provenance", async () => {
     let width = 300;
     let creditWidth = 100;
     let nextFrame = 0;
@@ -539,7 +581,7 @@ describe("createGlobeApp smoke behavior", () => {
     };
     const { getAppSettings } = await import("../settings/appSettings");
     const settings = getAppSettings();
-    settings.setHostDefault("interface.toolbar.theme", false, "the host prefers its theme control in the tab");
+    settings.setHostDefault("interface.toolbar.theme", "off", "the host prefers its theme control in the tab");
     const { app, root } = await createAppUnderTest();
     try {
       mockState.frameCallback?.();
@@ -547,15 +589,16 @@ describe("createGlobeApp smoke behavior", () => {
       const input = root.querySelector<HTMLElement>(".input-mode-control")!;
       const section = sectionElement(app.interfaceSections, "toolbar");
       document.body.append(section);
-      const toggle = parameterInput(section, "interface.toolbar.inputMode");
-      expect(toggle.checked).toBe(true);
-      expect(parameterInput(section, "interface.toolbar.position").checked).toBe(true);
+      const on = hudChoice(section, "interface.toolbar.inputMode", "on");
+      const auto = hudChoice(section, "interface.toolbar.inputMode", "auto");
+      expect(auto.checked).toBe(true);
+      expect(hudChoice(section, "interface.toolbar.position", "auto").checked).toBe(true);
       expect(root.querySelector("#hudStatus")!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(settings.inspect("interface.toolbar.position").provenance).toBe("default");
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(root.querySelector("#themeButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
 
-      settings.set("interface.toolbar.inputMode", false);
+      hudChoice(section, "interface.toolbar.inputMode", "off").click();
       await flush();
       expect(input.hasAttribute("data-hud-choice-hidden")).toBe(true);
       settings.reset("interface.toolbar.inputMode");
@@ -563,21 +606,19 @@ describe("createGlobeApp smoke behavior", () => {
       expect(input.hasAttribute("data-hud-choice-hidden")).toBe(false);
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
 
-      toggle.click();
-      await flush();
-      expect(toggle.checked).toBe(false);
-      toggle.click();
+      on.click();
       await flush();
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
       expect(settings.inspect("interface.toolbar.inputMode").provenance).toBe("user");
-      expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.inputMode"]).toBe(true);
+      expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.inputMode"]).toBe("on");
       width = 180;
       window.dispatchEvent(new Event("resize"));
       await flush();
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
-      settings.reset("interface.toolbar.inputMode");
+      auto.click();
       await flush();
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(auto.checked).toBe(true);
 
       width = 343; creditWidth = 500;
       window.dispatchEvent(new Event("resize"));
@@ -585,13 +626,30 @@ describe("createGlobeApp smoke behavior", () => {
       expect(root.querySelector("#helpButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
       const fps = root.querySelector<HTMLElement>('[data-perf-metric="fps"]')!;
       expect(fps.hasAttribute("data-hud-overflow-hidden")).toBe(false);
-      expect(settings.get("interface.performanceHud.fps")).toBe(true);
-      settings.set("interface.performanceHud.fps", false);
+      expect(settings.get("interface.performanceHud.fps")).toBe("auto");
+      hudChoice(section, "interface.performanceHud.fps", "off").click();
       await flush();
       expect(root.querySelector('[data-perf-metric="fps"]')).toBeNull();
       settings.reset("interface.performanceHud.fps");
       await flush();
       expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+
+      // Priority editing is opt-in, but saved priorities remain effective when
+      // its editors are closed. Renderer now wins the space FPS had reserved.
+      expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).toBeNull();
+      settings.set("interface.toolbar.editPriorities", true);
+      expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).not.toBeNull();
+      settings.set("interface.toolbar.priority.renderer", 1);
+      settings.set("interface.toolbar.priority.fps", 9);
+      await flush();
+      expect(root.querySelector("#rendererModePill")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      settings.set("interface.toolbar.editPriorities", false);
+      expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).toBeNull();
+      expect(settings.get("interface.toolbar.priority.renderer")).toBe(1);
+      settings.set("interface.toolbar.priority.north", 99);
+      await flush();
+      expect(root.querySelector("#northButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
     } finally {
       app.destroy();
       geometry.mockRestore();
@@ -611,7 +669,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(root.querySelectorAll(".input-mode-inline")).toHaveLength(0);
 
     document.body.append(sectionElement(app.interfaceSections, "toolbar"));
-    parameterInput(sectionElement(app.interfaceSections, "toolbar"), "interface.toolbar.inputMode").click();
+    hudChoice(sectionElement(app.interfaceSections, "toolbar"), "interface.toolbar.inputMode", "off").click();
     expect(root.querySelector(".input-mode-control")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
     // jsdom reports a fine pointer and no touch: a desktop, so the choice is there.
     const pointer = inputMethod.querySelector<HTMLButtonElement>(".input-mode-toggle-option:not(.is-active)")!;

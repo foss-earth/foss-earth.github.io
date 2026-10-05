@@ -1,7 +1,7 @@
 import { getAppSettings } from "../../settings/appSettings";
 import type { SettingsRegistry } from "../../settings/registry";
 import { loadPanelSectionsOpen, savePanelSectionsOpen } from "../panelSectionsOpen";
-import { createParameterControl, type ParameterControlHandle } from "./controls";
+import { createParameterControl, isParameterControlVisible, type ParameterControlHandle } from "./controls";
 import { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./parameterList";
 import { createPresetStatus, createSavePresetControl } from "./presetsSection";
 
@@ -65,17 +65,26 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
   element.append(toggleRow);
   let list: ParameterListHandle | null = null;
   let transfer: SettingsTransferHandle | null = null;
+  let visibilityDependencies = new Set<string>();
 
   const syncMain = (): void => {
-    const ids = settings.list({ tab, section, level: "main" }).map(spec => spec.id).filter(id => !covered.has(id));
+    const specs = settings.list({ tab, section, level: "main" });
+    visibilityDependencies = new Set(specs.flatMap(spec => spec.visibleWhen ? [spec.visibleWhen.id] : []));
+    const ids = specs.filter(spec => !covered.has(spec.id) && isParameterControlVisible(settings, spec)).map(spec => spec.id);
     for (const [id, control] of controls) {
       if (!ids.includes(id)) { control.destroy(); controls.delete(id); }
     }
+    let previous: HTMLElement | null = null;
     for (const id of ids) {
-      if (controls.has(id)) continue;
-      const control = createParameterControl(settings, id);
-      controls.set(id, control);
-      auto.append(control.element);
+      let control = controls.get(id);
+      if (!control) {
+        control = createParameterControl(settings, id);
+        controls.set(id, control);
+      }
+      if (control.element.previousElementSibling !== previous || control.element.parentElement !== auto) {
+        if (previous) previous.after(control.element); else auto.prepend(control.element);
+      }
+      previous = control.element;
     }
     auto.hidden = controls.size === 0;
     // Secrets, read-only and URL-only values are never saved in a preset.
@@ -121,7 +130,7 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
     if (refresh.size > 0) list?.update(refresh);
   }, 1000);
   const unsubscribe = settings.subscribe(changed => {
-    let registered = false;
+    let rebuildMain = [...changed].some(id => visibilityDependencies.has(id));
     // No ids: the saved presets changed.
     let touched = changed.size === 0;
     for (const id of changed) {
@@ -130,9 +139,9 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
       touched = true;
       const control = controls.get(id);
       if (control) control.update();
-      else registered = true;
+      else rebuildMain = true;
     }
-    if (registered) syncMain();
+    if (rebuildMain) syncMain();
     else if (touched) presetStatus.update();
     list?.update(changed);
   });

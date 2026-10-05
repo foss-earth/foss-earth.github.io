@@ -1,14 +1,16 @@
 import { getAppSettings } from "../settings/appSettings";
+import type { ToolbarVisibility } from "../settings/catalogue";
 
 /**
  * Which of the globe's toolbar buttons are shown: the `interface.toolbar.*`
- * parameters. Unchosen buttons fit in one row by priority; explicit choices
- * stay shown or hidden. The tabs remain available under +.
+ * parameters. Auto fits in one row by priority, On stays shown and may wrap,
+ * and Off stays hidden. The tabs remain available under +.
  */
-export type HudButtonId = "help" | "renderer" | "inputMode" | "theme" | "settings" | "position";
-export type HudButtonVisibility = Record<HudButtonId, boolean>;
+export type HudButtonId = "help" | "renderer" | "inputMode" | "theme" | "settings" | "fullscreen" | "position";
+export type HudVisibilityMode = ToolbarVisibility;
+export type HudButtonVisibility = Record<HudButtonId, HudVisibilityMode>;
 
-export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "renderer", "inputMode", "theme", "settings", "position"];
+export const HUD_BUTTON_IDS: readonly HudButtonId[] = ["help", "renderer", "inputMode", "theme", "settings", "fullscreen", "position"];
 
 /** @deprecated The record key before the settings registry; migrated into `interface.toolbar.*`. */
 export const HUD_BUTTON_VISIBILITY_STORAGE_KEY = "foss-earth.hudButtons";
@@ -19,7 +21,7 @@ export function hudButtonParameterId(id: HudButtonId): string {
 
 export function loadHudButtonVisibility(): HudButtonVisibility {
   const settings = getAppSettings();
-  return Object.fromEntries(HUD_BUTTON_IDS.map(id => [id, settings.get(hudButtonParameterId(id)) !== false])) as HudButtonVisibility;
+  return Object.fromEntries(HUD_BUTTON_IDS.map(id => [id, settings.get(hudButtonParameterId(id))])) as HudButtonVisibility;
 }
 
 export function saveHudButtonVisibility(visibility: HudButtonVisibility): void {

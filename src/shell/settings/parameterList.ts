@@ -1,6 +1,6 @@
 import type { SettingsRegistry } from "../../settings/registry";
 import type { SettingsFilter } from "../../settings/types";
-import { createParameterControl, type ParameterControlHandle } from "./controls";
+import { createParameterControl, isParameterControlVisible, type ParameterControlHandle } from "./controls";
 
 export interface ParameterListHandle {
   element: HTMLElement;
@@ -28,7 +28,7 @@ function createRow(settings: SettingsRegistry, id: string): Row {
 }
 
 /**
- * Every parameter of a section: its control, value, unit, default and what
+ * Every visible parameter of a section: its control, value, unit, default and what
  * that was derived from, where the value came from, a reset, and a link to the
  * code that reads it. Nothing is reachable only through the URL or the console.
  */
@@ -37,7 +37,7 @@ export function createParameterList(settings: SettingsRegistry, filter: Settings
   element.className = "foss-earth-parameter-list";
   const rows = new Map<string, Row>();
   const sync = (): void => {
-    const ids = settings.list(filter).map(spec => spec.id);
+    const ids = settings.list(filter).filter(spec => isParameterControlVisible(settings, spec)).map(spec => spec.id);
     for (const [id, row] of rows) {
       if (!ids.includes(id)) { row.control.destroy(); row.element.remove(); rows.delete(id); }
     }
@@ -58,7 +58,10 @@ export function createParameterList(settings: SettingsRegistry, filter: Settings
   return {
     element,
     update(changed) {
-      if (changed && [...changed].some(id => !rows.has(id) && settings.spec(id) && settings.list(filter).some(spec => spec.id === id))) sync();
+      if (!changed || settings.list(filter).some(spec =>
+        (!rows.has(spec.id) && changed.has(spec.id)) ||
+        (spec.visibleWhen !== undefined && changed.has(spec.visibleWhen.id)),
+      )) sync();
       for (const [id, row] of rows) if (!changed || changed.has(id)) row.update();
     },
     destroy() {

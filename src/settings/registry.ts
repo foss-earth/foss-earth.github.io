@@ -317,6 +317,23 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     return choices.get(spec.id) ?? spec.choices ?? NO_CHOICES;
   }
 
+  /** A spec may rename an old value without weakening today's validation. */
+  function migrateValue(spec: ParameterSpec, value: unknown): unknown {
+    if (!isParameterValue(value)) return value;
+    return spec.legacyValues?.find(legacy => sameValue(legacy.value, value))?.replacement ?? value;
+  }
+
+  function migratePreset(preset: SettingsPreset): SettingsPreset {
+    let changed = false;
+    const values = Object.fromEntries(Object.entries(preset.values).map(([id, value]) => {
+      const spec = specs.get(id);
+      const next = spec ? migrateValue(spec, value) as ParameterValue : value;
+      if (!sameValue(value, next)) changed = true;
+      return [id, next];
+    }));
+    return changed ? { ...preset, values } : preset;
+  }
+
   function registeredDefault(spec: ParameterSpec): { value: ParameterValue; derivedFrom: string } {
     if (typeof spec.default === "function") {
       const derived = spec.default(context);
@@ -482,24 +499,50 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     return { ok: true };
   }
 
-  /** Checks saved and URL values of newly registered parameters. */
-  function adopt(spec: ParameterSpec): void {
+  /** Migrates and checks values read from storage. Reports whether the record changed. */
+  function adoptStored(spec: ParameterSpec): boolean {
+    let changed = false;
     if (!spec.session && spec.id in record.values) {
-      const problem = validateStored(spec, record.values[spec.id]);
+      const stored = record.values[spec.id];
+      const value = migrateValue(spec, stored);
+      if (value !== stored) { record.values[spec.id] = value; changed = true; }
+      const problem = validateStored(spec, value);
       if (problem) {
         droppedNotes.set(spec.id, `The saved value was dropped: ${problem}`);
         delete record.values[spec.id];
         if (record.presets) delete record.presets[spec.id];
-        writeRecord();
+        changed = true;
       }
     }
+    if (record.userPresets) {
+      record.userPresets = record.userPresets.map(preset => {
+        const value = preset.values[spec.id];
+        const migrated = migrateValue(spec, value) as ParameterValue;
+        if (sameValue(value, migrated)) return preset;
+        changed = true;
+        return { ...preset, values: { ...preset.values, [spec.id]: migrated } };
+      });
+    }
+    return changed;
+  }
+
+  /** Checks saved and URL values of newly registered parameters. */
+  function adopt(spec: ParameterSpec): boolean {
+    const changed = adoptStored(spec);
     const text = urlText.get(spec.id);
     if (text !== undefined) {
-      const parsed = parseValue(spec, text);
+      let parsed = parseValue(spec, text);
+      // Old boolean URLs accepted true/false, 1/0 and yes/no, as well as on/off.
+      // Only parameters declaring a boolean migration retain those aliases.
+      const legacyBoolean = spec.legacyValues?.find(legacy => typeof legacy.value === "boolean"
+        && parseValue({ ...spec, kind: "boolean" }, text) === legacy.value);
+      if (legacyBoolean) parsed = legacyBoolean.replacement;
+      else if (parsed !== null) parsed = migrateValue(spec, parsed) as ParameterValue;
       const problem = parsed === null ? "it could not be read." : checkWritable(spec, parsed);
       if (parsed !== null && !problem) urlValues.set(spec.id, parsed);
       else urlNotes.set(spec.id, `The URL value "${text}" was ignored: ${problem}`);
     }
+    return changed;
   }
 
   function exportValues(filter?: SettingsFilter): Record<string, ParameterValue> {
@@ -514,11 +557,12 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
   function applyEntries(entries: Iterable<[string, unknown]>, preset?: string, filter?: SettingsFilter): ImportResult {
     const accepted: Record<string, ParameterValue> = {};
     const rejected: PresetRejection[] = [];
-    for (const [id, value] of entries) {
+    for (const [id, given] of entries) {
       const spec = specs.get(id);
       if (!spec) { rejected.push({ id, reason: "Not a parameter of this app." }); continue; }
       if (!matches(spec, filter)) continue;
       if (spec.sensitive) { rejected.push({ id, reason: "Secrets are never imported." }); continue; }
+      const value = migrateValue(spec, given);
       const problem = checkWritable(spec, value);
       if (problem) { rejected.push({ id, reason: problem }); continue; }
       accepted[id] = value as ParameterValue;
@@ -563,10 +607,15 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
       for (const spec of newSpecs) {
         if (specs.has(spec.id)) throw new Error(`Parameter "${spec.id}" is already registered.`);
       }
+      let migrated = false;
       for (const spec of newSpecs) {
         specs.set(spec.id, spec);
-        adopt(spec);
+        if (adopt(spec)) migrated = true;
       }
+      // Hosts may register a parameter after a preset that uses it. Normalize
+      // at registration so reading the preset list never repeats migration.
+      for (const [id, preset] of presets) presets.set(id, migratePreset(preset));
+      if (migrated) writeRecord();
       // New parameters are new state: sections that list them draw them.
       if (newSpecs.length > 0) {
         const added = new Set(newSpecs.map(spec => spec.id));
@@ -716,9 +765,10 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
         if (raw === null) continue;
         let values: Record<string, ParameterValue> | null = null;
         try { values = migration.migrate(raw); } catch { values = null; }
-        for (const [id, value] of Object.entries(values ?? {})) {
+        for (const [id, given] of Object.entries(values ?? {})) {
           if (id in record.values) continue;
           const spec = specs.get(id);
+          const value = spec ? migrateValue(spec, given) as ParameterValue : given;
           // Values for parameters not registered yet wait in the record for their spec.
           // A migrated value is the user's old choice: it is kept even where it equals
           // today's default, so a host default set later does not replace it.
@@ -738,17 +788,18 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     registerPresets(newPresets) {
       for (const preset of newPresets) {
         if (!isPreset(preset)) throw new Error("A preset needs an id, a name, a description and values.");
-        presets.set(preset.id, preset);
+        presets.set(preset.id, migratePreset(preset));
       }
     },
     listPresets: () => [...presets.values(), ...(record.userPresets ?? [])],
     diffPreset(preset, filter) {
       const changes: PresetChange[] = [];
       const rejected: PresetRejection[] = [];
-      for (const [id, value] of Object.entries(preset.values)) {
+      for (const [id, given] of Object.entries(preset.values)) {
         const spec = specs.get(id);
         if (!spec) { rejected.push({ id, reason: "Not a parameter of this app." }); continue; }
         if (!matches(spec, filter)) continue;
+        const value = migrateValue(spec, given) as ParameterValue;
         const problem = checkWritable(spec, value);
         if (problem) { rejected.push({ id, reason: problem }); continue; }
         const from = stateOf(id).value;
@@ -830,11 +881,11 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
       }
       const name = input.name.trim();
       const description = typeof input.description === "string" && input.description.trim() ? input.description.trim() : "Imported.";
-      return { preset: addUserPreset({
+      return { preset: addUserPreset(migratePreset({
         id: userPresetId(name), name, description,
         values: Object.fromEntries(values) as Record<string, ParameterValue>,
         ...(reset ? { reset: [...reset] as string[] } : {}),
-      }) };
+      })) };
     },
     renamePreset(id, name) {
       const list = record.userPresets ?? [];
@@ -871,9 +922,11 @@ export function createSettingsRegistry(options: SettingsRegistryOptions = {}): S
     reload() {
       mutate(specs.keys(), () => {
         record = readRecord();
+        let migrated = false;
         for (const spec of specs.values()) {
-          if (spec.id in record.values && validateStored(spec, record.values[spec.id])) delete record.values[spec.id];
+          if (adoptStored(spec)) migrated = true;
         }
+        if (migrated) writeRecord();
       });
     },
     getStorageError: () => storageError,

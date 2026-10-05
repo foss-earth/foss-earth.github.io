@@ -131,7 +131,7 @@ The exports point at TypeScript source, so build your app with a bundler that co
 | `foss-earth` | `createGlobe`, `mountGlobeApp`, the view API, the basemap and elevation source lists, and point sprites |
 | `foss-earth/runtime` | The Babylon runtime, renderer and map configuration, surface queries and terrain readiness |
 | `foss-earth/layers` | Types for adding your own Babylon content to the scene |
-| `foss-earth/shell` | HUD bar, docked tab overlay, location search, status log, tile cache panel and fullscreen |
+| `foss-earth/shell` | HUD bar, docked tab overlay, location search, status log, tile cache panel and fullscreen, including `attachFullscreenButton(button)` with its returned cleanup |
 | `foss-earth/windowing` | Panel, tab and workspace primitives |
 | `foss-earth/input` | Input modes, sensitivity, Safari gestures and controller navigation |
 | `foss-earth/cameraMath` | WGS84 and ECEF conversion |

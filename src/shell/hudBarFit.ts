@@ -4,6 +4,8 @@ export interface HudBarFitItem {
   priority: number;
   /** Essential controls and items the user explicitly enabled may wrap. */
   keepVisible?: boolean;
+  /** Always reserve this control's room before credit, even after its priority changes. */
+  essential?: boolean;
   /** Shorten credit text to leave room for this item before fitting the row. */
   reserveSpace?: boolean;
   onFit?(visible: boolean): void;
@@ -46,9 +48,10 @@ export function fitHudBar(bar: HTMLElement, end: HTMLElement, readItems: () => r
       resize?.unobserve(element);
       observed.delete(element);
     }
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
       if (!managed.has(item.element)) managed.set(item.element, item.element.style.order);
-      item.element.style.order = String(item.priority);
+      // Ranks preserve the caller's order on ties, even for nested flex items.
+      item.element.style.order = String(index);
       if (!observed.has(item.element)) {
         resize?.observe(item.element);
         observed.add(item.element);
@@ -62,16 +65,43 @@ export function fitHudBar(bar: HTMLElement, end: HTMLElement, readItems: () => r
     const widths = new Map(available.map(item => [item, item.element.getBoundingClientRect().width]));
     // Leave room for the core controls even when attribution text is long.
     // Manual extras still use their own widths and may wrap after fitting.
-    const essential = available.find(item => item.keepVisible);
-    const reserved = available.filter(item => item.reserveSpace || item === essential);
-    const reservedWidth = reserved.reduce((sum, item) => sum + widths.get(item)!, 0) + reserved.length * gap;
-    end.style.maxWidth = `${Math.max(0, width - reservedWidth)}px`;
-    const endWidth = end.getBoundingClientRect().width;
+    const required = available.filter(item => item.essential);
+    // Keep the existing helper contract for callers without an explicit anchor.
+    if (required.length === 0) {
+      const first = available.find(item => item.keepVisible);
+      if (first) required.push(first);
+    }
+    const requiredSet = new Set(required);
+    const reservationWidth = (entries: readonly HudBarFitItem[]): number =>
+      entries.reduce((sum, item) => sum + widths.get(item)!, 0) + entries.length * gap;
+    let reserved = available.filter(item => item.reserveSpace || requiredSet.has(item));
+    let reservedWidth = reservationWidth(reserved);
+    // A newly high-ranked wide readout must not consume the credit's entire
+    // allocation. Fall back to the mandatory controls and fit the rest normally.
+    const reserveRequiredOnly = (): void => {
+      reserved = required;
+      reservedWidth = reservationWidth(reserved);
+    };
+    if (reservedWidth >= width) reserveRequiredOnly();
+    const measureEnd = (): number => {
+      end.style.maxWidth = `${Math.max(0, width - reservedWidth)}px`;
+      const measured = end.getBoundingClientRect().width;
+      // The detail rail and credit link cannot shrink as much as their text.
+      // Count overflowing content; scrollWidth rounds to an integer, so allow
+      // its rounding error before treating it as actual overflow.
+      return end.scrollWidth > measured + 1 ? end.scrollWidth : measured;
+    };
+    let endWidth = measureEnd();
+    if (endWidth + reservedWidth > width && reserved.some(item => !requiredSet.has(item))) {
+      reserveRequiredOnly();
+      endWidth = measureEnd();
+    }
     // A manual extra may need another row. Keep the core row's controls when
     // they fit beside the credit on their own, rather than spending their
     // budget on the extra and hiding them just because it wraps.
     const reservedFit = endWidth + reservedWidth <= width;
-    const fixed = available.filter(item => item.keepVisible || (item.reserveSpace && reservedFit));
+    const reservedSet = new Set(reserved);
+    const fixed = available.filter(item => item.keepVisible || item.essential || (reservedSet.has(item) && reservedFit));
     const alwaysVisible = new Set(fixed);
     let used = endWidth + fixed.reduce((sum, item) => sum + widths.get(item)!, 0);
     let count = fixed.length + (endWidth > 0 ? 1 : 0);

@@ -99,6 +99,10 @@ export interface ParameterHome {
 export interface ParameterChoice {
   id: string;
   label: string;
+  /** Compact visible label; the full label remains the accessible name and value text. */
+  shortLabel?: string;
+  /** Compact icon instead of text; the full label remains the accessible name and value text. */
+  icon?: "toggle-on" | "toggle-off";
   description?: string;
 }
 
@@ -122,6 +126,8 @@ export interface ParameterSpec<T extends ParameterValue = ParameterValue> {
   bounds?: (context: DeviceContext) => ParameterBounds;
   /** number and range: the control's step in the unit (or in log2 of it for a log2 scale). */
   step?: number;
+  /** number without named values: use a compact field instead of the default value track. */
+  numberControl?: "field";
   /** number and range: how the control spaces values. */
   scale?: "linear" | "log2";
   /**
@@ -141,7 +147,11 @@ export interface ParameterSpec<T extends ParameterValue = ParameterValue> {
   defaultReason: string;
   /** Keeps an explicit choice equal to the default in the saved layer; reset forgets it. */
   persistDefault?: boolean;
+  /** Accepted old values when loading or importing settings; live edits use the current kind. */
+  legacyValues?: readonly { value: ParameterValue; replacement: ParameterValue }[];
   home: ParameterHome;
+  /** Show this control only while another parameter has this value; saved values remain active. */
+  visibleWhen?: { id: string; value: ParameterValue };
   auto?: AutoSpec;
   /** False: the value takes effect on the next start, and the UI says so. */
   appliesLive: boolean;

@@ -111,16 +111,74 @@ describe("one-row toolbar fitting", () => {
     f.fitting.destroy();
   });
 
+  it("keeps attribution available when an automatic high-priority readout exceeds the reserved row", () => {
+    const f = fixture(343, 500);
+    const north = f.items.find(item => item.element === f.north)!;
+    north.essential = true;
+    north.priority = 99;
+    f.items.find(item => item.element === f.help)!.reserveSpace = true;
+    const position = f.add("position", 300, 0);
+    f.items.find(item => item.element === position)!.reserveSpace = true;
+    f.fitting.update(); f.flush();
+    expect(f.end.style.maxWidth).toBe("310px");
+    expect(f.end.getBoundingClientRect().width).toBe(310);
+    expect(f.shown()).toEqual(["north"]);
+
+    // Pinning that oversized item may wrap, but does not replace North's
+    // mandatory reservation or collapse the credit.
+    f.items.find(item => item.element === position)!.keepVisible = true;
+    f.fitting.update(); f.flush();
+    expect(f.end.style.maxWidth).toBe("310px");
+    expect(f.shown()).toEqual(["north", "position"]);
+    f.fitting.destroy();
+  });
+
+  it("includes the detail and credit link's minimum occupied width in the reservation", () => {
+    const f = fixture(343, 500);
+    f.items.find(item => item.element === f.north)!.essential = true;
+    f.items.find(item => item.element === f.help)!.reserveSpace = true;
+    const position = f.add("position", 180, 0);
+    f.items.find(item => item.element === position)!.reserveSpace = true;
+    Object.defineProperty(f.end, "scrollWidth", { get: () => Math.max(130, Math.round(f.end.getBoundingClientRect().width)) });
+    f.fitting.update(); f.flush();
+    expect(f.end.style.maxWidth).toBe("310px");
+    expect(f.shown()).toEqual(["north"]);
+    f.fitting.destroy();
+  });
+
+  it("ignores scrollWidth rounding when the reserved row otherwise fits", () => {
+    const f = fixture(343.5, 500);
+    for (const item of f.items) if (item.priority <= 2) item.reserveSpace = true;
+    Object.defineProperty(f.end, "scrollWidth", { get: () => Math.ceil(f.end.getBoundingClientRect().width) });
+    f.fitting.update(); f.flush();
+    expect(f.end.style.maxWidth).toBe("224.5px");
+    expect(f.shown()).toEqual(["north", "help", "fps"]);
+    f.fitting.destroy();
+  });
+
   it("fits separately measured performance children added after mount and cleans up observers", () => {
     const f = fixture();
     const memory = f.add("memory", 70, 10, true);
     f.fitting.update(); f.flush();
     expect(f.shown()).toEqual(["north", "help", "fps", "memory"]);
-    expect(memory.style.order).toBe("10");
+    expect(memory.style.order).toBe("5");
     f.fitting.destroy();
     expect(f.disconnect).toHaveBeenCalledOnce();
     expect(f.bar.classList.contains("hud-bar--fitted")).toBe(false);
     expect(f.input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
     expect(memory.style.order).toBe("");
+  });
+
+  it("uses priority order and the supplied tie order even when DOM order differs", () => {
+    const f = fixture(400);
+    f.items.find(item => item.element === f.renderer)!.priority = 1.5;
+    f.items.find(item => item.element === f.fps)!.priority = 1.5;
+    // The caller's default order wins a tie, not the current DOM order.
+    f.bar.insertBefore(f.renderer, f.fps);
+    f.items.find(item => item.element === f.north)!.priority = 99;
+    f.fitting.update(); f.flush();
+    expect([f.help, f.fps, f.renderer, f.input, f.north].map(element => element.style.order))
+      .toEqual(["0", "1", "2", "3", "4"]);
+    f.fitting.destroy();
   });
 });

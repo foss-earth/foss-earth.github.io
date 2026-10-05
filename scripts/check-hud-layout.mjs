@@ -25,8 +25,10 @@ import { createHudBar } from ${JSON.stringify(path.join(root, "src/shell/hudBar.
 import { fitHudBar } from ${JSON.stringify(path.join(root, "src/shell/hudBarFit.ts"))};
 import { createMapSourceHud } from ${JSON.stringify(path.join(root, "src/shell/mapSourceHud.ts"))};
 import { createSceneHud } from ${JSON.stringify(path.join(root, "src/shell/scenesPanel.ts"))};
+import { attachFullscreenButton } from ${JSON.stringify(path.join(root, "src/shell/fullscreen.ts"))};
+import { renderPerformanceChips } from ${JSON.stringify(path.join(root, "src/hud/performanceChips.ts"))};
 import { createSettingsRegistry } from ${JSON.stringify(path.join(root, "src/settings/registry.ts"))};
-import { INTERFACE_PARAMETERS } from ${JSON.stringify(path.join(root, "src/settings/catalogue/interface.ts"))};
+import { INTERFACE_PARAMETERS, TOOLBAR_PRIORITIES, TOOLBAR_EDIT_PRIORITIES_ID, toolbarPriorityParameterId } from ${JSON.stringify(path.join(root, "src/settings/catalogue/interface.ts"))};
 import { createParameterSection } from ${JSON.stringify(path.join(root, "src/shell/settings/parameterSection.ts"))};
 import ${JSON.stringify(path.join(root, "src/styles/base.css"))};
 import ${JSON.stringify(path.join(root, "src/styles/hud.css"))};
@@ -40,30 +42,39 @@ const bar = createHudBar(document.getElementById("root")!, { items: [
   // Deliberately differ from priority order, so the check exercises CSS order.
   { kind: "button", id: "settings", title: "Settings", ariaLabel: "Settings", text: "⚙" },
   { kind: "button", id: "theme", title: "Theme", ariaLabel: "Theme", text: "☾" },
+  { kind: "button", id: "fullscreen", title: "Enter fullscreen", ariaLabel: "Enter fullscreen", text: "⛶" },
   { kind: "button", id: "position", title: "Location", ariaLabel: "Location", appearance: "chip", className: "hud-chip-button hud-status-text", text: "44.973° -93.234° h120° p-35° z250m" },
   { kind: "slot", id: "end", className: "map-source-hud-slot" },
 ] });
+// Simulate only browser capability/state so fullscreen checks do not change the viewport.
+let fullscreenElement: Element | null = null;
+Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value: true });
+Object.defineProperty(document, "fullscreenElement", { configurable: true, get: () => fullscreenElement });
+Object.defineProperty(document.documentElement, "requestFullscreen", { configurable: true, value: async () => {
+  fullscreenElement = document.documentElement;
+  document.dispatchEvent(new Event("fullscreenchange"));
+} });
+Object.defineProperty(document, "exitFullscreen", { configurable: true, value: async () => {
+  fullscreenElement = null;
+  document.dispatchEvent(new Event("fullscreenchange"));
+} });
+attachFullscreenButton(bar.getElement("fullscreen")! as HTMLButtonElement);
 const performance = bar.getElement("performance")!;
-const metric = (id: string, text: string) => {
-  const element = document.createElement("span");
-  element.id = id;
-  element.className = "hud-chip perf-chip";
-  element.dataset.perfMetric = id;
-  element.textContent = text;
-  performance.append(element);
-  return element;
-};
-const fps = metric("fps", "60fps");
-const memory = metric("memory", "GPU memory 256 MiB");
+renderPerformanceChips(performance, {
+  fps: 60, frameMs: 16.7, p95FrameMs: 18, activeMeshes: 42, drawCalls: null,
+  memoryMb: 256, tiles: null, culling: { total: 0, visible: 0, hidden: 0 },
+}, new Set(["fps", "memory"]));
+const fps = performance.querySelector<HTMLElement>('[data-perf-metric="fps"]')!;
+const memory = performance.querySelector<HTMLElement>('[data-perf-metric="memory"]')!;
+fps.id = "fps";
+memory.id = "memory";
 memory.hidden = true;
 const elements = new Map([
-  ...["north", "help", "renderer", "input", "theme", "settings", "position"].map(id => [id, bar.getElement(id)!] as const),
+  ...["north", "help", "renderer", "input", "theme", "settings", "fullscreen", "position"].map(id => [id, bar.getElement(id)!] as const),
   ["fps", fps], ["memory", memory],
 ]);
-const priorities = new Map([
-  ["north", 0], ["help", 1], ["fps", 2], ["renderer", 3],
-  ["input", 4], ["theme", 5], ["settings", 6], ["position", 7], ["memory", 10],
-]);
+const priorities = new Map<string, number>(TOOLBAR_PRIORITIES.map(([item, , priority]) => [item === "inputMode" ? "input" : item, priority] as const)
+  .filter(([item]) => elements.has(item)));
 const choices = new Map<string, "auto" | "show" | "hide">();
 const end = bar.getElement("end")!;
 const map = createMapSourceHud(end, {
@@ -92,16 +103,24 @@ const scene = createSceneHud({
   mapSource: map.element,
   mapOnly: [elements.get("position")!],
 });
-const descriptors = () => [...elements].map(([id, element]) => ({
-  element,
-  priority: priorities.get(id)!,
-  reserveSpace: priorities.get(id)! <= 2,
-  keepVisible: id === "north" || choices.get(id) === "show",
-  onFit: (visible: boolean) => { element.dataset.fitVisible = String(visible); },
-}));
+const descriptors = () => {
+  const items = [...priorities].filter(([id]) => choices.get(id) !== "hide").map(([id, priority]) => {
+    const element = elements.get(id)!;
+    return { element, priority, essential: id === "north", reserveSpace: id === "north", keepVisible: id === "north" || choices.get(id) === "show",
+      onFit: (visible: boolean) => { element.dataset.fitVisible = String(visible); } };
+  });
+  const available = items.filter(item => item.element.id !== "north" && !item.element.closest("[hidden]"))
+    .sort((a, b) => a.priority - b.priority);
+  for (const item of available.slice(0, 2)) item.reserveSpace = true;
+  return items;
+};
 const fit = fitHudBar(bar.element, end, descriptors);
 const settings = createSettingsRegistry({ storage: null, sourceBase: "https://example.invalid/blob/main/" });
-settings.register(INTERFACE_PARAMETERS.filter(spec => spec.id === "interface.toolbar.position"));
+const positionPriorityId = toolbarPriorityParameterId("position");
+settings.register(INTERFACE_PARAMETERS.filter(spec => ["interface.toolbar.position", TOOLBAR_EDIT_PRIORITIES_ID, positionPriorityId].includes(spec.id)));
+settings.subscribe(changed => {
+  if (changed.has(positionPriorityId)) { priorities.set("position", settings.get<number>(positionPriorityId)); fit.update(); }
+});
 const section = createParameterSection(settings, { tab: "interface", section: "toolbar" });
 section.element.id = "settingsFixture";
 section.element.hidden = true;
@@ -115,7 +134,14 @@ elements.get("north")!.addEventListener("click", () => { resets++; });
   get resets() { return resets; },
   choice(id: string, value: "auto" | "show" | "hide") {
     choices.set(id, value);
-    elements.get(id)!.hidden = value === "hide" || (id === "memory" && value === "auto");
+    elements.get(id)!.toggleAttribute("data-hud-choice-hidden", value === "hide");
+    if (id === "memory") memory.hidden = value !== "show";
+    fit.update();
+  },
+  priority(id: string, value: number) { priorities.set(id, value); fit.update(); },
+  fullscreenSupported(value: boolean) {
+    Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value });
+    document.dispatchEvent(new Event("fullscreenchange"));
     fit.update();
   },
   text(id: string, value: string) { elements.get(id)!.textContent = value; },
@@ -198,11 +224,13 @@ async function geometry(label) {
     return {
       width: innerWidth,
       bar: rect(fixture.bar.element),
+      gap: parseFloat(getComputedStyle(fixture.bar.element).columnGap),
       publishedHeight: Number.parseFloat(document.documentElement.style.getPropertyValue("--foss-hud-bar-height")),
       end: rect(fixture.end),
       items: fixture.descriptors().map(item => ({
         id: item.element.id,
         priority: item.priority,
+        reserveSpace: item.reserveSpace,
         keepVisible: item.keepVisible,
         choice: fixture.choices.get(item.element.id) ?? "auto",
         hidden: !!item.element.closest("[hidden]"),
@@ -247,15 +275,17 @@ function checkGeometry(label, result, { oneRow = true, priority = true } = {}) {
     }
   }
   if (oneRow) {
-    for (const id of ["help", "fps"]) {
-      if (!result.items.find(item => item.id === id)?.hidden) {
-        assert(toolbar.some(item => item.id === id), `Core control ${id} must remain visible. ${detail}`);
+    const reserved = result.items.filter(item => item.reserveSpace && !item.hidden);
+    const reservedWidth = reserved.reduce((sum, item) => sum + item.width + result.gap, 0);
+    if (reservedWidth + result.end.width <= result.bar.width + 0.5) {
+      for (const item of reserved) {
+        assert(toolbar.some(visible => visible.id === item.id), `Reserved control ${item.id} must remain visible. ${detail}`);
       }
     }
     const centers = all.map(item => (item.top + item.bottom) / 2);
     assert(Math.max(...centers) - Math.min(...centers) <= 0.5, `Defaults must occupy one row. ${detail}`);
     const ordered = [...toolbar].sort((a, b) => a.left - b.left);
-    assert.deepEqual(ordered.map(item => item.priority), [...ordered.map(item => item.priority)].sort((a, b) => a - b),
+    assert.deepEqual(ordered.map(item => item.id), [...toolbar].sort((a, b) => a.priority - b.priority).map(item => item.id),
       `Displayed controls must follow priority, including the nested FPS chip. ${detail}`);
   }
   if (priority) {
@@ -290,13 +320,46 @@ try {
 
   await load(1280);
   const wide = await check("wide toolbar before resize");
-  assert.deepEqual(ids(wide), ["north", "help", "fps", "renderer", "input", "theme", "settings", "position"],
+  assert.deepEqual(ids(wide), ["north", "help", "fps", "renderer", "input", "theme", "settings", "fullscreen", "position"],
     "The wide fixture must show every default item, with FPS inside display:contents");
   await page.setViewportSize({ width: 320, height: 800 });
   const narrow = await check("toolbar after narrowing to 320");
   assert(ids(narrow).length < ids(wide).length, "Narrowing must omit defaults");
   await page.setViewportSize({ width: 1280, height: 800 });
   assert.deepEqual(ids(await check("toolbar restored after widening")), ids(wide));
+  const fullscreen = page.getByRole("button", { name: "Enter fullscreen", exact: true });
+  await fullscreen.click();
+  assert.equal(await page.getByRole("button", { name: "Leave fullscreen", exact: true }).getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Leave fullscreen", exact: true }).click();
+  assert.equal(await fullscreen.getAttribute("aria-pressed"), "false");
+  await page.evaluate(() => window.hudFixture.fullscreenSupported(false));
+  assert(!ids(await check("fullscreen hidden when browser cannot request it")).includes("fullscreen"));
+  await page.evaluate(() => window.hudFixture.fullscreenSupported(true));
+  assert(ids(await check("fullscreen returns with browser capability")).includes("fullscreen"));
+
+  await page.evaluate(() => {
+    window.hudFixture.priority("theme", 0);
+    window.hudFixture.priority("settings", 0);
+    window.hudFixture.priority("north", 99);
+  });
+  const reordered = await check("custom priority order and stable ties");
+  assert.deepEqual(ids(reordered), ["theme", "settings", "help", "fps", "renderer", "input", "fullscreen", "position", "north"],
+    "Custom priorities must reorder controls, keeping catalogue order for equal numbers");
+  await page.setViewportSize({ width: 320, height: 800 });
+  const reorderedNarrow = await check("custom priorities reserve the first two Auto items on a phone");
+  assert(ids(reorderedNarrow).includes("theme") && ids(reorderedNarrow).includes("settings"), "Edited priorities determine reserved Auto controls");
+  assert.equal(ids(reorderedNarrow).at(-1), "north", "North stays available at its edited priority");
+
+  for (const width of [320, 375]) {
+    await load(width);
+    await page.evaluate(() => {
+      window.hudFixture.priority("position", 0);
+      window.hudFixture.provider("A provider with a very long attribution name ".repeat(20));
+    });
+    const priorityPosition = await check(`oversized automatic position priority at ${width}`);
+    assert.equal(priorityPosition.right.length, 2, "Detail and attribution stay available when a preferred Auto control is too wide");
+    assert(priorityPosition.right.every(item => item.width > 20), "Oversized Auto controls must not collapse detail or credit controls");
+  }
 
   await load(768);
   const beforeText = await check("before changing renderer readout");
@@ -306,7 +369,7 @@ try {
   assert(ids(longText).length < ids(beforeText).length, "A growing readout must refit the default row");
   await page.evaluate(() => window.hudFixture.text("renderer", "WebGPU"));
   assert.deepEqual(ids(await check("renderer readout shrinks without resize")), ids(beforeText));
-  await page.evaluate(() => window.hudFixture.provider("Google 3D Tiles with additional provider credit"));
+  await page.evaluate(() => window.hudFixture.provider("Google 3D Tiles with additional provider credit and licensing information"));
   const longProvider = await check("provider text reserves its actual width");
   assert(longProvider.end.width > beforeText.end.width, "Changing provider text must change the reserved width");
   assert(ids(longProvider).length < ids(beforeText).length, "Wider right-side content must displace lower priorities");
@@ -329,13 +392,18 @@ try {
   assert(ids(await check("automatic renderer visibility restored")).includes("renderer"));
 
   await load(375);
+  const beforePinnedFps = await check("automatic FPS before pinning");
+  await page.evaluate(() => window.hudFixture.choice("fps", "show"));
+  assert.deepEqual(ids(await check("already visible FPS pinned on stays one row")), ids(beforePinnedFps));
+
+  await load(375);
   await page.evaluate(() => window.hudFixture.choice("position", "show"));
   const pinnedPosition = await check("only position manually enabled", { oneRow: false });
   assert.deepEqual(ids(pinnedPosition), ["north", "help", "fps", "position"],
     "A manually enabled position must wrap without removing Help or FPS");
   await load(375);
   const defaultManual = await check("before manually enabling extras");
-  const forced = ["help", "fps", "renderer", "input", "theme", "settings", "position", "memory"];
+  const forced = ["help", "fps", "renderer", "input", "theme", "settings", "fullscreen", "position", "memory"];
   await page.evaluate(items => items.forEach(id => window.hudFixture.choice(id, "show")), forced);
   const manual = await check("explicitly enabled controls wrap", { oneRow: false });
   assert.deepEqual(ids(manual), ["north", ...forced], "Every explicitly enabled control must remain visible");
@@ -369,24 +437,30 @@ try {
       window.hudFixture.section.element.style.removeProperty("display");
     });
     const row = page.locator('#settingsFixture .foss-earth-parameter-section__main [data-parameter="interface.toolbar.position"]');
-    const input = row.locator('input[type="checkbox"]');
+    const auto = row.getByRole("radio", { name: "Auto", exact: true });
+    const on = row.locator('label:has(input[value="on"])');
+    const off = row.locator('label:has(input[value="off"])');
     const help = row.getByRole("button", { name: "Explain Camera position", exact: true });
     const reset = row.getByRole("button", { name: "Reset Camera position", exact: true });
     const tooltip = row.locator('.foss-earth-parameter__help');
     const layout = await row.evaluate(element => {
-      const parts = [element.querySelector('label'), ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
+      const parts = [element.querySelector('.foss-earth-choices__heading'),
+        ...element.querySelectorAll('.foss-earth-parameter__pills > label'),
+        ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
       return parts.map(part => {
         const box = part.getBoundingClientRect();
         return { left: box.left, right: box.right, center: (box.top + box.bottom) / 2, text: part.textContent };
       });
     });
-    assert.equal(layout.length, 4, "Checkbox, help, reset and source must be four compact items");
+    assert.equal(layout.length, 7, "Name, three choices, help, reset and source must be compact items");
     assert(Math.max(...layout.map(part => part.center)) - Math.min(...layout.map(part => part.center)) < 0.5,
-      `Checkbox accessories must be on one row at ${width}px`);
-    assert(layout.every(part => part.left >= 16 && part.right <= width - 16), "Checkbox row must fit its panel");
-    assert.equal(layout[2].text, "", "Reset must show only its icon");
-    assert.equal(layout[3].text, "", "Source must show only its icon");
-    assert.equal(await input.isChecked(), true, "Camera position must start enabled");
+      `Toolbar choices and accessories must be on one row at ${width}px`);
+    assert(layout.every(part => part.left >= 16 && part.right <= width - 16), "Choice row must fit its panel");
+    assert.equal(layout[5].text, "", "Reset must show only its icon");
+    assert.equal(layout[6].text, "", "Source must show only its icon");
+    assert.equal(await on.locator("svg").count(), 1, "On must use a switch icon");
+    assert.equal(await off.locator("svg").count(), 1, "Off must use a switch icon");
+    assert.equal(await auto.isChecked(), true, "Camera position must start in Auto");
     assert.equal(await tooltip.isVisible(), false, "Explanation must start hidden");
     await help.click();
     assert.equal(await tooltip.isVisible(), true, "Clicking ? must open the explanation");
@@ -401,15 +475,64 @@ try {
     await help.click();
     await page.getByRole("button", { name: "Reset heading", exact: true }).click();
     assert.equal(await tooltip.isVisible(), false, "Clicking outside must close the explanation");
-    await input.uncheck();
+    await off.click();
     assert.equal(await reset.isEnabled(), true, "An explicit choice must be resettable");
+    await on.click();
+    assert.equal(await row.getByRole("radio", { name: "On", exact: true }).isChecked(), true, "On must select its own state");
     await reset.click();
-    assert.equal(await input.isChecked(), true, "Reset must restore the enabled default");
+    assert.equal(await auto.isChecked(), true, "Reset must restore Auto");
     await page.locator('#settingsFixture').getByLabel("Show all parameters", { exact: true }).check();
     const expanded = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.position"]');
     assert.equal(await expanded.locator('.foss-earth-parameter__actions > *').count(), 3,
       "Show all must reuse one set of help/reset/source actions");
-    console.log(`Passed compact checkbox row and tooltip check at ${width}px.`);
+    const mainPriority = page.locator('#settingsFixture .foss-earth-parameter-section__main [data-parameter="interface.toolbar.priority.position"]');
+    const expandedPriority = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.priority.position"]');
+    assert.equal(await mainPriority.count(), 0, "Priority fields must start absent from the main settings");
+    assert.equal(await expandedPriority.count(), 0, "Show all must not bypass the priority editor toggle");
+    const editPriorities = page.locator('#settingsFixture .foss-earth-parameter-section__main').getByRole("checkbox", { name: "Edit priorities", exact: true });
+    await editPriorities.check();
+    assert.equal(await mainPriority.count(), 1);
+    assert.equal(await expandedPriority.count(), 1);
+    const priorityInput = mainPriority.getByRole("spinbutton", { name: "Camera position priority", exact: true });
+    assert.equal(await mainPriority.locator('input[type="range"]').count(), 0, "Priorities use compact numbers instead of sliders");
+    for (const control of [mainPriority, expandedPriority]) {
+      const layout = await control.evaluate(element => {
+        const parts = [element.querySelector('.foss-earth-parameter__label'), element.querySelector('input[type="number"]'),
+          ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
+        return parts.map(part => {
+          const box = part.getBoundingClientRect();
+          return { left: box.left, right: box.right, center: (box.top + box.bottom) / 2 };
+        });
+      });
+      assert(layout.every(part => part.left >= 16 && part.right <= width - 16), `Compact priority controls must fit at ${width}px`);
+      assert(Math.max(...layout.map(part => part.center)) - Math.min(...layout.map(part => part.center)) < 0.5,
+        `Priority label, number and accessories must share a row at ${width}px: ${JSON.stringify(layout)}`);
+    }
+    await priorityInput.fill("3");
+    await priorityInput.press("Tab");
+    assert.equal(await page.evaluate(() => window.hudFixture.settings.get("interface.toolbar.priority.position")), 3);
+    await editPriorities.uncheck();
+    assert.equal(await mainPriority.count(), 0);
+    assert.equal(await expandedPriority.count(), 0);
+    assert.equal(await page.evaluate(() => window.hudFixture.settings.get("interface.toolbar.priority.position")), 3,
+      "Closing the priority editor must preserve the edited order");
+    const fpsStack = await page.locator('#fps').evaluate(element => {
+      const value = element.querySelector('.perf-chip__value');
+      const unit = element.querySelector('.perf-chip__unit');
+      const numberBox = value.getBoundingClientRect();
+      const unitBox = unit.getBoundingClientRect();
+      return { height: element.getBoundingClientRect().height, numberBottom: numberBox.bottom, unitTop: unitBox.top,
+        numberFont: parseFloat(getComputedStyle(value).fontSize), unitFont: parseFloat(getComputedStyle(unit).fontSize),
+        color: getComputedStyle(unit).color, unit: unit.textContent };
+    });
+    assert.equal(fpsStack.height, 28, "Stacked FPS must keep the toolbar's row height");
+    assert(fpsStack.unitTop >= fpsStack.numberBottom, "The fps label must sit below the number");
+    assert(fpsStack.unitFont < fpsStack.numberFont, "The fps label must be smaller than its number");
+    assert.equal(fpsStack.unit, "fps");
+    const rgb = fpsStack.color.match(/\d+/g).map(Number);
+    assert(Math.max(...rgb) - Math.min(...rgb) <= 24 && rgb.every(channel => channel >= 100 && channel <= 190),
+      "The FPS label must render in muted gray rather than inheriting the live number's color");
+    console.log(`Passed compact three-state control, tooltip and stacked FPS check at ${width}px.`);
   }
 
   await load(375, true);

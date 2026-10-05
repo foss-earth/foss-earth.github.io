@@ -83,6 +83,7 @@ export {
   type GameLogTone,
 } from "../log/createGameLog";
 export {
+  attachFullscreenButton,
   canRequestFullscreen,
   enterFullscreen,
   exitFullscreen,

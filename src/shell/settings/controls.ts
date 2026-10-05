@@ -1,5 +1,5 @@
 import type { SettingsRegistry } from "../../settings/registry";
-import type { NumberRange, ParameterSpec, ParameterState, ParameterValue } from "../../settings/types";
+import type { NumberRange, ParameterChoice, ParameterSpec, ParameterState, ParameterValue } from "../../settings/types";
 import { formatNumber, formatQuantity, formatValue, isNumberRange, sameValue } from "../../settings/values";
 import { createExternalLinkIcon } from "../externalLinkIcon";
 import { createTrack, type TrackHandle } from "./track";
@@ -13,6 +13,12 @@ export interface ParameterControlHandle {
 }
 
 let controlCount = 0;
+
+/** Conditional controls stay out of both section layouts and Show all parameters. */
+export function isParameterControlVisible(settings: SettingsRegistry, spec: ParameterSpec): boolean {
+  const guard = spec.visibleWhen;
+  return !guard || Boolean(settings.spec(guard.id) && sameValue(settings.get(guard.id), guard.value));
+}
 
 /** A position on a parameter's track: the value, or its log2, negated for a reversed track. */
 export function trackPosition(spec: ParameterSpec, value: number): number {
@@ -265,6 +271,39 @@ function pill(type: "radio" | "checkbox", name: string, value: string, label: st
   return { element, input, text };
 }
 
+function createChoiceIcon(icon: NonNullable<ParameterChoice["icon"]>): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "foss-earth-choice__icon");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  if (icon === "toggle-on") {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "currentColor");
+    path.setAttribute("fill-rule", "evenodd");
+    // Filled track, with the right-hand knob cut out so it contrasts in either theme.
+    path.setAttribute("d", "M8 5a7 7 0 0 0 0 14h8a7 7 0 0 0 0-14H8Zm8 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z");
+    svg.append(path);
+  } else {
+    const track = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    for (const [name, value] of Object.entries({ x: "2", y: "6", width: "20", height: "12", rx: "6", fill: "none", stroke: "currentColor", "stroke-width": "2" })) track.setAttribute(name, value);
+    const knob = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    for (const [name, value] of Object.entries({ cx: "8", cy: "12", r: "3", fill: "currentColor" })) knob.setAttribute(name, value);
+    svg.append(track, knob);
+  }
+  return svg;
+}
+
+function choicePill(name: string, choice: ParameterChoice): ReturnType<typeof pill> {
+  const option = pill("radio", name, choice.id, choice.icon ? "" : choice.shortLabel ?? choice.label);
+  if (choice.icon) option.text.append(createChoiceIcon(choice.icon));
+  if (choice.shortLabel !== undefined || choice.icon !== undefined) {
+    option.input.setAttribute("aria-label", choice.label);
+    option.element.title = choice.description ? `${choice.label}: ${choice.description}` : choice.label;
+  } else if (choice.description) option.element.title = choice.description;
+  return option;
+}
+
 function describeTitle(spec: ParameterSpec): string {
   return spec.description;
 }
@@ -303,10 +342,13 @@ function createChoicePills(settings: SettingsRegistry, spec: ParameterSpec): Par
   heading.className = "foss-earth-choices__heading";
   heading.textContent = spec.label;
   heading.title = describeTitle(spec);
+  const header = document.createElement("div");
+  header.className = "foss-earth-parameter__header";
+  header.append(heading);
   const pills = document.createElement("span");
   pills.className = "foss-earth-parameter__pills";
   const note = createNote();
-  element.append(heading, pills, note);
+  element.append(header, pills, note);
   const start = settings.get(spec.id);
   let shownChoices: ParameterState["choices"] | null = null;
   const onChange = (event: Event): void => {
@@ -320,11 +362,11 @@ function createChoicePills(settings: SettingsRegistry, spec: ParameterSpec): Par
     const state = settings.inspect(spec.id);
     if (state.choices !== shownChoices) {
       shownChoices = state.choices;
-      pills.replaceChildren(...state.choices.map(choice => {
-        const option = pill("radio", name, choice.id, choice.label);
-        if (choice.description) option.element.title = choice.description;
-        return option.element;
-      }));
+      const compact = state.choices.length > 0 && state.choices.every(choice => choice.shortLabel !== undefined || choice.icon !== undefined);
+      element.classList.toggle("foss-earth-parameter--compact-choice", compact);
+      if (compact) header.insertBefore(pills, header.querySelector(".foss-earth-parameter__actions"));
+      else header.after(pills);
+      pills.replaceChildren(...state.choices.map(choice => choicePill(name, choice).element));
     }
     for (const input of pills.querySelectorAll<HTMLInputElement>("input")) {
       input.checked = input.value === state.value;
@@ -370,6 +412,49 @@ function showReading(settings: SettingsRegistry, id: string, element: HTMLElemen
   if (text !== null && element.textContent !== text) element.textContent = text;
 }
 
+/** A compact numeric field for discrete settings that do not need a track. */
+function createNumberField(settings: SettingsRegistry, spec: ParameterSpec): ParameterControlHandle {
+  const element = document.createElement("div");
+  element.className = "foss-earth-parameter foss-earth-parameter--inline foss-earth-parameter--number-field";
+  element.dataset.parameter = spec.id;
+  const { header, readout, reading } = createHeader(spec);
+  const field = document.createElement("input");
+  field.type = "number";
+  field.className = "foss-earth-parameter__field";
+  field.setAttribute("aria-label", `${spec.label}${spec.unit === "fraction" ? " in percent" : ""}`);
+  const step = spec.step ?? (spec.unit === "count" ? 1 : "any");
+  field.step = typeof step === "number" && spec.unit === "fraction" ? String(step * 100) : String(step);
+  const unit = document.createElement("span");
+  unit.className = "foss-earth-parameter__unit";
+  unit.textContent = spec.unit === "fraction" ? "%" : formatQuantity(spec.unit, 1).replace(/^1\s?/, "");
+  readout.append(field, unit);
+  const note = createNote();
+  element.append(header, note);
+  const start = settings.get(spec.id);
+  const update = (): void => {
+    const state = settings.inspect(spec.id);
+    const value = typeof state.value === "number" ? state.value : 0;
+    field.disabled = Boolean(spec.readOnly) || state.provenance === "host";
+    field.min = state.bounds ? fieldNumber(spec, state.bounds.min) : "";
+    field.max = state.bounds ? fieldNumber(spec, state.bounds.max) : "";
+    const digits = Math.max(3, field.min.length, field.max.length, fieldNumber(spec, value).length);
+    field.style.width = `calc(${digits}ch + 24px)`;
+    if (document.activeElement !== field) field.value = fieldNumber(spec, value);
+    showReading(settings, spec.id, reading);
+    setNote(note, noteFor(state, start));
+  };
+  const onChange = (): void => {
+    const value = fromField(spec, field.value);
+    if (value === null) { update(); return; }
+    const result = settings.set(spec.id, value);
+    if (!result.ok) setNote(note, result.reason, true);
+    else update();
+  };
+  field.addEventListener("change", onChange);
+  update();
+  return { element, update, destroy() { field.removeEventListener("change", onChange); element.remove(); } };
+}
+
 /** A value track: one thumb, the default ticked, named values as pills beside it. */
 function createValueTrack(settings: SettingsRegistry, spec: ParameterSpec): ParameterControlHandle {
   const name = `foss-earth-parameter-${++controlCount}`;
@@ -398,7 +483,7 @@ function createValueTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
   });
   const named = document.createElement("div");
   named.className = "foss-earth-parameter__named";
-  const namedPills = (spec.named ?? []).map(option => pill("radio", name, option.id, option.label));
+  const namedPills = (spec.named ?? []).map(option => choicePill(name, option));
   const numberPill = spec.named?.length ? pill("radio", name, "", "Value") : null;
   named.hidden = namedPills.length === 0;
   named.append(...namedPills.map(option => option.element), ...(numberPill ? [numberPill.element] : []));
@@ -605,7 +690,7 @@ export function createParameterControl(settings: SettingsRegistry, id: string): 
   switch (spec.kind) {
     case "boolean": control = createSwitch(settings, spec); break;
     case "choice": control = createChoicePills(settings, spec); break;
-    case "number": control = createValueTrack(settings, spec); break;
+    case "number": control = spec.numberControl === "field" && !spec.named?.length ? createNumberField(settings, spec) : createValueTrack(settings, spec); break;
     case "range": control = createRangeTrack(settings, spec); break;
     case "text": control = createTextField(settings, spec); break;
   }

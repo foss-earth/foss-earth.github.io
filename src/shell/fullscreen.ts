@@ -62,6 +62,29 @@ export function onFullscreenChange(listener: () => void): () => void {
   };
 }
 
+/** Bind a HUD button to page fullscreen; browsers without it hide the button. */
+export function attachFullscreenButton(button: HTMLButtonElement): () => void {
+  const sync = (): void => {
+    const on = isFullscreen();
+    button.hidden = !canRequestFullscreen();
+    button.title = on ? "Leave fullscreen" : "Enter fullscreen";
+    button.setAttribute("aria-label", button.title);
+    button.setAttribute("aria-pressed", String(on));
+  };
+  const onClick = (): void => {
+    // Keep the request in this user gesture. A refused request leaves the
+    // browser's fullscreen state, and therefore the button, unchanged.
+    void toggleFullscreen().catch(() => {});
+  };
+  sync();
+  const detachChange = onFullscreenChange(sync);
+  button.addEventListener("click", onClick);
+  return () => {
+    button.removeEventListener("click", onClick);
+    detachChange();
+  };
+}
+
 export function readFullscreenEveryVisit(): boolean {
   try { return window.localStorage.getItem(EVERY_VISIT_PREFERENCE_KEY) === "1"; } catch { return false; }
 }

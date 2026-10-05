@@ -58,8 +58,8 @@ paragraph.
 
 The HUD bar is the reference (`.hud-bar` in `src/styles/hud.css`): its items
 sit side by side at their own widths, with default visibility fitted to one row
-as described below. Items the person explicitly enables can wrap. In Renderer → Performance debug,
-`.settings-metric-menu` does the same for toggles.
+as described below. Items set to On can wrap. Interface → Toolbar keeps its
+three-way visibility controls in the same paragraph layout.
 
 Do not lay a set of controls out in fixed columns: no `grid-template-columns:
 repeat(n, …)`, no row of `flex: 1` children stretched to equal widths, no table
@@ -125,20 +125,35 @@ Default visibility follows this priority, highest first:
 | 4 | Input method | Most useful on a desktop, where more width is usually available |
 | 5 | Theme | Also available in Interface → Toolbar |
 | 6 | Settings | Also available as a tab under + |
-| 7 | Camera position (`lat/lon/h/p/z`) | Also available in the Location tab |
+| 7 | Fullscreen | Enters or leaves fullscreen where the browser supports it |
+| 8 | Camera position (`lat/lon/h/p/z`) | Also available in the Location tab |
 
-Hide the lowest-priority default items first until the row fits, and bring
-them back in priority order when space returns. Fitting does not change the
-person's saved choices. An item explicitly hidden stays hidden; an item
-explicitly enabled stays shown, even when the person's choices need another
-row. Reserve room for North, Help and FPS first, shortening long attribution
+Each configurable toolbar item has an On / Auto / Off choice in Interface →
+Toolbar, including FPS and every other performance reading. On uses a filled
+switch icon, Auto uses `A`, and Off uses an outlined switch icon; hover and
+accessible names give the full words. On stays shown, wrapping when needed;
+Auto fits in the available row by priority; Off stays hidden. These are stored
+values, independent of whether they came from a default or a saved choice.
+Toolbar buttons and FPS default to Auto; other performance readings default
+to Off. Reset restores that default. Existing saved checkbox values migrate
+to On or Off.
+
+**Edit priorities** starts off. Turning it on reveals compact number fields for
+every toolbar item, including North; lower numbers come first, with the default
+order breaking ties. Turning it off hides the numbers in the main section and
+Show all parameters, while keeping the saved priorities active. North always
+remains available even when its position in the row changes.
+
+Hide the lowest-priority Auto items first until the row fits, and bring
+them back in priority order when space returns. Reserve room for North and the
+first two available items after North (Help and FPS by default), shortening long attribution
 text inside its chip when needed. Then measure the detail rail and attribution
 chip and fit the remaining defaults into the space left over. The credit link
 and detail rail stay accessible beside the core controls.
 
-Enabled defaults stay checked in their settings even when their chips do not
-fit, including Camera position. Fitting changes only what is drawn; it does
-not turn a setting off or replace its default.
+Auto stays selected even when its chip does not fit, including Camera position.
+Fitting changes only what is drawn. FPS shows its number above a smaller gray
+`fps` label, within the same toolbar row height.
 
 ## One home for every control
 
@@ -178,7 +193,8 @@ Every setting lives in exactly one place, a section of a tab.
 - Controls are drawn from the parameter's kind, and each has one
   implementation: a switch is a pill with a checkbox; a choice is a heading and
   pills; a number is a value track with its readout as a field, the default
-  ticked and any named values ("Off", "Normal") as pills; a range is a range
+  ticked and any named values ("Off", "Normal") as pills; discrete priorities use
+  compact numeric fields; a range is a range
   track; text is a field, never showing a secret. Beside each control are a
   `?` button, a reset icon and a source-link icon, at their own widths in the
   same wrapping row. `?` opens an explanation tooltip with the description,
@@ -196,9 +212,10 @@ Every setting lives in exactly one place, a section of a tab.
   is a bar in its own colour, labelled under the track, hollow while waived; a
   requirement stripes the part of the range it refuses. `createTrack` draws all
   of them.
-- Interface → Toolbar holds toolbar button visibility; Renderer → Performance
-  debug holds the performance readouts. Default items fit by the priority above; the person's explicit choices take
-  precedence. Hiding a button never hides what it opened; its tab stays under
+- Interface → Toolbar holds all configurable toolbar visibility, including
+  performance readouts. Renderer → Performance debug holds tuners and profiling.
+  Auto items fit by the priority above; On and Off take precedence.
+  Hiding a button never hides what it opened; its tab stays under
   +. The same section holds the theme toggle, with both light and dark icons,
   so theme remains changeable when its toolbar shortcut does not fit.
 - The menu under a tab strip's + is drawn outside its panel, in the overlay's own
