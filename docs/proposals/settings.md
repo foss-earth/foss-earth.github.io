@@ -165,8 +165,10 @@ Only a few control types are needed; each has one implementation in
 - **Readings** beside a budget: the live value it bounds, in the same unit.
 
 Every section has a **Show all parameters** toggle. Off, it shows the main
-controls; on, it lists every parameter of the section in a paragraph grid with
-its value, unit, default, provenance, a per-parameter reset, and the source link.
+controls; on, it lists every parameter of the section in a paragraph grid.
+Main controls and this list use the same compact row: control, `?`, reset icon
+and source-link icon. The `?` tooltip holds the explanation, default and its
+reason, current value and provenance, ID and any limits or restart notes.
 Nothing is reachable only through the URL or the console.
 
 ## Automatic adjustment
@@ -419,9 +421,10 @@ The registry is `foss-earth/settings` (`src/settings/`); the controls are in
   is one section of a tab: the section's own controls, a control for every
   main-level parameter homed there that they don't cover (hosts' included,
   registered at any time), and **Show all parameters**, which lists every
-  parameter of the section with its control, value, default and what that was
-  derived from, where the value came from, a reset, its id and a link to the
-  code that reads it, and exports, imports and resets the section.
+  parameter of the section with its control, help tooltip, reset icon and
+  source-link icon, and exports, imports and resets the section. The tooltip
+  contains its description, current value, default and what that was derived
+  from, where the value came from, its ID and any limits or restart notes.
   `createSavedSettingsSection` does the same for the whole record and offers
   **Keep these values** for URL values; FOSS Earth shows it in Settings →
   Saved settings.

@@ -4,6 +4,8 @@ export interface HudBarFitItem {
   priority: number;
   /** Essential controls and items the user explicitly enabled may wrap. */
   keepVisible?: boolean;
+  /** Shorten credit text to leave room for this item before fitting the row. */
+  reserveSpace?: boolean;
   onFit?(visible: boolean): void;
 }
 
@@ -58,17 +60,25 @@ export function fitHudBar(bar: HTMLElement, end: HTMLElement, readItems: () => r
     const gap = Number.parseFloat(getComputedStyle(bar).columnGap) || 0;
     const available = items.filter(item => !item.element.closest("[hidden]"));
     const widths = new Map(available.map(item => [item, item.element.getBoundingClientRect().width]));
-    // Keep the first essential control reachable even with a very long credit.
+    // Leave room for the core controls even when attribution text is long.
+    // Manual extras still use their own widths and may wrap after fitting.
     const essential = available.find(item => item.keepVisible);
-    end.style.maxWidth = `${Math.max(0, width - (essential ? widths.get(essential)! + gap : 0))}px`;
+    const reserved = available.filter(item => item.reserveSpace || item === essential);
+    const reservedWidth = reserved.reduce((sum, item) => sum + widths.get(item)!, 0) + reserved.length * gap;
+    end.style.maxWidth = `${Math.max(0, width - reservedWidth)}px`;
     const endWidth = end.getBoundingClientRect().width;
-    const fixed = available.filter(item => item.keepVisible);
+    // A manual extra may need another row. Keep the core row's controls when
+    // they fit beside the credit on their own, rather than spending their
+    // budget on the extra and hiding them just because it wraps.
+    const reservedFit = endWidth + reservedWidth <= width;
+    const fixed = available.filter(item => item.keepVisible || (item.reserveSpace && reservedFit));
+    const alwaysVisible = new Set(fixed);
     let used = endWidth + fixed.reduce((sum, item) => sum + widths.get(item)!, 0);
     let count = fixed.length + (endWidth > 0 ? 1 : 0);
     used += Math.max(0, count - 1) * gap;
     let full = false;
     for (const item of available) {
-      let visible = !!item.keepVisible;
+      let visible = alwaysVisible.has(item);
       if (!visible && !full) {
         const next = used + widths.get(item)! + (count > 0 ? gap : 0);
         visible = next <= width;

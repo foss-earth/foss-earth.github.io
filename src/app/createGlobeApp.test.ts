@@ -514,8 +514,9 @@ describe("createGlobeApp smoke behavior", () => {
     expect(second.root.querySelector<HTMLElement>("#themeButton")!.hidden).toBe(false);
   });
 
-  it("reflects automatic fitting in the controls and preserves equal-value explicit choices and resets", async () => {
+  it("keeps defaults enabled during fitting and preserves explicit choices and resets", async () => {
     let width = 300;
+    let creditWidth = 100;
     let nextFrame = 0;
     const originalRequestFrame = globalThis.requestAnimationFrame;
     const originalCancelFrame = globalThis.cancelAnimationFrame;
@@ -523,7 +524,8 @@ describe("createGlobeApp smoke behavior", () => {
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); return nextFrame; });
     vi.stubGlobal("cancelAnimationFrame", (id: number) => { frames.delete(id); });
     const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-      const w = this.classList.contains("hud-bar") ? width : this.id === "mapSourceSlot" ? 100
+      const w = this.classList.contains("hud-bar") ? width : this.id === "mapSourceSlot"
+        ? Math.min(creditWidth, this.style.maxWidth ? Number.parseFloat(this.style.maxWidth) : creditWidth)
         : this.id === "rendererModePill" ? 65 : this.id === "hudStatus" ? 300
           : this.dataset.perfMetric ? 50 : 30;
       return { width: w, height: 28, top: 0, left: 0, right: w, bottom: 28, x: 0, y: 0, toJSON() {} };
@@ -546,7 +548,10 @@ describe("createGlobeApp smoke behavior", () => {
       const section = sectionElement(app.interfaceSections, "toolbar");
       document.body.append(section);
       const toggle = parameterInput(section, "interface.toolbar.inputMode");
-      expect(toggle.checked).toBe(false);
+      expect(toggle.checked).toBe(true);
+      expect(parameterInput(section, "interface.toolbar.position").checked).toBe(true);
+      expect(root.querySelector("#hudStatus")!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(settings.inspect("interface.toolbar.position").provenance).toBe("default");
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(root.querySelector("#themeButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
 
@@ -560,6 +565,9 @@ describe("createGlobeApp smoke behavior", () => {
 
       toggle.click();
       await flush();
+      expect(toggle.checked).toBe(false);
+      toggle.click();
+      await flush();
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
       expect(settings.inspect("interface.toolbar.inputMode").provenance).toBe("user");
       expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.inputMode"]).toBe(true);
@@ -570,6 +578,20 @@ describe("createGlobeApp smoke behavior", () => {
       settings.reset("interface.toolbar.inputMode");
       await flush();
       expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+
+      width = 343; creditWidth = 500;
+      window.dispatchEvent(new Event("resize"));
+      await flush();
+      expect(root.querySelector("#helpButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      const fps = root.querySelector<HTMLElement>('[data-perf-metric="fps"]')!;
+      expect(fps.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(settings.get("interface.performanceHud.fps")).toBe(true);
+      settings.set("interface.performanceHud.fps", false);
+      await flush();
+      expect(root.querySelector('[data-perf-metric="fps"]')).toBeNull();
+      settings.reset("interface.performanceHud.fps");
+      await flush();
+      expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
     } finally {
       app.destroy();
       geometry.mockRestore();

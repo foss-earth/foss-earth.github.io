@@ -21,7 +21,7 @@ function fixture(width = 300, creditWidth = 100) {
   bar.style.columnGap = "3px";
   bar.getBoundingClientRect = () => rect(width);
   const end = document.createElement("span");
-  end.getBoundingClientRect = () => rect(creditWidth);
+  end.getBoundingClientRect = () => rect(Math.min(creditWidth, end.style.maxWidth ? Number.parseFloat(end.style.maxWidth) : creditWidth));
   const items: HudBarFitItem[] = [];
   const add = (id: string, itemWidth: number, priority: number, keepVisible = false): HTMLElement => {
     const element = document.createElement("button");
@@ -76,6 +76,22 @@ describe("one-row toolbar fitting", () => {
     f.fitting.destroy();
   });
 
+  it("shortens long credits to keep Help and FPS in the phone's single row", () => {
+    const f = fixture(343, 500);
+    for (const item of f.items) if (item.priority <= 2) item.reserveSpace = true;
+    f.fitting.update(); f.flush();
+    expect(f.shown()).toEqual(["north", "help", "fps"]);
+    expect(f.end.style.maxWidth).toBe("224px");
+    f.resize(288);
+    expect(f.shown()).toEqual(["north", "help", "fps"]);
+    expect(f.end.style.maxWidth).toBe("169px");
+    f.help.hidden = true;
+    f.fitting.update(); f.flush();
+    expect(f.shown()).toEqual(["north", "fps"]);
+    expect(f.end.style.maxWidth).toBe("202px");
+    f.fitting.destroy();
+  });
+
   it("honors manual enables even if they need another row, and does not reveal scene-hidden controls", () => {
     const f = fixture(180);
     f.items.find(item => item.element === f.input)!.keepVisible = true;
@@ -83,6 +99,15 @@ describe("one-row toolbar fitting", () => {
     f.fitting.update(); f.flush();
     expect(f.shown()).toEqual(["north", "input"]);
     expect(f.renderer.hidden).toBe(true);
+    f.fitting.destroy();
+  });
+
+  it("keeps the core controls when a manually enabled wide readout wraps", () => {
+    const f = fixture(343, 500);
+    for (const item of f.items) if (item.priority <= 2) item.reserveSpace = true;
+    f.add("position", 300, 7, true);
+    f.fitting.update(); f.flush();
+    expect(f.shown()).toEqual(["north", "help", "fps", "position"]);
     f.fitting.destroy();
   });
 

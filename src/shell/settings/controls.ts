@@ -1,10 +1,11 @@
 import type { SettingsRegistry } from "../../settings/registry";
 import type { NumberRange, ParameterSpec, ParameterState, ParameterValue } from "../../settings/types";
 import { formatNumber, formatQuantity, formatValue, isNumberRange, sameValue } from "../../settings/values";
+import { createExternalLinkIcon } from "../externalLinkIcon";
 import { createTrack, type TrackHandle } from "./track";
 
 export interface ParameterControlHandle {
-  /** The control and its note. Controls that take a whole line say so with their class. */
+  /** The control and its compact help, reset and source actions. */
   element: HTMLElement;
   /** Re-reads the registry. Cheap when nothing changed. */
   update(): void;
@@ -88,9 +89,167 @@ function createNote(): HTMLParagraphElement {
   return note;
 }
 
-function setNote(note: HTMLElement, text: string): void {
+function setNote(note: HTMLElement, text: string, reveal = false): void {
   note.hidden = text === "";
   if (note.textContent !== text) note.textContent = text;
+  if (reveal && text) note.dispatchEvent(new Event("parameter-invalid", { bubbles: true }));
+}
+
+let helpCount = 0;
+let closeOpenHelp: (() => void) | null = null;
+
+function createResetIcon(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ["M3 10a9 9 0 1 1 2.65 8.2", "M3 3v7h7"]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+
+/** One compact accessory row; explanations stay closed until requested. */
+function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, control: ParameterControlHandle): ParameterControlHandle {
+  const actions = document.createElement("span");
+  actions.className = "foss-earth-parameter__actions";
+  const help = document.createElement("button");
+  help.type = "button";
+  help.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__help-button";
+  help.textContent = "?";
+  help.setAttribute("aria-label", `Explain ${spec.label}`);
+  help.setAttribute("aria-expanded", "false");
+  help.title = `Explain ${spec.label}`;
+  const explanation = document.createElement("div");
+  explanation.className = "foss-earth-parameter__help";
+  explanation.id = `foss-earth-parameter-help-${++helpCount}`;
+  explanation.setAttribute("role", "tooltip");
+  explanation.hidden = true;
+  const nativePopover = typeof explanation.showPopover === "function" && typeof explanation.hidePopover === "function";
+  if (nativePopover) explanation.setAttribute("popover", "manual");
+  help.setAttribute("aria-controls", explanation.id);
+  const description = document.createElement("p");
+  description.className = "foss-earth-parameter-row__description";
+  description.textContent = spec.description;
+  const meta = document.createElement("p");
+  meta.className = "foss-earth-parameter-row__meta";
+  const code = document.createElement("code");
+  code.className = "foss-earth-parameter-row__id";
+  code.textContent = spec.id;
+  explanation.append(description, meta);
+  const note = control.element.querySelector<HTMLElement>(".foss-earth-parameter__note");
+  if (note) explanation.append(note);
+  explanation.append(code);
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__reset";
+  reset.title = `Reset ${spec.label} to its default`;
+  reset.setAttribute("aria-label", `Reset ${spec.label}`);
+  reset.append(createResetIcon());
+  const url = settings.sourceUrl(spec.id);
+  const source = document.createElement(url ? "a" : "span");
+  source.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter-row__source";
+  source.title = `The code that reads ${spec.id}: ${spec.source}.${url ? " Opens in a new tab." : ""}`;
+  source.setAttribute("aria-label", `Source for ${spec.label}: ${spec.source}${url ? ", opens in a new tab" : ""}`);
+  source.append(createExternalLinkIcon());
+  if (source instanceof HTMLAnchorElement && url) {
+    source.href = url;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+  }
+  actions.append(help, reset, source);
+  let header = control.element.querySelector<HTMLElement>(".foss-earth-parameter__header");
+  const heading = control.element.querySelector<HTMLElement>(".foss-earth-choices__heading");
+  if (!header && heading) {
+    header = document.createElement("div");
+    header.className = "foss-earth-parameter__header";
+    heading.before(header);
+    header.append(heading);
+  }
+  (header ?? control.element).append(actions);
+  control.element.append(explanation);
+  const updateActions = (): void => {
+    const state = settings.inspect(spec.id);
+    const value = spec.sensitive ? (state.value ? "set" : "not set") : formatValue(spec, state.value, state.choices);
+    const defaultValue = spec.sensitive ? (state.defaultValue ? "set" : "none") : formatValue(spec, state.defaultValue, state.choices);
+    meta.textContent = `Now ${value} (${describeProvenance(state)}). ${sentence(`Default ${defaultValue}: ${state.defaultDerivedFrom}`)}${spec.appliesLive ? "" : " Applies on the next start."}`;
+    reset.disabled = state.layers.saved === undefined && state.layers.url === undefined;
+  };
+  const position = (): void => {
+    const anchor = help.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft ?? 0;
+    const top = viewport?.offsetTop ?? 0;
+    const width = viewport?.width ?? window.innerWidth;
+    const height = viewport?.height ?? window.innerHeight;
+    explanation.style.maxWidth = `${Math.max(0, width - 16)}px`;
+    explanation.style.maxHeight = `${Math.max(0, height - 16)}px`;
+    const box = explanation.getBoundingClientRect();
+    explanation.style.left = `${Math.max(left + 8, Math.min(anchor.left, left + width - box.width - 8))}px`;
+    explanation.style.top = `${Math.max(top + 8, Math.min(anchor.bottom + 6, top + height - box.height - 8))}px`;
+  };
+  const close = (): void => {
+    if (explanation.hidden) return;
+    if (nativePopover && explanation.matches(":popover-open")) explanation.hidePopover();
+    explanation.hidden = true;
+    if (!nativePopover) control.element.append(explanation);
+    help.setAttribute("aria-expanded", "false");
+    help.removeAttribute("aria-describedby");
+    document.removeEventListener("pointerdown", onOutside);
+    document.removeEventListener("keydown", onKey, true);
+    document.removeEventListener("scroll", position, true);
+    window.removeEventListener("resize", position);
+    window.visualViewport?.removeEventListener("resize", position);
+    if (closeOpenHelp === close) closeOpenHelp = null;
+  };
+  const open = (): void => {
+    closeOpenHelp?.();
+    updateActions();
+    if (!nativePopover) document.body.append(explanation);
+    explanation.hidden = false;
+    if (nativePopover) explanation.showPopover();
+    help.setAttribute("aria-expanded", "true");
+    help.setAttribute("aria-describedby", explanation.id);
+    closeOpenHelp = close;
+    position();
+    document.addEventListener("pointerdown", onOutside);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("scroll", position, true);
+    window.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("resize", position);
+  };
+  const onHelp = (): void => { if (explanation.hidden) open(); else close(); };
+  const onOutside = (event: PointerEvent): void => {
+    if (event.target instanceof Node && !help.contains(event.target) && !explanation.contains(event.target)) close();
+  };
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") { close(); event.preventDefault(); event.stopPropagation(); }
+  };
+  const onPopoverToggle = (): void => { if (nativePopover && !explanation.matches(":popover-open") && !explanation.hidden) close(); };
+  const onReset = (): void => { settings.reset(spec.id); control.update(); updateActions(); };
+  help.addEventListener("click", onHelp);
+  reset.addEventListener("click", onReset);
+  explanation.addEventListener("toggle", onPopoverToggle);
+  note?.addEventListener("parameter-invalid", open);
+  updateActions();
+  return {
+    element: control.element,
+    update() { control.update(); updateActions(); },
+    destroy() {
+      close();
+      help.removeEventListener("click", onHelp);
+      reset.removeEventListener("click", onReset);
+      explanation.removeEventListener("toggle", onPopoverToggle);
+      note?.removeEventListener("parameter-invalid", open);
+      control.destroy();
+    },
+  };
 }
 
 function pill(type: "radio" | "checkbox", name: string, value: string, label: string): { element: HTMLLabelElement; input: HTMLInputElement; text: HTMLSpanElement } {
@@ -263,7 +422,7 @@ function createValueTrack(settings: SettingsRegistry, spec: ParameterSpec): Para
     const value = fromField(spec, field.value);
     if (value === null) { update(); return; }
     const result = settings.set(spec.id, value);
-    if (!result.ok) setNote(note, result.reason);
+    if (!result.ok) setNote(note, result.reason, true);
     else update();
   };
   field.addEventListener("change", onField);
@@ -400,7 +559,7 @@ function createTextField(settings: SettingsRegistry, spec: ParameterSpec): Param
   const start = settings.get(spec.id);
   const onSave = (): void => {
     const result = settings.set(spec.id, input.value.trim());
-    if (!result.ok) { setNote(note, result.reason); return; }
+    if (!result.ok) { setNote(note, result.reason, true); return; }
     if (spec.sensitive) input.value = "";
     update();
   };
@@ -450,5 +609,5 @@ export function createParameterControl(settings: SettingsRegistry, id: string): 
     case "range": control = createRangeTrack(settings, spec); break;
     case "text": control = createTextField(settings, spec); break;
   }
-  return control;
+  return withParameterActions(settings, spec, control);
 }

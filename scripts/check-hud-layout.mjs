@@ -25,6 +25,9 @@ import { createHudBar } from ${JSON.stringify(path.join(root, "src/shell/hudBar.
 import { fitHudBar } from ${JSON.stringify(path.join(root, "src/shell/hudBarFit.ts"))};
 import { createMapSourceHud } from ${JSON.stringify(path.join(root, "src/shell/mapSourceHud.ts"))};
 import { createSceneHud } from ${JSON.stringify(path.join(root, "src/shell/scenesPanel.ts"))};
+import { createSettingsRegistry } from ${JSON.stringify(path.join(root, "src/settings/registry.ts"))};
+import { INTERFACE_PARAMETERS } from ${JSON.stringify(path.join(root, "src/settings/catalogue/interface.ts"))};
+import { createParameterSection } from ${JSON.stringify(path.join(root, "src/shell/settings/parameterSection.ts"))};
 import ${JSON.stringify(path.join(root, "src/styles/base.css"))};
 import ${JSON.stringify(path.join(root, "src/styles/hud.css"))};
 
@@ -50,7 +53,7 @@ const metric = (id: string, text: string) => {
   performance.append(element);
   return element;
 };
-const fps = metric("fps", "60 FPS");
+const fps = metric("fps", "60fps");
 const memory = metric("memory", "GPU memory 256 MiB");
 memory.hidden = true;
 const elements = new Map([
@@ -92,14 +95,23 @@ const scene = createSceneHud({
 const descriptors = () => [...elements].map(([id, element]) => ({
   element,
   priority: priorities.get(id)!,
+  reserveSpace: priorities.get(id)! <= 2,
   keepVisible: id === "north" || choices.get(id) === "show",
   onFit: (visible: boolean) => { element.dataset.fitVisible = String(visible); },
 }));
 const fit = fitHudBar(bar.element, end, descriptors);
+const settings = createSettingsRegistry({ storage: null, sourceBase: "https://example.invalid/blob/main/" });
+settings.register(INTERFACE_PARAMETERS.filter(spec => spec.id === "interface.toolbar.position"));
+const section = createParameterSection(settings, { tab: "interface", section: "toolbar" });
+section.element.id = "settingsFixture";
+section.element.hidden = true;
+section.element.style.display = "none";
+section.element.style.margin = "16px";
+document.getElementById("root")!.append(section.element);
 let resets = 0;
 elements.get("north")!.addEventListener("click", () => { resets++; });
 (window as any).hudFixture = {
-  bar, end, elements, priorities, choices, descriptors, fit,
+  bar, end, elements, priorities, choices, descriptors, fit, section, settings,
   get resets() { return resets; },
   choice(id: string, value: "auto" | "show" | "hide") {
     choices.set(id, value);
@@ -111,7 +123,7 @@ elements.get("north")!.addEventListener("click", () => { resets++; });
   panorama(text: string | null) {
     sceneListener({ loading: null, errors: [], status: {
       phase: text === null ? "overview" : "immersive",
-      credits: text === null ? [] : [{ assetId: "fixture", text, license: "CC0", url: "https://example.invalid/credit" }],
+      credits: text === null ? [] : [{ assetId: "fixture", text, url: "https://example.invalid/credit" }],
     } });
     fit.update();
   },
@@ -156,10 +168,14 @@ async function settle() {
   }));
 }
 
-async function load(width) {
+async function load(width, legacyHelp = false) {
   await page.goto("about:blank");
   await page.setViewportSize({ width, height: 800 });
   await page.setContent(html);
+  if (legacyHelp) await page.evaluate(() => {
+    Object.defineProperty(HTMLElement.prototype, "showPopover", { value: undefined, configurable: true });
+    Object.defineProperty(HTMLElement.prototype, "hidePopover", { value: undefined, configurable: true });
+  });
   await page.addScriptTag({ content: script });
   await page.waitForFunction(() => window.hudFixture?.bar.element.classList.contains("hud-bar--fitted"));
   await settle();
@@ -231,6 +247,11 @@ function checkGeometry(label, result, { oneRow = true, priority = true } = {}) {
     }
   }
   if (oneRow) {
+    for (const id of ["help", "fps"]) {
+      if (!result.items.find(item => item.id === id)?.hidden) {
+        assert(toolbar.some(item => item.id === id), `Core control ${id} must remain visible. ${detail}`);
+      }
+    }
     const centers = all.map(item => (item.top + item.bottom) / 2);
     assert(Math.max(...centers) - Math.min(...centers) <= 0.5, `Defaults must occupy one row. ${detail}`);
     const ordered = [...toolbar].sort((a, b) => a.left - b.left);
@@ -308,6 +329,11 @@ try {
   assert(ids(await check("automatic renderer visibility restored")).includes("renderer"));
 
   await load(375);
+  await page.evaluate(() => window.hudFixture.choice("position", "show"));
+  const pinnedPosition = await check("only position manually enabled", { oneRow: false });
+  assert.deepEqual(ids(pinnedPosition), ["north", "help", "fps", "position"],
+    "A manually enabled position must wrap without removing Help or FPS");
+  await load(375);
   const defaultManual = await check("before manually enabling extras");
   const forced = ["help", "fps", "renderer", "input", "theme", "settings", "position", "memory"];
   await page.evaluate(items => items.forEach(id => window.hudFixture.choice(id, "show")), forced);
@@ -321,6 +347,8 @@ try {
 
   for (const width of [320, 375, 390, 414, 768, 1280]) {
     await load(width);
+    await page.evaluate(() => window.hudFixture.panorama("© Regents of the University of Minnesota"));
+    await check(`UMN panorama attribution at ${width}`);
     await page.evaluate(() => window.hudFixture.panorama("Panorama photograph credited to an institution with a deliberately very long attribution name ".repeat(10)));
     const panorama = await check(`long panorama attribution at ${width}`);
     assert.equal(panorama.right.length, 1, "The panorama credit must replace map source and detail");
@@ -333,6 +361,83 @@ try {
     const returned = await check(`map restored after panorama at ${width}`);
     assert.equal(returned.right.length, 2, "Map detail and source must return when leaving the panorama");
   }
+
+  for (const width of [320, 375, 390, 1280]) {
+    await load(width);
+    await page.evaluate(() => {
+      window.hudFixture.section.element.hidden = false;
+      window.hudFixture.section.element.style.removeProperty("display");
+    });
+    const row = page.locator('#settingsFixture .foss-earth-parameter-section__main [data-parameter="interface.toolbar.position"]');
+    const input = row.locator('input[type="checkbox"]');
+    const help = row.getByRole("button", { name: "Explain Camera position", exact: true });
+    const reset = row.getByRole("button", { name: "Reset Camera position", exact: true });
+    const tooltip = row.locator('.foss-earth-parameter__help');
+    const layout = await row.evaluate(element => {
+      const parts = [element.querySelector('label'), ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
+      return parts.map(part => {
+        const box = part.getBoundingClientRect();
+        return { left: box.left, right: box.right, center: (box.top + box.bottom) / 2, text: part.textContent };
+      });
+    });
+    assert.equal(layout.length, 4, "Checkbox, help, reset and source must be four compact items");
+    assert(Math.max(...layout.map(part => part.center)) - Math.min(...layout.map(part => part.center)) < 0.5,
+      `Checkbox accessories must be on one row at ${width}px`);
+    assert(layout.every(part => part.left >= 16 && part.right <= width - 16), "Checkbox row must fit its panel");
+    assert.equal(layout[2].text, "", "Reset must show only its icon");
+    assert.equal(layout[3].text, "", "Source must show only its icon");
+    assert.equal(await input.isChecked(), true, "Camera position must start enabled");
+    assert.equal(await tooltip.isVisible(), false, "Explanation must start hidden");
+    await help.click();
+    assert.equal(await tooltip.isVisible(), true, "Clicking ? must open the explanation");
+    assert((await tooltip.textContent()).includes("latitude, longitude"), "Help must explain the control");
+    const box = await tooltip.boundingBox();
+    assert(box.x >= 0 && box.x + box.width <= width, "Tooltip must stay within the phone viewport");
+    await help.click();
+    assert.equal(await tooltip.isVisible(), false, "Clicking ? again must close the explanation");
+    await help.click();
+    await page.keyboard.press("Escape");
+    assert.equal(await tooltip.isVisible(), false, "Escape must close the explanation");
+    await help.click();
+    await page.getByRole("button", { name: "Reset heading", exact: true }).click();
+    assert.equal(await tooltip.isVisible(), false, "Clicking outside must close the explanation");
+    await input.uncheck();
+    assert.equal(await reset.isEnabled(), true, "An explicit choice must be resettable");
+    await reset.click();
+    assert.equal(await input.isChecked(), true, "Reset must restore the enabled default");
+    await page.locator('#settingsFixture').getByLabel("Show all parameters", { exact: true }).check();
+    const expanded = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.position"]');
+    assert.equal(await expanded.locator('.foss-earth-parameter__actions > *').count(), 3,
+      "Show all must reuse one set of help/reset/source actions");
+    console.log(`Passed compact checkbox row and tooltip check at ${width}px.`);
+  }
+
+  await load(375, true);
+  await page.evaluate(() => {
+    const dock = document.createElement("div");
+    dock.style.cssText = "position:absolute;left:32px;top:64px;width:311px;height:120px;overflow:hidden;backdrop-filter:blur(8px)";
+    document.getElementById("root").append(dock);
+    const section = window.hudFixture.section.element;
+    section.hidden = false;
+    section.style.removeProperty("display");
+    dock.append(section);
+  });
+  const fallbackHelp = page.locator('#settingsFixture .foss-earth-parameter-section__main')
+    .getByRole("button", { name: "Explain Camera position", exact: true });
+  const fallbackId = await fallbackHelp.getAttribute("aria-controls");
+  const fallbackTooltip = page.locator(`#${fallbackId}`);
+  await fallbackHelp.click();
+  assert.equal(await fallbackTooltip.isVisible(), true, "Fallback explanation must open without native popovers");
+  assert.equal(await fallbackTooltip.evaluate(element => element.parentElement === document.body), true,
+    "Fallback tooltip must escape its clipped dock panel");
+  const fallbackBox = await fallbackTooltip.boundingBox();
+  assert(fallbackBox.x >= 0 && fallbackBox.x + fallbackBox.width <= 375 && fallbackBox.y >= 0,
+    "Fallback tooltip must use viewport coordinates");
+  await page.keyboard.press("Escape");
+  assert.equal(await fallbackTooltip.isVisible(), false, "Fallback Escape must close help");
+  assert.equal(await fallbackTooltip.evaluate(element => element.parentElement.dataset.parameter), "interface.toolbar.position",
+    "Closing fallback help must restore it to its control");
+  console.log("Passed fallback explanation inside a filtered, clipped dock panel.");
 
   assert.deepEqual(pageErrors, [], "Fixture must not emit browser errors");
   assert.deepEqual(networkRequests, [], "The fixture must not request any network resources");

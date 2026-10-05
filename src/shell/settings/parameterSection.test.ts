@@ -51,6 +51,93 @@ describe("parameter section", () => {
     expect(control("t.hidden")).toBeNull();
   });
 
+  it("puts help, icon reset and icon source beside each main checkbox", () => {
+    const { settings, control } = setup();
+    const flag = control("t.flag");
+    const actions = flag.querySelector(".foss-earth-parameter__actions")!;
+    expect([...actions.children].map(item => item.tagName)).toEqual(["BUTTON", "BUTTON", "A"]);
+    const help = actions.querySelector<HTMLButtonElement>('[aria-label="Explain Flag"]')!;
+    const reset = actions.querySelector<HTMLButtonElement>('[aria-label="Reset Flag"]')!;
+    expect(reset.textContent).toBe("");
+    expect(reset.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    const source = actions.querySelector<HTMLAnchorElement>("a")!;
+    expect(source.textContent).toBe("");
+    expect(source.href).toBe("https://example.test/blob/main/src/test.ts");
+    expect(source.getAttribute("aria-label")).toContain("src/test.ts");
+    expect(source.title).toContain("The code that reads t.flag");
+    expect(help.textContent).toBe("?");
+    expect(reset.disabled).toBe(true);
+    input(flag, "input").click();
+    expect(reset.disabled).toBe(false);
+    reset.click();
+    expect(settings.get("t.flag")).toBe(false);
+    expect(reset.disabled).toBe(true);
+  });
+
+  it("shows explanation and defaults only on help, closing on re-click, Escape or outside", () => {
+    const { settings, section, control } = setup();
+    const flag = control("t.flag");
+    const help = flag.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!;
+    const explanation = flag.querySelector<HTMLElement>('[role="tooltip"]')!;
+    expect(explanation.hidden).toBe(true);
+    expect(help.getAttribute("aria-expanded")).toBe("false");
+    settings.force("t.flag", true, "a test needs it");
+    help.click();
+    expect(explanation.hidden).toBe(false);
+    expect(explanation.textContent).toContain("A switch.");
+    expect(explanation.textContent).toContain("Now on (set by the app: a test needs it)");
+    expect(explanation.textContent).toContain("Default off: Chosen for tests.");
+    expect(explanation.textContent).toContain("t.flag");
+    expect(help.getAttribute("aria-describedby")).toBe(explanation.id);
+    help.click();
+    expect(explanation.hidden).toBe(true);
+    help.click();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(explanation.hidden).toBe(true);
+    expect(help.hasAttribute("aria-describedby")).toBe(false);
+    help.click();
+    document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    expect(explanation.hidden).toBe(true);
+    help.click();
+    control("t.mode").querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!.click();
+    expect(explanation.hidden).toBe(true);
+    help.click();
+    section.destroy();
+    expect(explanation.hidden).toBe(true);
+  });
+
+  it("portals fallback help beyond clipped panels and restores it on close or destroy", () => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover");
+    Object.defineProperty(HTMLElement.prototype, "showPopover", { configurable: true, value: undefined });
+    try {
+      const { settings, section, control } = setup();
+      const flag = control("t.flag");
+      const help = flag.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!;
+      const explanation = flag.querySelector<HTMLElement>('[role="tooltip"]')!;
+      const ancestorKey = vi.fn();
+      section.element.addEventListener("keydown", ancestorKey);
+      help.click();
+      expect(explanation.parentElement).toBe(document.body);
+      settings.set("t.flag", true);
+      expect(explanation.textContent).toContain("Now on (set by you)");
+      help.click();
+      expect(explanation.parentElement).toBe(flag);
+      help.click();
+      help.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      expect(ancestorKey).not.toHaveBeenCalled();
+      expect(explanation.hidden).toBe(true);
+      expect(explanation.parentElement).toBe(flag);
+      help.click();
+      section.destroy();
+      expect(explanation.hidden).toBe(true);
+      expect(explanation.parentElement).toBe(flag);
+      expect(document.body.contains(explanation)).toBe(false);
+    } finally {
+      if (original) Object.defineProperty(HTMLElement.prototype, "showPopover", original);
+      else Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+    }
+  });
+
   it("writes each kind of control to the registry", () => {
     const { settings, control } = setup();
     input(control("t.flag"), "input").click();
@@ -70,7 +157,8 @@ describe("parameter section", () => {
     field.value = "5000";
     field.dispatchEvent(new Event("change"));
     expect(settings.get("t.budget")).toBe(300);
-    expect(control("t.budget").querySelector(".foss-earth-parameter__note")!.textContent).toMatch(/outside 32 MiB to 1,024 MiB/);
+    const helpId = control("t.budget").querySelector(".foss-earth-parameter__help-button")!.getAttribute("aria-controls")!;
+    expect(document.getElementById(helpId)!.querySelector(".foss-earth-parameter__note")!.textContent).toMatch(/outside 32 MiB to 1,024 MiB/);
 
     // A named value hides the track; "Value" brings the number back.
     expect(input(control("t.cap"), 'input[value="off"]').checked).toBe(true);
@@ -151,7 +239,7 @@ describe("parameter section", () => {
     expect(hidden.querySelector(".foss-earth-parameter-row__meta")!.textContent).toBe("Now 2 ms (default). Default 2 ms: Chosen for tests.");
     const link = hidden.querySelector<HTMLAnchorElement>(".foss-earth-parameter-row__source")!;
     expect(link.href).toBe("https://example.test/blob/main/src/test.ts");
-    const reset = hidden.querySelector<HTMLButtonElement>("button")!;
+    const reset = hidden.querySelector<HTMLButtonElement>(".foss-earth-parameter__reset")!;
     expect(reset.disabled).toBe(true);
     settings.set("t.hidden", 5);
     expect(hidden.querySelector(".foss-earth-parameter-row__meta")!.textContent).toMatch(/^Now 5 ms \(set by you\)\./);

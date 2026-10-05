@@ -131,9 +131,14 @@ Hide the lowest-priority default items first until the row fits, and bring
 them back in priority order when space returns. Fitting does not change the
 person's saved choices. An item explicitly hidden stays hidden; an item
 explicitly enabled stays shown, even when the person's choices need another
-row. The detail rail and attribution chip reserve their actual width before
-the default toolbar items are fitted. Their space must not be spent on a
-lower-priority shortcut.
+row. Reserve room for North, Help and FPS first, shortening long attribution
+text inside its chip when needed. Then measure the detail rail and attribution
+chip and fit the remaining defaults into the space left over. The credit link
+and detail rail stay accessible beside the core controls.
+
+Enabled defaults stay checked in their settings even when their chips do not
+fit, including Camera position. Fitting changes only what is drawn; it does
+not turn a setting off or replace its default.
 
 ## One home for every control
 
@@ -174,9 +179,14 @@ Every setting lives in exactly one place, a section of a tab.
   implementation: a switch is a pill with a checkbox; a choice is a heading and
   pills; a number is a value track with its readout as a field, the default
   ticked and any named values ("Off", "Normal") as pills; a range is a range
-  track; text is a field, never showing a secret. A note under a control says
-  what limits it, where its value came from when that is not the user, and
-  when it applies only after a restart.
+  track; text is a field, never showing a secret. Beside each control are a
+  `?` button, a reset icon and a source-link icon, at their own widths in the
+  same wrapping row. `?` opens an explanation tooltip with the description,
+  default and its reason, current value and provenance, parameter ID, limits
+  and restart notes. It closes on another click, Escape or a click outside.
+  The tooltip contains explanation only; the setting keeps its single home.
+  An invalid edit opens its explanation so the rejection is visible. Reset
+  and source icons retain accessible names; source opens the code in a new tab.
 - A range is one track with two thumbs, never two sliders. Choosing an acceptable
   part of one continuous scale is one control: the thumbs are its ends, the part
   outside them stays visible but dimmed, and a default or a host's marker (such

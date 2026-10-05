@@ -1,8 +1,6 @@
 import type { SettingsRegistry } from "../../settings/registry";
-import type { ParameterState, SettingsFilter } from "../../settings/types";
-import { formatValue } from "../../settings/values";
-import { createExternalLinkIcon } from "../externalLinkIcon";
-import { createParameterControl, describeProvenance, sentence, type ParameterControlHandle } from "./controls";
+import type { SettingsFilter } from "../../settings/types";
+import { createParameterControl, type ParameterControlHandle } from "./controls";
 
 export interface ParameterListHandle {
   element: HTMLElement;
@@ -10,72 +8,22 @@ export interface ParameterListHandle {
   destroy(): void;
 }
 
-function defaultText(state: ParameterState): string {
-  const value = state.spec.sensitive ? (state.defaultValue ? "set" : "none") : formatValue(state.spec, state.defaultValue, state.choices);
-  return sentence(`Default ${value}: ${state.defaultDerivedFrom}`);
-}
-
 interface Row {
   element: HTMLElement;
   control: ParameterControlHandle;
-  meta: HTMLElement;
-  reset: HTMLButtonElement;
   update(): void;
 }
 
 function createRow(settings: SettingsRegistry, id: string): Row {
-  const spec = settings.spec(id)!;
   const element = document.createElement("div");
   element.className = "foss-earth-parameter-row";
   element.dataset.parameter = id;
   const control = createParameterControl(settings, id);
-  const description = document.createElement("p");
-  description.className = "foss-earth-parameter-row__description";
-  description.textContent = spec.description;
-  const meta = document.createElement("p");
-  meta.className = "foss-earth-parameter-row__meta";
-  const actions = document.createElement("div");
-  actions.className = "foss-earth-parameter-row__actions";
-  const reset = document.createElement("button");
-  reset.type = "button";
-  reset.className = "foss-earth-choice foss-earth-parameter__action";
-  reset.textContent = "Reset";
-  reset.setAttribute("aria-label", `Reset ${spec.label}`);
-  const onReset = (): void => { settings.reset(id); };
-  reset.addEventListener("click", onReset);
-  actions.append(reset);
-  const url = settings.sourceUrl(id);
-  const path = document.createElement(url ? "a" : "span");
-  path.className = "foss-earth-parameter-row__source";
-  path.textContent = spec.source;
-  if (path instanceof HTMLAnchorElement && url) {
-    path.href = url;
-    path.target = "_blank";
-    path.rel = "noopener noreferrer";
-    path.title = `The code that reads ${id}. Opens in a new tab.`;
-    path.append(createExternalLinkIcon());
-  }
-  actions.append(path);
-  const code = document.createElement("code");
-  code.className = "foss-earth-parameter-row__id";
-  code.textContent = id;
-  actions.append(code);
-  element.append(control.element, description, meta, actions);
-  const update = (): void => {
-    const state = settings.inspect(id);
-    control.update();
-    const value = spec.sensitive ? (state.value ? "set" : "not set") : formatValue(spec, state.value, state.choices);
-    meta.textContent = `Now ${value} (${describeProvenance(state)}). ${defaultText(state)}${spec.appliesLive ? "" : " Applies on the next start."}`;
-    const resettable = state.layers.saved !== undefined || state.layers.url !== undefined;
-    reset.disabled = !resettable;
-  };
-  update();
+  element.append(control.element);
   return {
     element,
     control,
-    meta,
-    reset,
-    update,
+    update: control.update,
   };
 }
 
