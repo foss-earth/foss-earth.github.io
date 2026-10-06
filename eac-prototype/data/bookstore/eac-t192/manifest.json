@@ -1,0 +1,248 @@
+{
+ "format": "foss-earth.progressive-panorama",
+ "version": 1,
+ "panorama": {
+  "id": "bookstore",
+  "sourceSha256": "55d2b1ea46e27f251422859051ce98662e7d963269bc56d6d4de821a7f42bfdd",
+  "sourceWidth": 6144,
+  "sourceHeight": 3072
+ },
+ "projection": "eac",
+ "axes": "image-local, right-handed: X right, Y forward, Z up",
+ "faces": [
+  {
+   "name": "px",
+   "forward": [
+    1,
+    0,
+    0
+   ],
+   "right": [
+    0,
+    -1,
+    0
+   ],
+   "up": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "nx",
+   "forward": [
+    -1,
+    0,
+    0
+   ],
+   "right": [
+    0,
+    1,
+    0
+   ],
+   "up": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "py",
+   "forward": [
+    0,
+    1,
+    0
+   ],
+   "right": [
+    1,
+    0,
+    0
+   ],
+   "up": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "ny",
+   "forward": [
+    0,
+    -1,
+    0
+   ],
+   "right": [
+    -1,
+    0,
+    0
+   ],
+   "up": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "pz",
+   "forward": [
+    0,
+    0,
+    1
+   ],
+   "right": [
+    1,
+    0,
+    0
+   ],
+   "up": [
+    0,
+    -1,
+    0
+   ]
+  },
+  {
+   "name": "nz",
+   "forward": [
+    0,
+    0,
+    -1
+   ],
+   "right": [
+    1,
+    0,
+    0
+   ],
+   "up": [
+    0,
+    1,
+    0
+   ]
+  }
+ ],
+ "faceCoordinates": "u runs along `right`, v against `up` (downward), both 0–1 across the face; texel (i, j) of an F-texel face is centred at ((i + ½)/F, (j + ½)/F)",
+ "warp": "equi-angular: a face position s in −1…1 is the direction forward + tan(s·π/4)·right (and likewise for up)",
+ "tile": {
+  "logical": 192,
+  "gutter": 1,
+  "stored": 194
+ },
+ "gutter": "the face's own coordinates continued past its edge: inside a face the neighbouring tile's texels, across a face edge or corner the image resampled there",
+ "maxLevel": 3,
+ "levels": [
+  {
+   "level": 0,
+   "faceSize": 192,
+   "tilesPerSide": 1,
+   "tiles": 6,
+   "replacementBytes": 38857,
+   "residualBytes": null,
+   "replacementBytesWithoutGutter": 36950,
+   "largestReplacementBytes": 9195
+  },
+  {
+   "level": 1,
+   "faceSize": 384,
+   "tilesPerSide": 2,
+   "tiles": 24,
+   "replacementBytes": 128050,
+   "residualBytes": 108294,
+   "replacementBytesWithoutGutter": 119886,
+   "largestReplacementBytes": 8241
+  },
+  {
+   "level": 2,
+   "faceSize": 768,
+   "tilesPerSide": 4,
+   "tiles": 96,
+   "replacementBytes": 384846,
+   "residualBytes": 322674,
+   "replacementBytesWithoutGutter": 360016,
+   "largestReplacementBytes": 8489
+  },
+  {
+   "level": 3,
+   "faceSize": 1536,
+   "tilesPerSide": 8,
+   "tiles": 384,
+   "replacementBytes": 1106925,
+   "residualBytes": 878169,
+   "replacementBytesWithoutGutter": 1040375,
+   "largestReplacementBytes": 7582
+  }
+ ],
+ "levelNumbering": "level 0 is one tile per face; level l has 2^l × 2^l tiles per face and faces of logical·2^l texels",
+ "codec": {
+  "mimeType": "image/jpeg",
+  "encoder": "libjpeg-turbo version 3.2.0",
+  "options": "-quality 80 -optimize -sample 2x2",
+  "colour": "8-bit sRGB, opaque"
+ },
+ "paths": {
+  "replacement": "t/{face}/{level}/{x}/{y}.jpg",
+  "residual": "r/{face}/{level}/{x}/{y}.jpg",
+  "tileBytes": "tiles.json"
+ },
+ "bootstrap": [
+  {
+   "faceSize": 24,
+   "gutter": 1,
+   "width": 78,
+   "height": 52,
+   "bytes": 1503,
+   "url": "boot-24.jpg"
+  },
+  {
+   "faceSize": 48,
+   "gutter": 1,
+   "width": 150,
+   "height": 100,
+   "bytes": 3952,
+   "url": "boot-48.jpg"
+  },
+  {
+   "faceSize": 96,
+   "gutter": 1,
+   "width": 294,
+   "height": 196,
+   "bytes": 11751,
+   "url": "boot-96.jpg"
+  },
+  {
+   "faceSize": 192,
+   "gutter": 1,
+   "width": 582,
+   "height": 388,
+   "bytes": 37347,
+   "url": "boot-192.jpg"
+  }
+ ],
+ "reconstruction": "bilinear between texel centres, in sRGB-encoded bytes (no linear-light filtering), within one tile's stored texels; no mipmaps: the level is chosen per tile",
+ "residual": {
+  "appliesTo": "levels 1 and up; a level-0 tile is always a replacement tile",
+  "prediction": "the parent's reconstructed stored tile enlarged ×2 bilinearly: (Σ w·p + 8) >> 4 with weights 9, 3, 3, 1 on 8-bit sRGB bytes, each channel alone",
+  "stored": "clamp(target − prediction + 128, 0, 255) per channel, then encoded like any tile",
+  "child": "clamp(prediction + decoded − 128, 0, 255) per channel",
+  "parentConvention": "the parent as decoded and reconstructed, never the original; the encoder decodes with libjpeg-turbo's djpeg",
+  "clippedShare": 5.271885918075736e-8
+ },
+ "totals": {
+  "tiles": 510,
+  "replacementBytes": 1658678,
+  "residualBytes": 1347994,
+  "replacementBytesWithoutGutter": 1557227
+ },
+ "generated": {
+  "generatedAt": "2026-10-02T22:40:01.422Z",
+  "commit": "dc1feb4979eca0ce00884a7fc1323c4e51e9525f",
+  "workingTreeDirty": true,
+  "node": "v26.9.0",
+  "v8": "14.6.202.34-node.32",
+  "platform": "Darwin 27.0.0 arm64",
+  "os": "27.0",
+  "cpu": "Apple M5",
+  "cores": 10,
+  "memoryGiB": 16,
+  "script": "benchmarks/eac-progressive-prototype/preprocess/build-dataset.mjs",
+  "resampling": "each texel the mean of its cell in linear light, 16 taps of the source (Phase 1 lib/field.mjs resample)"
+ }
+}
