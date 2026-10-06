@@ -86,9 +86,13 @@ describe("FOSS Earth's catalogue", () => {
     expect(settings.spec("interface.poiSpriteTuner")?.home).toMatchObject({ tab: "renderer", section: "performance" });
   });
 
-  it("keeps the priority editor off by default while retaining every item's editable priority", () => {
+  it("defaults priorities to Auto and pairs Custom fields with each item's visibility control", () => {
     const settings = getAppSettings();
     expect(settings.get(TOOLBAR_EDIT_PRIORITIES_ID)).toBe(false);
+    expect(settings.spec(TOOLBAR_EDIT_PRIORITIES_ID)).toMatchObject({ label: "Priorities", booleanControl: "auto-custom" });
+    expect(TOOLBAR_PRIORITIES.slice(0, 9).map(([item]) => item)).toEqual([
+      "north", "help", "inputMode", "fullscreen", "fps", "renderer", "position", "theme", "settings",
+    ]);
     expect(TOOLBAR_PRIORITIES.map(([item]) => item).sort()).toEqual([
       "north", ...TOOLBAR_BUTTONS.map(([button]) => button), ...PERFORMANCE_HUD_METRICS.map(([metric]) => metric),
     ].sort());
@@ -98,6 +102,13 @@ describe("FOSS Earth's catalogue", () => {
       expect(state.bounds, item).toEqual({ min: 0, max: 99 });
       expect(state.spec.step, item).toBe(1);
       expect(state.spec.visibleWhen, item).toEqual({ id: TOOLBAR_EDIT_PRIORITIES_ID, value: true });
+      if (item === "north") expect(state.spec.inlineWith).toBeUndefined();
+      else {
+        const paired = TOOLBAR_BUTTONS.some(([button]) => button === item)
+          ? `interface.toolbar.${item}` : `interface.performanceHud.${item}`;
+        expect(state.spec.inlineWith, item).toBe(paired);
+        expect(settings.spec(paired)?.home, item).toEqual(state.spec.home);
+      }
     }
     const renderer = toolbarPriorityParameterId("renderer");
     expect(settings.set(renderer, 1)).toEqual({ ok: true });

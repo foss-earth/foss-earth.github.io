@@ -33,6 +33,8 @@ async function run() {
   document.body.append(canvas);
   const webgl1 = new URLSearchParams(location.search).get("backend") === "webgl1";
   const engine = new Engine(canvas, false, { disableWebGL2Support: webgl1, preserveDrawingBuffer: true });
+  // Match the globe's reversed depth while testing the custom fragment-depth shaders.
+  engine.useReverseDepthBuffer = true;
   const scene = new Scene(engine);
   scene.useRightHandedSystem = true;
   scene.clearColor = new Color4(0, 0, 0, 1);
@@ -150,6 +152,7 @@ async function run() {
     const info = gl.getExtension("WEBGL_debug_renderer_info");
     const report = {
       backend: `webgl${engine.webGLVersion}`, renderer: info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+      reverseDepth: engine.useReverseDepthBuffer,
       orbPixel, occluded, maxUploadedPerFrame, uploadAllowance: allowance,
       npotMipLevels: whole.levels, steadyFrames: renderCosts.length,
       cpuRenderP50Ms: costs[Math.floor(costs.length * 0.5)], cpuRenderP95Ms: costs[Math.floor(costs.length * 0.95)],

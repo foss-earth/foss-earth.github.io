@@ -37,6 +37,9 @@ export default defineConfig({
   base,
   test: {
     setupFiles: ['./src/test/setup.ts'],
+    // The real adapter's Babylon imports omit .js; resolve them as the app's
+    // bundler does so LOD integration tests exercise the installed renderer.
+    server: { deps: { inline: [/3d-tiles-renderer\//] } },
     // Scratch and app-managed worktrees hold other checkouts, whose tests are not this tree's.
     exclude: [...configDefaults.exclude, 'build/**', '.delta/**'],
   },

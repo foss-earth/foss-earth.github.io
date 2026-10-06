@@ -141,16 +141,29 @@ describe("map detail rail", () => {
     expect(tick.style.left).toBe("25%");
   });
 
-  it("shows the blue marker only when an app holds the renderer at another target", () => {
+  it("keeps the loaded-detail I-beam visible as Google tiles refine, independently of the requested target", () => {
     const { controller, rail } = google();
-    const marker = rail.element.querySelector<HTMLElement>(".map-detail-control__active-marker")!;
+    const marker = rail.element.querySelector<HTMLElement>(".map-detail-control__loaded-marker")!;
     expect(marker.hidden).toBe(true);
     const lease = controller.acquireRequirement(8);
-    expect(marker.hidden).toBe(false);
-    expect(marker.classList.contains("is-beyond-range")).toBe(true);
-    expect(rail.element.classList.contains("is-limited")).toBe(true);
-    lease.release();
+    // A finer request says nothing about the geometry that is already drawn.
     expect(marker.hidden).toBe(true);
+    lease.release();
+    for (const [loadedTarget, left] of [[4096, "100%"], [256, "50%"], [64, "25%"]] as const) {
+      controller.reportDelivery("google", { loadedTarget, pending: true, limits: ["loading"] });
+      expect(marker.hidden).toBe(false);
+      expect(marker.style.left).toBe(left);
+      expect(controller.getState()?.requestedTarget).toBe(64);
+    }
+    controller.reportDelivery("google", { loadedTarget: 64, pending: false, limits: [] });
+    expect(marker.hidden).toBe(false);
+    expect(rail.element.title).toContain("Loaded detail: 64 px");
+    controller.setSessionOverride(16);
+    expect(marker.style.left).toBe("25%");
+    controller.reportDelivery("google", { loadedTarget: Infinity, pending: true, limits: [] });
+    expect(marker.style.left).toBe("100%");
+    expect(marker.classList.contains("is-beyond-range")).toBe(true);
+    rail.destroy();
   });
 
   it("draws a host's marker on the rail only when the host asks, hollow while waived", () => {
@@ -163,6 +176,10 @@ describe("map detail rail", () => {
     expect(ticks()).toHaveLength(1);
     expect(ticks()[0].style.left).toBe("50%");
     expect(rail.element.title).toContain("Flight minimum: 256 px.");
+    const tick = ticks()[0];
+    controller.reportDelivery("google", { loadedTarget: 4096, pending: true, limits: ["loading"] });
+    controller.reportDelivery("google", { loadedTarget: 64, pending: false, limits: [] });
+    expect(ticks()[0]).toBe(tick);
     controller.setTrackMarker({ ...marker, onRail: true, hollow: true });
     expect(ticks()[0].classList.contains("is-hollow")).toBe(true);
     controller.removeTrackMarker("flight");
@@ -201,6 +218,37 @@ describe("map detail rail", () => {
     expect(slider.getAttribute("aria-valuetext")).toBe("one level finer than Normal");
     controller.reportDelivery("raster:usgs-imagery", { pending: true, limits: ["source"], effectiveTarget: null });
     expect(slider.getAttribute("aria-valuetext")).toBe("one level finer than Normal. Loading, limited by the map source.");
+    rail.destroy();
+  });
+
+  it("moves the loaded raster I-beam while the request and applied target stay unchanged", () => {
+    const controller = createMapDetailController({ storage: null });
+    controller.setActiveSource({ key: "raster:usgs-topo", availability: "ready" });
+    const rail = createMapDetailSlider({ controller });
+    const slider = rail.element.querySelector<HTMLInputElement>("input")!;
+    const marker = rail.element.querySelector<HTMLElement>(".map-detail-control__loaded-marker")!;
+
+    controller.reportDelivery("raster:usgs-topo", { pending: true, limits: ["loading"], activeTarget: 0, loadedTarget: -3, effectiveTarget: null });
+    expect(marker.hidden).toBe(false);
+    expect(marker.style.left).toBe("100%");
+    expect(slider.value).toBe("0");
+    expect(rail.element.title).toContain("Loaded detail: three levels coarser than Normal");
+    expect(rail.element.title).toContain("Imagery is still loading or limited.");
+    expect(slider.getAttribute("aria-valuetext")).toContain("Loaded detail: three levels coarser than Normal");
+
+    controller.reportDelivery("raster:usgs-topo", { pending: true, limits: ["source"], activeTarget: 0, loadedTarget: -1, effectiveTarget: null });
+    expect(marker.hidden).toBe(false);
+    expect(marker.style.left).toBe("50%");
+    expect(slider.value).toBe("0");
+
+    controller.reportDelivery("raster:usgs-topo", { pending: false, limits: [], activeTarget: 0, loadedTarget: 0, effectiveTarget: 0 });
+    expect(marker.hidden).toBe(false);
+    expect(marker.style.left).toBe("25%");
+    expect(rail.element.title).not.toContain("Imagery is still loading or limited.");
+    controller.setSessionOverride(1);
+    expect(marker.style.left).toBe("25%");
+    controller.reportDelivery("raster:usgs-topo", { pending: true, limits: [], activeTarget: 1, loadedTarget: null, effectiveTarget: null });
+    expect(marker.hidden).toBe(true);
     rail.destroy();
   });
 });

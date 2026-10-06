@@ -1,6 +1,6 @@
 import type { SettingsRegistry } from "../../settings/registry";
 import type { SettingsFilter } from "../../settings/types";
-import { createParameterControl, isParameterControlVisible, type ParameterControlHandle } from "./controls";
+import { createParameterControl, isStandaloneParameterControl, type ParameterControlHandle } from "./controls";
 
 export interface ParameterListHandle {
   element: HTMLElement;
@@ -29,7 +29,7 @@ function createRow(settings: SettingsRegistry, id: string): Row {
 
 /**
  * Every visible parameter of a section: its control, value, unit, default and what
- * that was derived from, where the value came from, a reset, and a link to the
+ * that was derived from, where the value came from, and a link to the
  * code that reads it. Nothing is reachable only through the URL or the console.
  */
 export function createParameterList(settings: SettingsRegistry, filter: SettingsFilter): ParameterListHandle {
@@ -37,7 +37,7 @@ export function createParameterList(settings: SettingsRegistry, filter: Settings
   element.className = "foss-earth-parameter-list";
   const rows = new Map<string, Row>();
   const sync = (): void => {
-    const ids = settings.list(filter).filter(spec => isParameterControlVisible(settings, spec)).map(spec => spec.id);
+    const ids = settings.list(filter).filter(spec => isStandaloneParameterControl(settings, spec)).map(spec => spec.id);
     for (const [id, row] of rows) {
       if (!ids.includes(id)) { row.control.destroy(); row.element.remove(); rows.delete(id); }
     }

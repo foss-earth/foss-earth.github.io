@@ -51,8 +51,10 @@ export {
   type SavePresetHandle,
 } from "./settings/presetsSection";
 export { connectMapDetailRuntime, type MapDetailRuntime } from "./connectMapDetailRuntime";
+export { connectMapDetailLog } from "./mapDetailLog";
 export { WindowOverlay, type WindowOverlayHandle, type WindowOverlayProps } from "./WindowOverlay";
 export { SectionsPanel, type PanelSection } from "./SectionsPanel";
+export { MeshInspectorPanel, type MeshInspectorPanelProps } from "./MeshInspectorPanel";
 export { createMapSourcePanel, type MapSourcePanelHandle, type MapSourcePanelOptions, type MapSourceStatus } from "./mapSourcePanel";
 export { createRendererPanel, getRendererLabel, type RendererPanelHandle, type RendererPanelOptions } from "./rendererPanel";
 export { createFrameBudgetPanel, type FrameBudgetPanelHandle, type FrameBudgetPanelOptions } from "./frameBudgetPanel";

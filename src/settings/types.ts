@@ -122,12 +122,16 @@ export interface ParameterSpec<T extends ParameterValue = ParameterValue> {
   description: string;
   unit: ParameterUnit;
   kind: ParameterKind;
+  /** A single slider for a choice with exactly two positions. */
+  choiceControl?: "two-position";
   /** number and range: the accepted values, which may depend on the device. */
   bounds?: (context: DeviceContext) => ParameterBounds;
   /** number and range: the control's step in the unit (or in log2 of it for a log2 scale). */
   step?: number;
   /** number without named values: use a compact field instead of the default value track. */
   numberControl?: "field";
+  /** boolean: false selects Auto and true selects Custom in a two-position control. */
+  booleanControl?: "auto-custom";
   /** number and range: how the control spaces values. */
   scale?: "linear" | "log2";
   /**
@@ -152,6 +156,8 @@ export interface ParameterSpec<T extends ParameterValue = ParameterValue> {
   home: ParameterHome;
   /** Show this control only while another parameter has this value; saved values remain active. */
   visibleWhen?: { id: string; value: ParameterValue };
+  /** Mount this control at the left of another parameter's control row instead of a separate row. */
+  inlineWith?: string;
   auto?: AutoSpec;
   /** False: the value takes effect on the next start, and the UI says so. */
   appliesLive: boolean;

@@ -275,16 +275,18 @@ describe("createGlobeApp smoke behavior", () => {
       expect.objectContaining({ googleApiKey: null }),
     );
     expect(root.querySelector(".map-source-hud .map-source-label")?.textContent).toBe("USGS Imagery Topo");
-    expect(Array.from(root.querySelector(".hud-bar")?.children ?? []).slice(0, 3).map((el) => el.id)).toEqual([
-      "northButton",
-      "helpButton",
-      "perfMetricsPill",
-    ]);
-    const hudChildren = Array.from(root.querySelector(".hud-bar")?.children ?? []);
-    const inputModeControl = root.querySelector("#inputModeButton")?.closest(".input-mode-control");
+    const inputModeControl = root.querySelector<HTMLElement>("#inputModeButton")?.closest<HTMLElement>(".input-mode-control");
     expect(inputModeControl).not.toBeNull();
-    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#themeButton") as Element) - 1);
-    expect(hudChildren.indexOf(inputModeControl as Element)).toBe(hudChildren.indexOf(root.querySelector("#rendererModePill") as Element) + 1);
+    expect([
+      root.querySelector<HTMLElement>("#northButton")!.style.order,
+      root.querySelector<HTMLElement>("#helpButton")!.style.order,
+      inputModeControl!.style.order,
+      root.querySelector<HTMLElement>("#fullscreenButton")!.style.order,
+      root.querySelector<HTMLElement>("#rendererModePill")!.style.order,
+      root.querySelector<HTMLElement>("#hudStatus")!.style.order,
+      root.querySelector<HTMLElement>("#themeButton")!.style.order,
+      root.querySelector<HTMLElement>("#settingsButton")!.style.order,
+    ]).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
     expect(root.querySelector("#settingsBuildLine")?.textContent).toMatch(
       /^Build: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
     );
@@ -587,55 +589,58 @@ describe("createGlobeApp smoke behavior", () => {
       mockState.frameCallback?.();
       await flush();
       const input = root.querySelector<HTMLElement>(".input-mode-control")!;
+      const settingsButton = root.querySelector<HTMLElement>("#settingsButton")!;
       const section = sectionElement(app.interfaceSections, "toolbar");
       document.body.append(section);
-      const on = hudChoice(section, "interface.toolbar.inputMode", "on");
-      const auto = hudChoice(section, "interface.toolbar.inputMode", "auto");
+      const on = hudChoice(section, "interface.toolbar.settings", "on");
+      const auto = hudChoice(section, "interface.toolbar.settings", "auto");
       expect(auto.checked).toBe(true);
       expect(hudChoice(section, "interface.toolbar.position", "auto").checked).toBe(true);
       expect(root.querySelector("#hudStatus")!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(settings.inspect("interface.toolbar.position").provenance).toBe("default");
-      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(settingsButton.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(root.querySelector("#themeButton")!.hasAttribute("data-hud-choice-hidden")).toBe(true);
 
-      hudChoice(section, "interface.toolbar.inputMode", "off").click();
+      hudChoice(section, "interface.toolbar.settings", "off").click();
       await flush();
-      expect(input.hasAttribute("data-hud-choice-hidden")).toBe(true);
-      settings.reset("interface.toolbar.inputMode");
+      expect(settingsButton.hasAttribute("data-hud-choice-hidden")).toBe(true);
+      settings.reset("interface.toolbar.settings");
       await flush();
-      expect(input.hasAttribute("data-hud-choice-hidden")).toBe(false);
-      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(settingsButton.hasAttribute("data-hud-choice-hidden")).toBe(false);
+      expect(settingsButton.hasAttribute("data-hud-overflow-hidden")).toBe(true);
 
       on.click();
       await flush();
-      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
-      expect(settings.inspect("interface.toolbar.inputMode").provenance).toBe("user");
-      expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.inputMode"]).toBe("on");
+      expect(settingsButton.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(settings.inspect("interface.toolbar.settings").provenance).toBe("user");
+      expect(JSON.parse(window.localStorage.getItem("foss-earth.settings.v1")!).values["interface.toolbar.settings"]).toBe("on");
       width = 180;
       window.dispatchEvent(new Event("resize"));
       await flush();
-      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(settingsButton.hasAttribute("data-hud-overflow-hidden")).toBe(false);
       auto.click();
       await flush();
-      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(settingsButton.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(auto.checked).toBe(true);
 
       width = 343; creditWidth = 500;
       window.dispatchEvent(new Event("resize"));
       await flush();
       expect(root.querySelector("#helpButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
       const fps = root.querySelector<HTMLElement>('[data-perf-metric="fps"]')!;
-      expect(fps.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(fps.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(settings.get("interface.performanceHud.fps")).toBe("auto");
       hudChoice(section, "interface.performanceHud.fps", "off").click();
       await flush();
       expect(root.querySelector('[data-perf-metric="fps"]')).toBeNull();
       settings.reset("interface.performanceHud.fps");
       await flush();
-      expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
 
-      // Priority editing is opt-in, but saved priorities remain effective when
-      // its editors are closed. Renderer now wins the space FPS had reserved.
+      // Custom priorities use the edited order. Auto restores the default
+      // order, retaining the custom values so they can be selected again.
       expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).toBeNull();
       settings.set("interface.toolbar.editPriorities", true);
       expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).not.toBeNull();
@@ -643,10 +648,19 @@ describe("createGlobeApp smoke behavior", () => {
       settings.set("interface.toolbar.priority.fps", 9);
       await flush();
       expect(root.querySelector("#rendererModePill")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       settings.set("interface.toolbar.editPriorities", false);
       expect(section.querySelector('[data-parameter="interface.toolbar.priority.renderer"]')).toBeNull();
       expect(settings.get("interface.toolbar.priority.renderer")).toBe(1);
+      await flush();
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(root.querySelector("#rendererModePill")!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      settings.set("interface.toolbar.editPriorities", true);
+      await flush();
+      expect(root.querySelector("#rendererModePill")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      expect(input.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      expect(root.querySelector('[data-perf-metric="fps"]')!.hasAttribute("data-hud-overflow-hidden")).toBe(true);
       settings.set("interface.toolbar.priority.north", 99);
       await flush();
       expect(root.querySelector("#northButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);

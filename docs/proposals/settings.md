@@ -167,15 +167,19 @@ Only a few control types are needed; each has one implementation in
   Off (switch icon). All toolbar indicators have their control in Interface →
   Toolbar. Auto fits by priority; On can wrap; Off hides. These are named values,
   with older saved booleans migrated to On or Off.
-- **Toolbar priorities** use compact numeric fields, revealed only while Edit
-  priorities is on. This toggle defaults off and controls visibility in both the
-  main section and Show all parameters; saved priorities still apply when hidden.
+- **Toolbar priorities** use an Auto / Custom slider, starting in Auto. Auto uses
+  the default order; Custom applies saved numbers and reveals a compact field at
+  the left of each existing visibility row, including under Show all parameters.
+  Returning to Auto hides the fields and retains the custom values for later.
+- **Theme** uses one two-position sun / moon slider in both views.
 - **Readings** beside a budget: the live value it bounds, in the same unit.
 
 Every section has a **Show all parameters** toggle. Off, it shows the main
 controls; on, it lists every parameter of the section in a paragraph grid.
-Main controls and this list use the same compact row: control, `?`, reset icon
-and source-link icon. The `?` tooltip holds the explanation, default and its
+Main controls and this list use the same compact row: optional priority field,
+control, `?`, label and source-link icon. Per-setting reset buttons are removed;
+the section's Reset all remains. The `?` tooltip holds the explanation, default
+and its
 reason, current value and provenance, ID and any limits or restart notes.
 Nothing is reachable only through the URL or the console.
 
@@ -380,7 +384,7 @@ file they came from.
 
 - A registry test lists every parameter with id, unit, bounds, default, home and
   source path, and fails on a tuning constant outside it.
-- Every parameter can be changed from its section, reset individually, exported,
+- Every parameter can be changed from its section, reset through the registry, exported,
   imported and set from the URL; each path has a test.
 - No UI or code path names Low, Balanced or High except the built-in preset
   files and the `terrainQuality` migration.
@@ -429,7 +433,7 @@ The registry is `foss-earth/settings` (`src/settings/`); the controls are in
   is one section of a tab: the section's own controls, a control for every
   main-level parameter homed there that they don't cover (hosts' included,
   registered at any time), and **Show all parameters**, which lists every
-  parameter of the section with its control, help tooltip, reset icon and
+  parameter of the section with its control, help tooltip, label and
   source-link icon, and exports, imports and resets the section. The tooltip
   contains its description, current value, default and what that was derived
   from, where the value came from, its ID and any limits or restart notes.
@@ -594,18 +598,21 @@ Where stage 1 differs from this spec:
   power, up to the range's coarse end, and `map.auto.imageryDetail` lowers the
   imagery offset by it, down to its range's coarse end. It never goes finer
   than asked. The goal, `map.auto.frameTimeGoal`, is the display's refresh
-  interval by default, measured as the shortest interval between frames. The
-  thresholds are multiples of it (1.2 and 0.84: 20 and 14 ms at 60 Hz),
+  interval by default, estimated as the fastest median from complete observation
+  windows. A lone short scheduling interval cannot lower that goal. The
+  thresholds are multiples of it (1.2 and 1.05: 20 and 17.5 ms at 60 Hz),
   with 1 s windows, 2 slow or 10 fast windows, quarter-level steps and 5 s
-  between steps: today's values, as parameters. Both switches are off by
-  default: one short interval between frames can set the measured goal to a
-  few milliseconds, which no frame meets, and every window then coarsens
-  detail to the coarse end of its range. The Smooth motion preset and
+  between steps: today's values, as parameters. Returning to the display rate
+  for ten windows permits a refinement step; recovery does not require frames
+  faster than the display. Suspension and long stalls discard incomplete
+  windows and their consecutive slow/fast counts. Both switches remain off by
+  default, so requested detail changes only after opting in. The Smooth motion preset and
   `?terrainQuality=auto` turn it on.
 - **What it did** shows in readings on the auto switches, the goal and the
   terrain default: where each is, what was asked for, and the frame time that
   caused it. The rail lists "coarsened to hold the frame time" (`frame-time`,
-  a new `DetailLimit`). Each decision goes to the app's log ("Map detail
+  a new `DetailLimit`). Both apps connect `connectMapDetailLog` from
+  `foss-earth/shell`; each decision goes to the app's log ("Map detail
   coarsened 0.25 levels to hold the frame time: frames averaged 23.1 ms
   against a 16.7 ms goal."), to the console as `[map auto]`, to the map debug
   log as `detail-adjusted`, and to hosts through

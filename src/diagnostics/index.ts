@@ -1,5 +1,11 @@
 /** What an app needs to say what went wrong on a device with no console (docs/diagnostics.md). */
 export { captureErrors, tapConsole, type CapturedError } from "./errorCapture";
+export {
+  createMeshInspector, type MeshInspector, type MeshInspectorHandle, type MeshInspectorNode, type MeshInspectorOptions, type MeshInspectorSnapshot,
+} from "./createMeshInspector";
+export {
+  createVectorDebugDrawing, type DebugVector, type VectorDebugDrawingOptions, type VectorDebugDrawingSettings,
+} from "./createVectorDebugDrawing";
 export { buildReport, reportPage, type ReportParts, type ReportSetting } from "./report";
 export {
   browserTrailEnvironment, createSessionTrail, describePreviousVisit, stepKind, tidyStep, TRAIL_KEY_PREFIX, TRAIL_PING_KEY, TRAIL_STEPS_DEFAULT,

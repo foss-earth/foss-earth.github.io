@@ -3,9 +3,10 @@ import type { NumberRange, ParameterChoice, ParameterSpec, ParameterState, Param
 import { formatNumber, formatQuantity, formatValue, isNumberRange, sameValue } from "../../settings/values";
 import { createExternalLinkIcon } from "../externalLinkIcon";
 import { createTrack, type TrackHandle } from "./track";
+import { createTwoPositionSlider } from "./twoPositionSlider";
 
 export interface ParameterControlHandle {
-  /** The control and its compact help, reset and source actions. */
+  /** The control and its compact help and source actions. */
   element: HTMLElement;
   /** Re-reads the registry. Cheap when nothing changed. */
   update(): void;
@@ -18,6 +19,11 @@ let controlCount = 0;
 export function isParameterControlVisible(settings: SettingsRegistry, spec: ParameterSpec): boolean {
   const guard = spec.visibleWhen;
   return !guard || Boolean(settings.spec(guard.id) && sameValue(settings.get(guard.id), guard.value));
+}
+
+/** Paired fields belong to the existing control rather than another row. */
+export function isStandaloneParameterControl(settings: SettingsRegistry, spec: ParameterSpec): boolean {
+  return isParameterControlVisible(settings, spec) && (!spec.inlineWith || !settings.spec(spec.inlineWith));
 }
 
 /** A position on a parameter's track: the value, or its log2, negated for a reversed track. */
@@ -104,27 +110,8 @@ function setNote(note: HTMLElement, text: string, reveal = false): void {
 let helpCount = 0;
 let closeOpenHelp: (() => void) | null = null;
 
-function createResetIcon(): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  for (const d of ["M3 10a9 9 0 1 1 2.65 8.2", "M3 3v7h7"]) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
-    svg.append(path);
-  }
-  return svg;
-}
-
 /** One compact accessory row; explanations stay closed until requested. */
 function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, control: ParameterControlHandle): ParameterControlHandle {
-  const actions = document.createElement("span");
-  actions.className = "foss-earth-parameter__actions";
   const help = document.createElement("button");
   help.type = "button";
   help.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__help-button";
@@ -152,12 +139,6 @@ function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, c
   const note = control.element.querySelector<HTMLElement>(".foss-earth-parameter__note");
   if (note) explanation.append(note);
   explanation.append(code);
-  const reset = document.createElement("button");
-  reset.type = "button";
-  reset.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__reset";
-  reset.title = `Reset ${spec.label} to its default`;
-  reset.setAttribute("aria-label", `Reset ${spec.label}`);
-  reset.append(createResetIcon());
   const url = settings.sourceUrl(spec.id);
   const source = document.createElement(url ? "a" : "span");
   source.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter-row__source";
@@ -169,23 +150,24 @@ function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, c
     source.target = "_blank";
     source.rel = "noopener noreferrer";
   }
-  actions.append(help, reset, source);
   let header = control.element.querySelector<HTMLElement>(".foss-earth-parameter__header");
-  const heading = control.element.querySelector<HTMLElement>(".foss-earth-choices__heading");
+  const heading = control.element.querySelector<HTMLElement>(".foss-earth-choices__heading, .foss-earth-parameter__label");
   if (!header && heading) {
     header = document.createElement("div");
     header.className = "foss-earth-parameter__header";
     heading.before(header);
     header.append(heading);
   }
-  (header ?? control.element).append(actions);
+  if (heading) heading.before(help);
+  else (header ?? control.element).append(help);
+  (header ?? control.element).append(source);
   control.element.append(explanation);
   const updateActions = (): void => {
     const state = settings.inspect(spec.id);
-    const value = spec.sensitive ? (state.value ? "set" : "not set") : formatValue(spec, state.value, state.choices);
-    const defaultValue = spec.sensitive ? (state.defaultValue ? "set" : "none") : formatValue(spec, state.defaultValue, state.choices);
+    const describe = (value: ParameterValue): string => spec.booleanControl === "auto-custom" ? (value === true ? "Custom" : "Auto") : formatValue(spec, value, state.choices);
+    const value = spec.sensitive ? (state.value ? "set" : "not set") : describe(state.value);
+    const defaultValue = spec.sensitive ? (state.defaultValue ? "set" : "none") : describe(state.defaultValue);
     meta.textContent = `Now ${value} (${describeProvenance(state)}). ${sentence(`Default ${defaultValue}: ${state.defaultDerivedFrom}`)}${spec.appliesLive ? "" : " Applies on the next start."}`;
-    reset.disabled = state.layers.saved === undefined && state.layers.url === undefined;
   };
   const position = (): void => {
     const anchor = help.getBoundingClientRect();
@@ -238,9 +220,7 @@ function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, c
     if (event.key === "Escape") { close(); event.preventDefault(); event.stopPropagation(); }
   };
   const onPopoverToggle = (): void => { if (nativePopover && !explanation.matches(":popover-open") && !explanation.hidden) close(); };
-  const onReset = (): void => { settings.reset(spec.id); control.update(); updateActions(); };
   help.addEventListener("click", onHelp);
-  reset.addEventListener("click", onReset);
   explanation.addEventListener("toggle", onPopoverToggle);
   note?.addEventListener("parameter-invalid", open);
   updateActions();
@@ -250,7 +230,6 @@ function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, c
     destroy() {
       close();
       help.removeEventListener("click", onHelp);
-      reset.removeEventListener("click", onReset);
       explanation.removeEventListener("toggle", onPopoverToggle);
       note?.removeEventListener("parameter-invalid", open);
       control.destroy();
@@ -313,10 +292,19 @@ function createSwitch(settings: SettingsRegistry, spec: ParameterSpec): Paramete
   const element = document.createElement("div");
   element.className = "foss-earth-parameter foss-earth-parameter--inline";
   element.dataset.parameter = spec.id;
-  const toggle = pill("checkbox", `foss-earth-parameter-${++controlCount}`, "on", spec.label);
+  const toggle = pill("checkbox", `foss-earth-parameter-${++controlCount}`, "on", "");
   toggle.element.title = describeTitle(spec);
+  toggle.input.setAttribute("aria-label", spec.label);
+  toggle.input.id = `${toggle.input.name}-toggle`;
+  const heading = document.createElement("label");
+  heading.className = "foss-earth-parameter__label";
+  heading.htmlFor = toggle.input.id;
+  heading.textContent = spec.label;
+  const header = document.createElement("div");
+  header.className = "foss-earth-parameter__header";
+  header.append(toggle.element, heading);
   const note = createNote();
-  element.append(toggle.element, note);
+  element.append(header, note);
   const start = settings.get(spec.id);
   const onChange = (): void => { settings.set(spec.id, toggle.input.checked); update(); };
   toggle.input.addEventListener("change", onChange);
@@ -328,6 +316,60 @@ function createSwitch(settings: SettingsRegistry, spec: ParameterSpec): Paramete
   };
   update();
   return { element, update, destroy: () => { toggle.input.removeEventListener("change", onChange); element.remove(); } };
+}
+
+/** Auto uses the defaults; Custom reveals the retained per-item priorities. */
+function createAutoCustomSlider(settings: SettingsRegistry, spec: ParameterSpec): ParameterControlHandle {
+  const element = document.createElement("div");
+  element.className = "foss-earth-parameter foss-earth-parameter--inline";
+  element.dataset.parameter = spec.id;
+  const { header, readout } = createHeader(spec);
+  const slider = createTwoPositionSlider({
+    label: spec.label,
+    options: [{ label: "Auto" }, { label: "Custom" }],
+    onInput: index => { settings.set(spec.id, index === 1); update(); },
+  });
+  readout.append(slider.element);
+  const note = createNote();
+  element.append(header, note);
+  const start = settings.get(spec.id);
+  const update = (): void => {
+    const state = settings.inspect(spec.id);
+    slider.update(state.value === true ? 1 : 0, Boolean(spec.readOnly) || state.provenance === "host");
+    setNote(note, noteFor(state, start));
+  };
+  update();
+  return { element, update, destroy() { slider.destroy(); element.remove(); } };
+}
+
+function createChoiceSlider(settings: SettingsRegistry, spec: ParameterSpec): ParameterControlHandle {
+  const choices = settings.inspect(spec.id).choices;
+  if (choices.length !== 2) return createChoicePills(settings, spec);
+  const element = document.createElement("div");
+  element.className = "foss-earth-parameter foss-earth-parameter--inline";
+  element.dataset.parameter = spec.id;
+  element.setAttribute("role", "group");
+  element.setAttribute("aria-label", spec.label);
+  const { header, readout } = createHeader(spec);
+  const slider = createTwoPositionSlider({
+    label: spec.label,
+    options: [
+      { label: choices[0].label, icon: choices[0].shortLabel },
+      { label: choices[1].label, icon: choices[1].shortLabel },
+    ],
+    onInput: index => { settings.set(spec.id, choices[index].id); update(); },
+  });
+  readout.append(slider.element);
+  const note = createNote();
+  element.append(header, note);
+  const start = settings.get(spec.id);
+  const update = (): void => {
+    const state = settings.inspect(spec.id);
+    slider.update(state.value === choices[0].id ? 0 : 1, Boolean(spec.readOnly) || state.provenance === "host");
+    setNote(note, noteFor(state, start));
+  };
+  update();
+  return { element, update, destroy() { slider.destroy(); element.remove(); } };
 }
 
 /** A heading and pills, one per choice. */
@@ -364,7 +406,7 @@ function createChoicePills(settings: SettingsRegistry, spec: ParameterSpec): Par
       shownChoices = state.choices;
       const compact = state.choices.length > 0 && state.choices.every(choice => choice.shortLabel !== undefined || choice.icon !== undefined);
       element.classList.toggle("foss-earth-parameter--compact-choice", compact);
-      if (compact) header.insertBefore(pills, header.querySelector(".foss-earth-parameter__actions"));
+      if (compact) header.prepend(pills);
       else header.after(pills);
       pills.replaceChildren(...state.choices.map(choice => choicePill(name, choice).element));
     }
@@ -402,7 +444,7 @@ function createHeader(spec: ParameterSpec): { header: HTMLElement; readout: HTML
   const reading = document.createElement("span");
   reading.className = "foss-earth-parameter__reading";
   reading.hidden = true;
-  header.append(label, readout, reading);
+  header.append(readout, reading, label);
   return { header, readout, reading };
 }
 
@@ -688,11 +730,69 @@ export function createParameterControl(settings: SettingsRegistry, id: string): 
   if (!spec) throw new Error(`No parameter "${id}" is registered.`);
   let control: ParameterControlHandle;
   switch (spec.kind) {
-    case "boolean": control = createSwitch(settings, spec); break;
-    case "choice": control = createChoicePills(settings, spec); break;
+    case "boolean": control = spec.booleanControl === "auto-custom" ? createAutoCustomSlider(settings, spec) : createSwitch(settings, spec); break;
+    case "choice": control = spec.choiceControl === "two-position" ? createChoiceSlider(settings, spec) : createChoicePills(settings, spec); break;
     case "number": control = spec.numberControl === "field" && !spec.named?.length ? createNumberField(settings, spec) : createValueTrack(settings, spec); break;
     case "range": control = createRangeTrack(settings, spec); break;
     case "text": control = createTextField(settings, spec); break;
   }
-  return withParameterActions(settings, spec, control);
+  const decorated = withParameterActions(settings, spec, control);
+  const inline = new Map<string, { control: ParameterControlHandle; detail: HTMLElement; meta: HTMLElement }>();
+  const pairedSpecs = (): ParameterSpec[] => settings.list({ tab: spec.home.tab, section: spec.home.section }).filter(candidate => candidate.inlineWith === id);
+  const update = (): void => {
+    decorated.update();
+    const shown = pairedSpecs().filter(candidate => isParameterControlVisible(settings, candidate));
+    for (const [childId, child] of inline) {
+      if (!shown.some(candidate => candidate.id === childId)) {
+        child.control.destroy();
+        child.detail.remove();
+        inline.delete(childId);
+      }
+    }
+    const header = decorated.element.querySelector<HTMLElement>(".foss-earth-parameter__header")!;
+    const help = decorated.element.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!;
+    const explanation = document.getElementById(help.getAttribute("aria-controls")!) ?? decorated.element.querySelector<HTMLElement>(".foss-earth-parameter__help");
+    for (const candidate of [...shown].reverse()) {
+      let child = inline.get(candidate.id);
+      if (!child) {
+        const fieldControl = createNumberField(settings, candidate);
+        const field = fieldControl.element.querySelector<HTMLInputElement>('input[type="number"]')!;
+        const note = fieldControl.element.querySelector<HTMLElement>(".foss-earth-parameter__note")!;
+        fieldControl.element.className = "foss-earth-parameter__inline-field";
+        fieldControl.element.replaceChildren(field);
+        const detail = document.createElement("div");
+        const description = document.createElement("p");
+        description.textContent = candidate.description;
+        const meta = document.createElement("p");
+        meta.className = "foss-earth-parameter-row__meta";
+        detail.append(description, meta, note);
+        explanation?.append(detail);
+        // Invalid priority edits use this row's existing explanation button.
+        note.addEventListener("parameter-invalid", () => {
+          const help = decorated.element.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!;
+          if (help.getAttribute("aria-expanded") !== "true") help.click();
+        });
+        child = { control: fieldControl, detail, meta };
+        inline.set(candidate.id, child);
+      }
+      child.control.update();
+      const state = settings.inspect(candidate.id);
+      child.meta.textContent = `${candidate.label}: ${formatValue(candidate, state.value)} (${describeProvenance(state)}). Default ${formatValue(candidate, state.defaultValue)}: ${state.defaultDerivedFrom}`;
+      header.prepend(child.control.element);
+    }
+  };
+  update();
+  const stopWatching = settings.subscribe(changed => {
+    if (pairedSpecs().some(candidate => changed.has(candidate.id) || (candidate.visibleWhen && changed.has(candidate.visibleWhen.id)))) update();
+  });
+  return {
+    element: decorated.element,
+    update,
+    destroy() {
+      stopWatching();
+      for (const child of inline.values()) { child.control.destroy(); child.detail.remove(); }
+      inline.clear();
+      decorated.destroy();
+    },
+  };
 }

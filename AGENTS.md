@@ -124,6 +124,13 @@
 - Half the cores is not a memory budget. Before running a script in several processes,
   measure what one needs and start only as many as fit in half the machine's memory.
   How, and what else disturbs a timing: [docs/validation/timing.md](docs/validation/timing.md).
+- The user uses this Mac concurrently. Benchmarks must attribute their own work and
+  account for interference before timings qualify; otherwise defer those timings
+  until the user offers exclusive access and continue useful untimed work. Prefer
+  bounded parallel work. On this fanless Mac with performance/efficiency cores,
+  observe core scheduling and thermal drift when needed; aggregate load or an
+  exclusive session alone cannot qualify isolated CPU cost.
+  [Shared benchmark policy](docs/validation/benchmark-interference.md).
 - Benchmarks and headless-browser GPU runs only when the task asks for them.
 
 ## Personal data

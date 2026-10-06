@@ -51,27 +51,23 @@ describe("parameter section", () => {
     expect(control("t.hidden")).toBeNull();
   });
 
-  it("puts help, icon reset and icon source beside each main checkbox", () => {
+  it("puts the checkbox and help before its label, with the source last", () => {
     const { settings, control } = setup();
     const flag = control("t.flag");
-    const actions = flag.querySelector(".foss-earth-parameter__actions")!;
-    expect([...actions.children].map(item => item.tagName)).toEqual(["BUTTON", "BUTTON", "A"]);
-    const help = actions.querySelector<HTMLButtonElement>('[aria-label="Explain Flag"]')!;
-    const reset = actions.querySelector<HTMLButtonElement>('[aria-label="Reset Flag"]')!;
-    expect(reset.textContent).toBe("");
-    expect(reset.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
-    const source = actions.querySelector<HTMLAnchorElement>("a")!;
+    const header = flag.querySelector(".foss-earth-parameter__header")!;
+    expect([...header.children].map(item => item.tagName)).toEqual(["LABEL", "BUTTON", "LABEL", "A"]);
+    const help = header.querySelector<HTMLButtonElement>('[aria-label="Explain Flag"]')!;
+    expect(flag.querySelector('[aria-label="Reset Flag"]')).toBeNull();
+    const source = header.querySelector<HTMLAnchorElement>("a")!;
     expect(source.textContent).toBe("");
     expect(source.href).toBe("https://example.test/blob/main/src/test.ts");
     expect(source.getAttribute("aria-label")).toContain("src/test.ts");
     expect(source.title).toContain("The code that reads t.flag");
     expect(help.textContent).toBe("?");
-    expect(reset.disabled).toBe(true);
     input(flag, "input").click();
-    expect(reset.disabled).toBe(false);
-    reset.click();
+    expect(settings.get("t.flag")).toBe(true);
+    flag.querySelector<HTMLLabelElement>(".foss-earth-parameter__label")!.click();
     expect(settings.get("t.flag")).toBe(false);
-    expect(reset.disabled).toBe(true);
   });
 
   it("shows compact choice icons and symbols in one control row with full accessible and help labels", () => {
@@ -86,7 +82,10 @@ describe("parameter section", () => {
     const header = visibility.querySelector(".foss-earth-parameter__header")!;
     expect(visibility.classList.contains("foss-earth-parameter--compact-choice")).toBe(true);
     expect([...header.children].map(child => child.className)).toEqual([
-      "foss-earth-choices__heading", "foss-earth-parameter__pills", "foss-earth-parameter__actions",
+      "foss-earth-parameter__pills",
+      "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__help-button",
+      "foss-earth-choices__heading",
+      "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter-row__source",
     ]);
     const labels = [...visibility.querySelectorAll<HTMLLabelElement>(".foss-earth-parameter__pills label")];
     expect(labels.map(label => label.textContent)).toEqual(["", "A", ""]);
@@ -99,7 +98,7 @@ describe("parameter section", () => {
     visibility.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!.click();
     const explanation = document.getElementById(visibility.querySelector(".foss-earth-parameter__help-button")!.getAttribute("aria-controls")!)!;
     expect(explanation.textContent).toContain("Now On (set by you). Default Auto:");
-    visibility.querySelector<HTMLButtonElement>(".foss-earth-parameter__reset")!.click();
+    settings.reset("t.visibility");
     expect(settings.get("t.visibility")).toBe("auto");
     expect(input(visibility, 'input[value="auto"]').checked).toBe(true);
     // Ordinary choice groups keep their full labels and separate row of pills.
@@ -307,7 +306,7 @@ describe("parameter section", () => {
     section.destroy();
   });
 
-  it("lists every parameter under Show all parameters, with its default, provenance, reset and source", () => {
+  it("lists every parameter under Show all parameters, with its default, provenance and source", () => {
     const { settings, section } = setup();
     const toggle = section.element.querySelector<HTMLInputElement>(".foss-earth-parameter-section__toggle input")!;
     toggle.click();
@@ -317,15 +316,54 @@ describe("parameter section", () => {
     expect(hidden.querySelector(".foss-earth-parameter-row__meta")!.textContent).toBe("Now 2 ms (default). Default 2 ms: Chosen for tests.");
     const link = hidden.querySelector<HTMLAnchorElement>(".foss-earth-parameter-row__source")!;
     expect(link.href).toBe("https://example.test/blob/main/src/test.ts");
-    const reset = hidden.querySelector<HTMLButtonElement>(".foss-earth-parameter__reset")!;
-    expect(reset.disabled).toBe(true);
+    expect(hidden.querySelector(".foss-earth-parameter__reset")).toBeNull();
     settings.set("t.hidden", 5);
     expect(hidden.querySelector(".foss-earth-parameter-row__meta")!.textContent).toMatch(/^Now 5 ms \(set by you\)\./);
-    expect(reset.disabled).toBe(false);
-    reset.click();
-    expect(settings.get("t.hidden")).toBe(2);
     toggle.click();
     expect(section.element.querySelector(".foss-earth-parameter-row")).toBeNull();
+  });
+
+  it("edits paired priorities in the existing row and retains them across Auto and Custom", () => {
+    const settings = createSettingsRegistry({ storage: memoryStorage() });
+    const home = { tab: "interface", section: "toolbar", level: "main" } as const;
+    settings.register([
+      { ...base, id: "t.custom", label: "Priorities", description: "Auto or Custom.", unit: "none", kind: "boolean", booleanControl: "auto-custom", default: false, home },
+      { ...base, id: "t.visibility", label: "Camera position", description: "Visibility.", unit: "none", kind: "choice", choices: [{ id: "auto", label: "Auto", shortLabel: "A" }], default: "auto", home },
+      { ...base, id: "t.priority", label: "Camera position priority", description: "Lower comes first.", unit: "count", kind: "number", numberControl: "field", bounds: () => ({ min: 0, max: 99 }), step: 1, default: 8, visibleWhen: { id: "t.custom", value: true }, inlineWith: "t.visibility", home },
+    ]);
+    const section = createParameterSection(settings, { tab: home.tab, section: home.section });
+    document.body.append(section.element);
+    const toggle = input(section.element, ".foss-earth-parameter-section__toggle input");
+    if (!toggle.checked) toggle.click();
+    const main = section.element.querySelector<HTMLElement>(".foss-earth-parameter-section__main")!;
+    const list = section.element.querySelector<HTMLElement>(".foss-earth-parameter-list")!;
+    const mode = input(main, '[data-parameter="t.custom"] input[type="range"]');
+    expect(mode.getAttribute("aria-valuetext")).toBe("Auto");
+    expect(section.element.querySelector('input[type="number"]')).toBeNull();
+    drag(mode, 1);
+    const row = main.querySelector<HTMLElement>('[data-parameter="t.visibility"]')!;
+    const field = input(row, 'input[type="number"]');
+    expect(row.querySelector(".foss-earth-parameter__header")!.firstElementChild!.getAttribute("data-parameter")).toBe("t.priority");
+    expect(main.querySelector(':scope > [data-parameter="t.priority"]')).toBeNull();
+    expect(list.querySelector(':scope > [data-parameter="t.priority"]')).toBeNull();
+    const mirroredField = input(list, '[data-parameter="t.priority"] input');
+    field.value = "3";
+    field.dispatchEvent(new Event("change"));
+    expect(settings.get("t.priority")).toBe(3);
+    expect(mirroredField.value).toBe("3");
+    field.value = "100";
+    field.dispatchEvent(new Event("change"));
+    expect(settings.get("t.priority")).toBe(3);
+    const help = row.querySelector<HTMLButtonElement>(".foss-earth-parameter__help-button")!;
+    expect(help.getAttribute("aria-expanded")).toBe("true");
+    const tooltip = document.getElementById(help.getAttribute("aria-controls")!)!;
+    expect(tooltip.textContent).toContain("Camera position priority: 3");
+    drag(mode, 0);
+    expect(section.element.querySelector('input[type="number"]')).toBeNull();
+    expect(settings.export().values["t.priority"]).toBe(3);
+    drag(mode, 1);
+    expect(input(row, 'input[type="number"]').value).toBe("3");
+    section.destroy();
   });
 
   it("exports, imports and resets the section", () => {

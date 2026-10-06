@@ -120,13 +120,13 @@ Default visibility follows this priority, highest first:
 | --- | --- | --- |
 | 0 | North (`N`) | The only shortcut for resetting heading |
 | 1 | Help (`?`) | A new visitor needs to learn the controls and tabs |
-| 2 | FPS | Useful feedback for anyone |
-| 3 | WebGPU / WebGL 1 / WebGL 2 | Explains which renderer is drawing when FPS is low |
-| 4 | Input method | Most useful on a desktop, where more width is usually available |
-| 5 | Theme | Also available in Interface → Toolbar |
-| 6 | Settings | Also available as a tab under + |
-| 7 | Fullscreen | Enters or leaves fullscreen where the browser supports it |
-| 8 | Camera position (`lat/lon/h/p/z`) | Also available in the Location tab |
+| 2 | Input method | Keeps the current controls visible and accessible immediately after Help |
+| 3 | Fullscreen | Enters or leaves fullscreen where the browser supports it |
+| 4 | FPS | Useful feedback for anyone |
+| 5 | WebGPU / WebGL 1 / WebGL 2 | Explains which renderer is drawing when FPS is low |
+| 6 | Camera position (`lat/lon/h/p/z`) | Opens the Location tab |
+| 7 | Theme | Also available in Interface → Toolbar |
+| 8 | Settings | Also available as a tab under + |
 
 Each configurable toolbar item has an On / Auto / Off choice in Interface →
 Toolbar, including FPS and every other performance reading. On uses a filled
@@ -135,18 +135,20 @@ accessible names give the full words. On stays shown, wrapping when needed;
 Auto fits in the available row by priority; Off stays hidden. These are stored
 values, independent of whether they came from a default or a saved choice.
 Toolbar buttons and FPS default to Auto; other performance readings default
-to Off. Reset restores that default. Existing saved checkbox values migrate
+to Off. Existing saved checkbox values migrate
 to On or Off.
 
-**Edit priorities** starts off. Turning it on reveals compact number fields for
-every toolbar item, including North; lower numbers come first, with the default
-order breaking ties. Turning it off hides the numbers in the main section and
-Show all parameters, while keeping the saved priorities active. North always
-remains available even when its position in the row changes.
+**Priorities** is one Auto / Custom slider, starting in Auto. Auto uses the default
+order above. Custom applies the saved priorities and reveals each item's compact
+number field at the left of its existing visibility row, including in Show all
+parameters. North has its own field because it has no visibility switch. Lower
+numbers come first, with the default order breaking ties. Returning to Auto hides
+the numbers and uses the default order, retaining the custom values for later.
+North always remains available even when its position in the row changes.
 
 Hide the lowest-priority Auto items first until the row fits, and bring
 them back in priority order when space returns. Reserve room for North and the
-first two available items after North (Help and FPS by default), shortening long attribution
+first two available items after North (Help and Input method by default), shortening long attribution
 text inside its chip when needed. Then measure the detail rail and attribution
 chip and fit the remaining defaults into the space left over. The credit link
 and detail rail stay accessible beside the core controls.
@@ -196,13 +198,17 @@ Every setting lives in exactly one place, a section of a tab.
   ticked and any named values ("Off", "Normal") as pills; discrete priorities use
   compact numeric fields; a range is a range
   track; text is a field, never showing a secret. Beside each control are a
-  `?` button, a reset icon and a source-link icon, at their own widths in the
-  same wrapping row. `?` opens an explanation tooltip with the description,
+  `?` button, label and source-link icon, at their own widths in that order in
+  the same wrapping row. Controls precede text so changing label lengths cannot
+  move their buttons in a single-column view. A custom priority field comes
+  before the visibility buttons; the source icon stays last. `?` opens an
+  explanation tooltip with the description,
   default and its reason, current value and provenance, parameter ID, limits
   and restart notes. It closes on another click, Escape or a click outside.
   The tooltip contains explanation only; the setting keeps its single home.
-  An invalid edit opens its explanation so the rejection is visible. Reset
-  and source icons retain accessible names; source opens the code in a new tab.
+  An invalid edit opens its explanation so the rejection is visible. The source
+  icon retains its accessible name and opens the code in a new tab. Per-setting
+  reset buttons are removed; Reset all remains in the section's transfer controls.
 - A range is one track with two thumbs, never two sliders. Choosing an acceptable
   part of one continuous scale is one control: the thumbs are its ends, the part
   outside them stays visible but dimmed, and a default or a host's marker (such
@@ -216,7 +222,7 @@ Every setting lives in exactly one place, a section of a tab.
   performance readouts. Renderer → Performance debug holds tuners and profiling.
   Auto items fit by the priority above; On and Off take precedence.
   Hiding a button never hides what it opened; its tab stays under
-  +. The same section holds the theme toggle, with both light and dark icons,
+  +. The same section holds one two-position theme slider, with sun and moon icons,
   so theme remains changeable when its toolbar shortcut does not fit.
 - The menu under a tab strip's + is drawn outside its panel, in the overlay's own
   layer, fixed to the window where the + button is. The panel clips what passes

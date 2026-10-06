@@ -1,0 +1,97 @@
+.foss-earth-mesh-inspector {
+  min-width: 0;
+  font-size: 12px;
+}
+
+.foss-earth-mesh-inspector p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.foss-earth-mesh-inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.foss-earth-mesh-inspector__actions button {
+  width: auto;
+  padding: 5px 9px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.foss-earth-mesh-inspector__tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.foss-earth-mesh-inspector__tree .foss-earth-mesh-inspector__tree {
+  margin-inline-start: 9px;
+  padding-inline-start: 9px;
+  border-inline-start: 1px solid #64748b;
+  border-inline-start-color: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.foss-earth-mesh-inspector__tree summary {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.foss-earth-mesh-inspector__leaf {
+  padding: 2px 0 2px 14px;
+}
+
+.foss-earth-mesh-inspector .foss-earth-mesh-inspector__selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+  padding: 3px 7px;
+  border: 1px solid #64748b;
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 12px;
+  color: inherit;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.foss-earth-mesh-inspector__selection:has(input:checked),
+.foss-earth-mesh-inspector__selection:has(input:indeterminate) {
+  border-color: #e78024;
+}
+
+.foss-earth-mesh-inspector .foss-earth-mesh-inspector__selection input {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  accent-color: #e78024;
+}
+
+.foss-earth-mesh-inspector__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.foss-earth-mesh-inspector__kind,
+.foss-earth-mesh-inspector__note {
+  opacity: 0.7;
+}
+
+.foss-earth-mesh-inspector__kind {
+  font-size: 10px;
+}
+
+.foss-earth-mesh-inspector :is(summary, input, button):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

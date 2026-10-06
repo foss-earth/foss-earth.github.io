@@ -4,6 +4,74 @@ When the app goes wrong on a device with no console, a phone above all, the app 
 say what happened. It says which version it is as it opens, keeps a trail of each visit, tells
 the next visit when one stopped without being closed, and gives a report to copy.
 
+## World vector drawing
+
+`createVectorDebugDrawing(scene, parent, options)` from `foss-earth/diagnostics`
+draws named, colored vectors and optional magnitude labels in the supplied parent's
+local coordinates. Anchors and directions follow its world transform, including a
+host application's floating-origin updates. It has no aircraft or physics model
+dependencies; the caller supplies observed vectors and the settings' UI home.
+
+The caller provides `enabled`, `valuePerMeter`, `maxArrowMeters`, `labels`, and
+`labelRefreshHz`, plus a label conversion `valueDisplayScale` and `valueUnit`.
+Arrow geometry uses the input magnitude divided by `valuePerMeter`; labels retain
+the full magnitude even when the arrow is capped. Zero, missing or nonfinite
+vectors are hidden. Glyphs currently draw through other geometry for diagnostics.
+
+Call `update(vectors, timeSeconds, withinScheduledFrame = false)` when the observed
+values change. Label refresh follows the supplied clock and holds when it holds;
+no internal timer runs. A scheduled scene tick passes `true` to avoid requesting
+another frame for its synchronous changes. Unchanged vectors ask for no frame.
+New glyphs prepare hidden with `whenMeshesReady`, then reveal together and request
+their own frame. `setSettings` applies live changes, and disabling or `dispose()`
+frees geometry, materials and label textures and cancels pending readiness.
+
+Tests cover transformed anchors/directions, readiness, paused rendering, scale
+caps, label units/rate, invalid data and disposal with Babylon's NullEngine. They
+do not qualify a device's renderer or graphics cost.
+
+## Mesh tree and polygon edges
+
+`createMeshInspector(scene, { requestRender })` from `foss-earth/diagnostics`
+inspects only the roots the caller supplies with `setRoots`. Its stable
+`getSnapshot()` and `subscribe()` pair expose a hierarchy of names and mesh IDs,
+selection, and mixed branch selection. `setSelected(id, selected)` selects that
+node's geometry and every mesh below it; `selectAll(selected)` affects all roots.
+Selecting meshes never changes their visibility or materials. New models start
+fully selected; rebuilding the tree with the same nodes preserves selection.
+
+`setEnabled(true)` adds orange triangle edges for the selected meshes. The helper
+shares the original geometry buffers, skeleton, bind pose and morph targets, and
+parents each overlay to its source so moving parts remain aligned. A single
+observer, present only while overlays exist, respects independently hidden parts,
+opacity, rendering groups and camera layer masks before each active-mesh pass.
+Overlays prepare hidden with `whenMeshesReady` and reveal together. Selection
+changes request a frame only when they change visible edges; no timer or render
+loop runs while idle.
+
+Each selected mesh adds one native wireframe draw and one cached line index
+buffer: six 16-bit or 32-bit indices per triangle, 12 or 24 bytes. Vertices and
+textures are not copied and no adjacency search or edge geometry expansion runs.
+The line path is Babylon's WebGPU/WebGL 2/WebGL 1 implementation. A small GLSL/WGSL
+vertex adjustment biases edge depth by one camera-plane pixel, scaled by the
+projection and viewport height; this avoids broken coplanar lines without disabling
+depth tests. Native polygon depth bias does not affect WebGL lines and is rejected
+for WebGPU line lists. Edges follow the
+asset's triangles, including triangulation diagonals; original Blender quad
+boundaries are not stored in a triangulated glTF. Disabling or disposing releases
+the overlays, line buffers, material and observer. Selection remains available
+while disabled. The caller owns the setting and its UI home; 0SFS places it in
+Aircraft, and supplies only aircraft model roots, leaving effects outside the tree.
+
+[The real-GPU fixture](../scripts/validation/mesh-inspector.mjs) passed 23 checks
+on each of WebGPU, WebGL 2 and forced WebGL 1 in Chrome 154 on an Apple M5 on
+2026-10-05. It checks continuous triangle edges with preserved solid fill,
+orthographic and perspective depth/occlusion at 10 m and 1,000 m, nested selection
+and motion, hidden sources, shared geometry and resources released while off.
+The [retained report and screenshots](../validation/evidence/mesh-inspector/2026-10-05/README.md)
+record the exact conditions. This is a correctness check, without a timing or
+device-performance qualification.
+
 ## Why
 
 On 2026-10-03 the UMN tour was tried on two phones. One drew every orb black; the other kept

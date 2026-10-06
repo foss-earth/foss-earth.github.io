@@ -55,8 +55,11 @@ try {
     await chrome.send("Target.closeTarget", { targetId });
   }
 } finally {
-  await writeFile(path.join(out, "report.json"), JSON.stringify({ generatedAt: new Date().toISOString(), browser: browser.product, sources, results }, null, 2));
-  await chrome.close();
-  console.log(`Evidence: ${out}`);
+  try {
+    await writeFile(path.join(out, "report.json"), JSON.stringify({ generatedAt: new Date().toISOString(), browser: browser.product, sources, results }, null, 2));
+  } finally {
+    await chrome.close();
+    console.log(`Evidence: ${out}`);
+  }
 }
 if (results.length !== 2 || results.some(result => !result.ok || result.errors.length || /swiftshader|llvmpipe|software/i.test(result.report?.renderer ?? "software"))) process.exitCode = 1;

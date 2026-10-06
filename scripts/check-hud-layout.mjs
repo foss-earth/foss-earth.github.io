@@ -117,9 +117,17 @@ const descriptors = () => {
 const fit = fitHudBar(bar.element, end, descriptors);
 const settings = createSettingsRegistry({ storage: null, sourceBase: "https://example.invalid/blob/main/" });
 const positionPriorityId = toolbarPriorityParameterId("position");
-settings.register(INTERFACE_PARAMETERS.filter(spec => ["interface.toolbar.position", TOOLBAR_EDIT_PRIORITIES_ID, positionPriorityId].includes(spec.id)));
+const settingItems = ["help", "renderer", "position"] as const;
+const settingIds = ["interface.theme", TOOLBAR_EDIT_PRIORITIES_ID,
+  ...settingItems.flatMap(item => ["interface.toolbar." + item, toolbarPriorityParameterId(item)])];
+const defaultPositionPriority = priorities.get("position")!;
+settings.register(INTERFACE_PARAMETERS.filter(spec => settingIds.includes(spec.id)));
 settings.subscribe(changed => {
-  if (changed.has(positionPriorityId)) { priorities.set("position", settings.get<number>(positionPriorityId)); fit.update(); }
+  if (changed.has(positionPriorityId) || changed.has(TOOLBAR_EDIT_PRIORITIES_ID)) {
+    priorities.set("position", settings.get(TOOLBAR_EDIT_PRIORITIES_ID) === true
+      ? settings.get<number>(positionPriorityId) : defaultPositionPriority);
+    fit.update();
+  }
 });
 const section = createParameterSection(settings, { tab: "interface", section: "toolbar" });
 section.element.id = "settingsFixture";
@@ -304,6 +312,69 @@ async function check(label, options) {
   return checkGeometry(label, await geometry(label), options);
 }
 
+async function checkSettingsRow(row, width, custom) {
+  const layout = await row.evaluate(element => {
+    const header = element.querySelector('.foss-earth-parameter__header');
+    const rect = part => {
+      const box = part.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+        width: box.width, height: box.height, center: (box.top + box.bottom) / 2 };
+    };
+    const kinds = ['inline-field', 'pills', 'help-button', 'label', 'source'];
+    const kind = part => part.matches('.foss-earth-choices__heading') ? 'label'
+      : kinds.find(name => part.matches('.foss-earth-parameter__' + name + ', .foss-earth-parameter-row__' + name));
+    const parts = [...header.children].filter(part => part.getBoundingClientRect().width > 0)
+      .map(part => ({ kind: kind(part), ...rect(part) }));
+    const pills = header.querySelector('.foss-earth-parameter__pills');
+    return {
+      id: element.dataset.parameter,
+      parts,
+      pills: rect(pills),
+      pillGap: parseFloat(getComputedStyle(pills).columnGap),
+      options: [...pills.children].map(rect),
+      resetCount: element.querySelectorAll('.foss-earth-parameter__reset, [aria-label^="Reset "]').length,
+      actionsCount: element.querySelectorAll('.foss-earth-parameter__actions').length,
+    };
+  });
+  checks.push({ label: `${layout.id} ${custom ? 'Custom' : 'Auto'} control at ${width}`, ...layout });
+  const detail = JSON.stringify(layout);
+  assert.deepEqual(layout.parts.map(part => part.kind),
+    [...(custom ? ['inline-field'] : []), 'pills', 'help-button', 'label', 'source'],
+    `Header controls must precede help, label and source. ${detail}`);
+  assert.equal(layout.resetCount, 0, 'Individual parameter reset buttons must stay absent');
+  assert.equal(layout.actionsCount, 0, 'Help and source must be direct header items');
+  assert(layout.parts.every(part => part.left >= 15.5 && part.right <= width - 15.5),
+    `Compact controls must remain within the available panel width. ${detail}`);
+  assert.equal(layout.options.length, 3, 'Visibility must offer three states');
+  assert(Math.max(...layout.options.map(part => part.center)) - Math.min(...layout.options.map(part => part.center)) <= 0.5,
+    `The visibility buttons must stay together even when other items wrap. ${detail}`);
+  assert(Math.abs(layout.pills.width - layout.options.reduce((sum, part) => sum + part.width, 0) - layout.pillGap * 2) <= 0.5,
+    `The visibility group must use only its buttons' own widths. ${detail}`);
+  const heading = layout.parts.find(part => part.kind === 'label');
+  const source = layout.parts.find(part => part.kind === 'source');
+  assert(source.center >= heading.center - 0.5 &&
+    (Math.abs(source.center - heading.center) > 0.5 || source.left >= heading.right - 0.5),
+  `Source must follow the label in reading order. ${detail}`);
+  assert(layout.parts.filter(part => Math.abs(part.center - source.center) <= 0.5)
+    .every(part => part.right <= source.right + 0.5), `Source must finish its row. ${detail}`);
+  return layout;
+}
+
+async function checkSettingsAlignment(main, width, custom) {
+  const layouts = [];
+  for (const id of ['help', 'renderer', 'position']) {
+    const row = main.locator(`:scope > [data-parameter="interface.toolbar.${id}"]`);
+    layouts.push(await checkSettingsRow(row, width, custom));
+  }
+  if (width <= 414) {
+    for (const kind of [...(custom ? ['inline-field'] : []), 'pills', 'help-button', 'label']) {
+      const lefts = layouts.map(layout => layout.parts.find(part => part.kind === kind).left);
+      assert(Math.max(...lefts) - Math.min(...lefts) <= 0.5,
+        `${kind} controls must align across varying label lengths in one-column panels: ${JSON.stringify(layouts)}`);
+    }
+  }
+}
+
 try {
   page = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: "reduce" });
   page.setDefaultTimeout(5000);
@@ -315,13 +386,20 @@ try {
 
   for (const width of [320, 375, 390, 414, 768, 1280]) {
     await load(width);
-    await check(`default map at ${width}`);
+    const defaults = await check(`default map at ${width}`);
+    assert.deepEqual(defaults.items.filter(item => item.reserveSpace).sort((a, b) => a.priority - b.priority).map(item => item.id), ["north", "help", "input"],
+      "The default core reservation must keep North, Help and Input method accessible");
+    assert(ids(defaults).includes("help") && ids(defaults).includes("input"),
+      "Help and Input method must remain available beside default attribution");
   }
 
   await load(1280);
   const wide = await check("wide toolbar before resize");
-  assert.deepEqual(ids(wide), ["north", "help", "fps", "renderer", "input", "theme", "settings", "fullscreen", "position"],
+  assert.deepEqual(ids(wide), ["north", "help", "input", "fullscreen", "fps", "renderer", "position", "theme", "settings"],
     "The wide fixture must show every default item, with FPS inside display:contents");
+  assert.deepEqual(wide.items.filter(item => item.id !== "memory").sort((a, b) => a.priority - b.priority).map(item => [item.id, item.priority]),
+    [["north", 0], ["help", 1], ["input", 2], ["fullscreen", 3], ["fps", 4], ["renderer", 5], ["position", 6], ["theme", 7], ["settings", 8]],
+    "Fullscreen must follow Input method and precede FPS and Renderer, with Location ahead of Theme and Settings");
   await page.setViewportSize({ width: 320, height: 800 });
   const narrow = await check("toolbar after narrowing to 320");
   assert(ids(narrow).length < ids(wide).length, "Narrowing must omit defaults");
@@ -343,7 +421,7 @@ try {
     window.hudFixture.priority("north", 99);
   });
   const reordered = await check("custom priority order and stable ties");
-  assert.deepEqual(ids(reordered), ["theme", "settings", "help", "fps", "renderer", "input", "fullscreen", "position", "north"],
+  assert.deepEqual(ids(reordered), ["theme", "settings", "help", "input", "fullscreen", "fps", "renderer", "position", "north"],
     "Custom priorities must reorder controls, keeping catalogue order for equal numbers");
   await page.setViewportSize({ width: 320, height: 800 });
   const reorderedNarrow = await check("custom priorities reserve the first two Auto items on a phone");
@@ -392,18 +470,18 @@ try {
   assert(ids(await check("automatic renderer visibility restored")).includes("renderer"));
 
   await load(375);
-  const beforePinnedFps = await check("automatic FPS before pinning");
-  await page.evaluate(() => window.hudFixture.choice("fps", "show"));
-  assert.deepEqual(ids(await check("already visible FPS pinned on stays one row")), ids(beforePinnedFps));
+  const beforePinnedInput = await check("automatic Input method before pinning");
+  await page.evaluate(() => window.hudFixture.choice("input", "show"));
+  assert.deepEqual(ids(await check("already visible Input method pinned on stays one row")), ids(beforePinnedInput));
 
   await load(375);
   await page.evaluate(() => window.hudFixture.choice("position", "show"));
   const pinnedPosition = await check("only position manually enabled", { oneRow: false });
-  assert.deepEqual(ids(pinnedPosition), ["north", "help", "fps", "position"],
-    "A manually enabled position must wrap without removing Help or FPS");
+  assert.deepEqual(ids(pinnedPosition), ["north", "help", "input", "position"],
+    "A manually enabled position must wrap without removing Help or Input method");
   await load(375);
   const defaultManual = await check("before manually enabling extras");
-  const forced = ["help", "fps", "renderer", "input", "theme", "settings", "fullscreen", "position", "memory"];
+  const forced = ["help", "input", "fullscreen", "fps", "renderer", "position", "theme", "settings", "memory"];
   await page.evaluate(items => items.forEach(id => window.hudFixture.choice(id, "show")), forced);
   const manual = await check("explicitly enabled controls wrap", { oneRow: false });
   assert.deepEqual(ids(manual), ["north", ...forced], "Every explicitly enabled control must remain visible");
@@ -441,23 +519,10 @@ try {
     const on = row.locator('label:has(input[value="on"])');
     const off = row.locator('label:has(input[value="off"])');
     const help = row.getByRole("button", { name: "Explain Camera position", exact: true });
-    const reset = row.getByRole("button", { name: "Reset Camera position", exact: true });
     const tooltip = row.locator('.foss-earth-parameter__help');
-    const layout = await row.evaluate(element => {
-      const parts = [element.querySelector('.foss-earth-choices__heading'),
-        ...element.querySelectorAll('.foss-earth-parameter__pills > label'),
-        ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
-      return parts.map(part => {
-        const box = part.getBoundingClientRect();
-        return { left: box.left, right: box.right, center: (box.top + box.bottom) / 2, text: part.textContent };
-      });
-    });
-    assert.equal(layout.length, 7, "Name, three choices, help, reset and source must be compact items");
-    assert(Math.max(...layout.map(part => part.center)) - Math.min(...layout.map(part => part.center)) < 0.5,
-      `Toolbar choices and accessories must be on one row at ${width}px`);
-    assert(layout.every(part => part.left >= 16 && part.right <= width - 16), "Choice row must fit its panel");
-    assert.equal(layout[5].text, "", "Reset must show only its icon");
-    assert.equal(layout[6].text, "", "Source must show only its icon");
+    const main = page.locator('#settingsFixture .foss-earth-parameter-section__main');
+    await checkSettingsAlignment(main, width, false);
+    assert.equal(await row.locator('.foss-earth-parameter-row__source').textContent(), "", "Source must show only its icon");
     assert.equal(await on.locator("svg").count(), 1, "On must use a switch icon");
     assert.equal(await off.locator("svg").count(), 1, "Off must use a switch icon");
     assert.equal(await auto.isChecked(), true, "Camera position must start in Auto");
@@ -476,46 +541,77 @@ try {
     await page.getByRole("button", { name: "Reset heading", exact: true }).click();
     assert.equal(await tooltip.isVisible(), false, "Clicking outside must close the explanation");
     await off.click();
-    assert.equal(await reset.isEnabled(), true, "An explicit choice must be resettable");
+    assert.equal(await row.getByRole("radio", { name: "Off", exact: true }).isChecked(), true, "Off must select its own state");
     await on.click();
     assert.equal(await row.getByRole("radio", { name: "On", exact: true }).isChecked(), true, "On must select its own state");
-    await reset.click();
-    assert.equal(await auto.isChecked(), true, "Reset must restore Auto");
+    await row.locator('label:has(input[value="auto"])').click();
+    assert.equal(await auto.isChecked(), true, "Auto must be selectable without an individual reset button");
     await page.locator('#settingsFixture').getByLabel("Show all parameters", { exact: true }).check();
     const expanded = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.position"]');
-    assert.equal(await expanded.locator('.foss-earth-parameter__actions > *').count(), 3,
-      "Show all must reuse one set of help/reset/source actions");
-    const mainPriority = page.locator('#settingsFixture .foss-earth-parameter-section__main [data-parameter="interface.toolbar.priority.position"]');
-    const expandedPriority = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.priority.position"]');
+    await checkSettingsRow(expanded, width, false);
+    assert.equal(await expanded.locator('.foss-earth-parameter__help-button, .foss-earth-parameter-row__source').count(), 2,
+      "Show all must reuse one set of help and source actions");
+    const mainPriority = row.locator('[data-parameter="interface.toolbar.priority.position"]');
+    const expandedPriority = expanded.locator('[data-parameter="interface.toolbar.priority.position"]');
     assert.equal(await mainPriority.count(), 0, "Priority fields must start absent from the main settings");
     assert.equal(await expandedPriority.count(), 0, "Show all must not bypass the priority editor toggle");
-    const editPriorities = page.locator('#settingsFixture .foss-earth-parameter-section__main').getByRole("checkbox", { name: "Edit priorities", exact: true });
-    await editPriorities.check();
+    const editPriorities = main.getByRole("slider", { name: "Priorities", exact: true });
+    assert.equal(await editPriorities.getAttribute("aria-valuetext"), "Auto", "Priorities must start in Auto");
+    assert.equal(await main.locator('[data-parameter="interface.toolbar.editPriorities"] input[type="checkbox"]').count(), 0,
+      "Priorities must use the native two-position slider");
+    const prioritySliderBox = await editPriorities.boundingBox();
+    await editPriorities.click({ position: { x: prioritySliderBox.width * 0.85, y: prioritySliderBox.height / 2 } });
+    assert.equal(await editPriorities.getAttribute("aria-valuetext"), "Custom", "Pointer input must select Custom");
     assert.equal(await mainPriority.count(), 1);
     assert.equal(await expandedPriority.count(), 1);
     const priorityInput = mainPriority.getByRole("spinbutton", { name: "Camera position priority", exact: true });
     assert.equal(await mainPriority.locator('input[type="range"]').count(), 0, "Priorities use compact numbers instead of sliders");
-    for (const control of [mainPriority, expandedPriority]) {
-      const layout = await control.evaluate(element => {
-        const parts = [element.querySelector('.foss-earth-parameter__label'), element.querySelector('input[type="number"]'),
-          ...element.querySelectorAll('.foss-earth-parameter__actions > *')];
-        return parts.map(part => {
-          const box = part.getBoundingClientRect();
-          return { left: box.left, right: box.right, center: (box.top + box.bottom) / 2 };
-        });
-      });
-      assert(layout.every(part => part.left >= 16 && part.right <= width - 16), `Compact priority controls must fit at ${width}px`);
-      assert(Math.max(...layout.map(part => part.center)) - Math.min(...layout.map(part => part.center)) < 0.5,
-        `Priority label, number and accessories must share a row at ${width}px: ${JSON.stringify(layout)}`);
-    }
+    assert.equal(await main.locator(':scope > [data-parameter="interface.toolbar.priority.position"]').count(), 0,
+      "Custom priority belongs to the existing visibility row");
+    assert.equal(await page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.toolbar.priority.position"]').count(), 0,
+      "Show all must keep the paired priority inside the visibility row");
+    await checkSettingsAlignment(main, width, true);
+    await checkSettingsRow(expanded, width, true);
     await priorityInput.fill("3");
     await priorityInput.press("Tab");
     assert.equal(await page.evaluate(() => window.hudFixture.settings.get("interface.toolbar.priority.position")), 3);
-    await editPriorities.uncheck();
+    assert.equal(await expandedPriority.getByRole("spinbutton", { name: "Camera position priority", exact: true }).inputValue(), "3",
+      "Show all must mirror the inline priority field");
+    assert.equal(await page.evaluate(() => window.hudFixture.priorities.get("position")), 3,
+      "Custom mode must activate the edited priority");
+    await editPriorities.focus();
+    await editPriorities.press("Home");
+    assert.equal(await editPriorities.getAttribute("aria-valuetext"), "Auto", "Keyboard input must select Auto");
     assert.equal(await mainPriority.count(), 0);
     assert.equal(await expandedPriority.count(), 0);
     assert.equal(await page.evaluate(() => window.hudFixture.settings.get("interface.toolbar.priority.position")), 3,
-      "Closing the priority editor must preserve the edited order");
+      "Auto mode must preserve the custom priority for later");
+    assert.equal(await page.evaluate(() => window.hudFixture.priorities.get("position")), 6,
+      "Auto mode must restore the default priority order");
+    await editPriorities.press("End");
+    assert.equal(await priorityInput.inputValue(), "3", "Returning to Custom must reveal the retained priority");
+    await editPriorities.press("Home");
+
+    const theme = main.locator('[data-parameter="interface.theme"]');
+    const themeSlider = theme.getByRole("slider", { name: "Theme", exact: true });
+    const expandedTheme = page.locator('#settingsFixture .foss-earth-parameter-list > [data-parameter="interface.theme"]');
+    const expandedThemeSlider = expandedTheme.getByRole("slider", { name: "Theme", exact: true });
+    assert.equal(await theme.locator('input[type="radio"], input[type="checkbox"]').count(), 0, "Theme must use one slider");
+    assert.equal(await expandedTheme.locator('input[type="radio"], input[type="checkbox"]').count(), 0,
+      "Show all must use the same theme slider");
+    assert.deepEqual(await theme.locator('.foss-earth-two-position-slider__option').allTextContents(), ["☼", "☾"],
+      "Theme slider endpoints must show sun and moon");
+    const themeBox = await themeSlider.boundingBox();
+    await themeSlider.click({ position: { x: themeBox.width * 0.15, y: themeBox.height / 2 } });
+    assert.equal(await themeSlider.getAttribute("aria-valuetext"), "Light", "Pointer input must select the light theme");
+    assert.equal(await expandedThemeSlider.getAttribute("aria-valuetext"), "Light", "Show all must follow the selected theme");
+    assert.equal(await page.evaluate(() => window.hudFixture.settings.get("interface.theme")), "light");
+    await themeSlider.press("ArrowRight");
+    assert.equal(await themeSlider.getAttribute("aria-valuetext"), "Dark", "Keyboard input must select the dark theme");
+    assert.equal(await expandedThemeSlider.getAttribute("aria-valuetext"), "Dark");
+    await expandedThemeSlider.press("Home");
+    assert.equal(await themeSlider.getAttribute("aria-valuetext"), "Light", "Editing Show all must update the main theme slider");
+    await expandedThemeSlider.press("End");
     const fpsStack = await page.locator('#fps').evaluate(element => {
       const value = element.querySelector('.perf-chip__value');
       const unit = element.querySelector('.perf-chip__unit');
@@ -532,7 +628,7 @@ try {
     const rgb = fpsStack.color.match(/\d+/g).map(Number);
     assert(Math.max(...rgb) - Math.min(...rgb) <= 24 && rgb.every(channel => channel >= 100 && channel <= 190),
       "The FPS label must render in muted gray rather than inheriting the live number's color");
-    console.log(`Passed compact three-state control, tooltip and stacked FPS check at ${width}px.`);
+    console.log(`Passed compact visibility, priority and theme sliders, tooltip and stacked FPS checks at ${width}px.`);
   }
 
   await load(375, true);

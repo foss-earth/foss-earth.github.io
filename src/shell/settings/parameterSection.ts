@@ -1,7 +1,7 @@
 import { getAppSettings } from "../../settings/appSettings";
 import type { SettingsRegistry } from "../../settings/registry";
 import { loadPanelSectionsOpen, savePanelSectionsOpen } from "../panelSectionsOpen";
-import { createParameterControl, isParameterControlVisible, type ParameterControlHandle } from "./controls";
+import { createParameterControl, isStandaloneParameterControl, type ParameterControlHandle } from "./controls";
 import { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./parameterList";
 import { createPresetStatus, createSavePresetControl } from "./presetsSection";
 
@@ -30,7 +30,7 @@ let sectionCount = 0;
  * a control for each main-level parameter homed here that they don't cover
  * (hosts' included), Save as preset, and the Show all parameters toggle, which
  * lists every parameter of the section with its value, default, provenance,
- * reset and source, and exports, imports and resets the section.
+ * help and source, and exports, imports and resets the section.
  */
 export function createParameterSection(settings: SettingsRegistry = getAppSettings(), options: ParameterSectionOptions): ParameterSectionHandle {
   const { tab, section } = options;
@@ -70,7 +70,7 @@ export function createParameterSection(settings: SettingsRegistry = getAppSettin
   const syncMain = (): void => {
     const specs = settings.list({ tab, section, level: "main" });
     visibilityDependencies = new Set(specs.flatMap(spec => spec.visibleWhen ? [spec.visibleWhen.id] : []));
-    const ids = specs.filter(spec => !covered.has(spec.id) && isParameterControlVisible(settings, spec)).map(spec => spec.id);
+    const ids = specs.filter(spec => !covered.has(spec.id) && isStandaloneParameterControl(settings, spec)).map(spec => spec.id);
     for (const [id, control] of controls) {
       if (!ids.includes(id)) { control.destroy(); controls.delete(id); }
     }
