@@ -325,6 +325,23 @@ implementation marked as starting values.
 | `renderer.frameRateCap` | fps or off | **Missing** |
 | `renderer.clipping` | choice: automatic, fixed near/far (m) | Set every frame by Babylon's geospatial clipping behaviour; not changeable |
 
+Implemented on 2026-10-06 in **Renderer → Lighting and exposure**:
+
+| Parameter | Unit / bounds / default | Behavior |
+| --- | --- | --- |
+| `renderer.exposureEV` | EV, −16…16, default 0 | Sets shared material exposure to `2 ** EV`; +1 EV doubles linear intensity. Fixed relative exposure, with no camera calibration or automatic adaptation. |
+| `renderer.ambientFillMultiplier` | ratio, 0…4, default 1 | Multiplies the existing fallback/simulation/Google hemispheric intensities (0.95/1.1/1.0). New lights inherit the current value; local emitters are unchanged. |
+
+These controls apply live through the shared registry, including imports and
+presets. A combined change requests one frame; unchanged values request none.
+Zero ambient fill affects lit surfaces, not emissive map imagery or the clear
+background, and is not a night simulation. Exposure affects materials using
+the shared image-processing configuration; custom panorama shaders currently
+encode their own output. This change introduces no HDR postprocess or new
+render target. Linear HDR composition, calibrated illumination and day/night
+lighting remain separate work. Runtime and UI behavior are checked with
+NullEngine/jsdom; GPU appearance remains unverified.
+
 ### Camera and input (Controls tab)
 
 Today's sensitivities exist; their curves do not.

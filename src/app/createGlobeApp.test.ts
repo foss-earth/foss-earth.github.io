@@ -499,7 +499,7 @@ describe("createGlobeApp smoke behavior", () => {
     ]);
     // The Renderer tab ends with Performance debug.
     const rendererSections = [...app.rendererTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
-    expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.clipping", "renderer.experiments", "renderer.performance"]);
+    expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.lighting", "renderer.clipping", "renderer.experiments", "renderer.performance"]);
     const performance = performanceSection(app);
     expect(performance.querySelector('[data-parameter^="interface.performanceHud."]')).toBeNull();
     const toolbar = sectionElement(app.interfaceSections, "toolbar");
