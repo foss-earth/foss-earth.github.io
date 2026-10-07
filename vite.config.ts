@@ -35,6 +35,12 @@ const sourceVersion = `${sourceCommit}${sourceDirty ? '-dirty' : ''}`
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  resolve: {
+    // One copy of each, as an app built on FOSS Earth is asked to keep (README). Without
+    // it gamepad-tools' imports found the Babylon it installs for itself, and the build
+    // held a second Babylon in the controller viewer's chunks.
+    dedupe: ['@babylonjs/core', '@babylonjs/loaders', '3d-tiles-renderer', 'react', 'react-dom'],
+  },
   test: {
     setupFiles: ['./src/test/setup.ts'],
     // The real adapter's Babylon imports omit .js; resolve them as the app's
