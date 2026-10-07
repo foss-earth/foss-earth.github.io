@@ -37,6 +37,7 @@ export async function mountGlobeApp(rootElement: HTMLElement, options: Omit<Glob
       mapTab={globeApp.mapTab}
       rendererTab={globeApp.rendererTab}
       scenesTab={globeApp.scenesTab}
+      aboutTab={globeApp.aboutTab}
       panoramaTabs={globeApp.panoramaTabs}
       overlayApiRef={overlayApi}
     />,

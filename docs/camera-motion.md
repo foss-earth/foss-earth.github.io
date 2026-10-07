@@ -63,6 +63,13 @@ events that belongs to the gesture that started it. A wheel event within
   turning a 360 image never pans the map, and momentum from panning the map
   never turns the image.
 - **The gesture that took the camera over does follow.** That is rule 3.
+- **A swipe over the controls is input too.** A two-finger swipe or a pinch over a
+  panel that cannot scroll that way, over the HUD bar or over an instrument moves
+  the camera as it would over the map, whichever camera has the canvas
+  (`passToWorld.ts`). A camera swipe that drifts over a panel stays the camera's
+  to its end, and a scroll that drifts off its panel stays a scroll; the first
+  event of a gesture decides. On 2026-10-07 a sideways swipe over the Debug tab,
+  meant for the camera, went Back a page.
 
 ### 5. One friction
 
@@ -125,6 +132,7 @@ travel. It cuts with a short fade, and nothing glides.
 | The orbit that holds an eye and look, and motion as pan, orbit and zoom rates | `orbitCenterOnSight`, `orbitGlideRates` and `withinTilt` in `src/camera/cameraGlide.ts` |
 | A closer zoom limit after a handback, until the camera is back outside it | `CameraController.allowNearer` in `src/camera/cameraState.ts` |
 | Which wheel event begins a gesture, and when | `watchWheelGestures` in `src/input/wheelController.ts` |
+| Swipes and pinches over the controls that none of them uses, handed to the canvas | `passUnusedInputToWorld` in `src/input/passToWorld.ts`, started by the runtime |
 | Input carried on, or ignored, when the globe gets input back | `InputHandback` in `src/input/createInputController.ts`, `heldPress` in `mouseController.ts` |
 | A flight's velocity where it got to, and the glide's settling curve | `flightMotion` and `glideSettling` in `src/scenes/panoramaFlight.ts` |
 | The flights, their cuts and the orb's return | `enter`, `leave`, `handBack` and `fadeSphere` in `src/scenes/loadScene.ts` |

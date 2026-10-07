@@ -58,3 +58,48 @@ it("draws the + menu outside the panel that clips it, fixed to the window where 
     expect(flipped.classList.contains("foss-earth-window-menu-align-right")).toBe(true);
   } finally { await act(async () => root.unmount()); }
 });
+
+/**
+ * Escape closed nothing: the + menu stayed open until a click elsewhere. It
+ * now closes the menu and nothing else, so a panorama behind it is not left
+ * and no key binding reads the key, and focus goes back to the + button.
+ */
+it("closes the + menu on Escape, and the key goes no further", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const panel = document.createElement("div");
+  document.body.append(panel);
+  const onAddMenuOpenChange = vi.fn();
+  const behind = vi.fn();
+  window.addEventListener("keydown", behind);
+  const root = createRoot(panel);
+  try {
+    await act(async () => root.render(<TabStrip
+      openTabs={["map"]}
+      activeTab="map"
+      availableTabs={["location", "scenes"]}
+      addMenuOpen
+      onSelectTab={() => {}}
+      onCloseTab={() => {}}
+      onOpenTab={() => {}}
+      onAddMenuOpenChange={onAddMenuOpenChange}
+      getLabel={(id) => id}
+    />));
+    const item = document.querySelector<HTMLButtonElement>('[role="menuitem"]')!;
+    item.focus();
+    const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    item.dispatchEvent(escape);
+    expect(onAddMenuOpenChange).toHaveBeenCalledWith(false);
+    expect(escape.defaultPrevented).toBe(true);
+    expect(behind).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(panel.querySelector(".foss-earth-tab-add"));
+
+    // Other keys are the menu's to ignore, as before.
+    onAddMenuOpenChange.mockClear();
+    item.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+    expect(onAddMenuOpenChange).not.toHaveBeenCalled();
+    expect(behind).toHaveBeenCalledTimes(1);
+  } finally {
+    window.removeEventListener("keydown", behind);
+    await act(async () => root.unmount());
+  }
+});

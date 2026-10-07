@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useEscapeToClose } from "./useEscapeToClose";
 
 function cx(...parts: Array<string | null | undefined | false>): string {
   return parts.filter(Boolean).join(" ");
@@ -97,6 +98,7 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
     document.addEventListener("pointerdown", handleOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [addMenuOpen, onAddMenuOpenChange]);
+  useEscapeToClose(addMenuOpen, () => onAddMenuOpenChange(false), () => addRef.current);
 
   // The menu is fixed to the window where the + button is: over it, starting at
   // its left edge, or ending at its right edge where it would pass the window's.

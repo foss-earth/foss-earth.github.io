@@ -268,7 +268,7 @@ beforeEach(() => {
 
 describe("createGlobeApp smoke behavior", () => {
   it("boots the raster basemap shell and updates HUD/perf state on the frame callback", async () => {
-    const { root } = await createAppUnderTest();
+    const { root, app } = await createAppUnderTest();
 
     expect(mockState.createBabylonRuntime).toHaveBeenCalledWith(
       expect.any(HTMLCanvasElement),
@@ -287,13 +287,18 @@ describe("createGlobeApp smoke behavior", () => {
       root.querySelector<HTMLElement>("#themeButton")!.style.order,
       root.querySelector<HTMLElement>("#settingsButton")!.style.order,
     ]).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
-    expect(root.querySelector("#settingsBuildLine")?.textContent).toMatch(
-      /^Build: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
-    );
-    expect(root.querySelector("#settingsSourceLine")?.textContent).toMatch(/^Source: [\w.-]+$/);
-    expect(root.querySelector("#settingsBundleLine")?.textContent).toMatch(/^Bundle: (dev|[\w.]+-[\w-]{8}\.js)$/);
+    // Which version runs is its own tab, About, no longer a section of Settings.
+    expect(app.settingsSections.map(section => section.id)).not.toContain("about");
+    const aboutLines = () => [...app.aboutTab.querySelectorAll(".foss-earth-about__app .foss-earth-about__line")].map(line => line.textContent);
+    // The test page carries no description, so the build's commits come from its config.
+    expect(aboutLines()).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^Built \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC\.$/),
+      expect.stringMatching(/^Source: [\w.-]+$/),
+      expect.stringMatching(/^Bundle: (dev|[\w.]+-[\w-]{8}\.js)$/),
+    ]));
+    // Asked of GitHub when About is shown; jsdom cannot tell, so at once.
     await vi.waitFor(() => {
-      expect(root.querySelector("#settingsDeployLine")?.textContent).toBe("Site's latest deploy: 8b0ab4ed380c");
+      expect(aboutLines()).toContain("Site's latest deploy: 8b0ab4ed380c");
     });
     expect(mockState.configureOrbitTargetHeight).toHaveBeenCalledWith({
       resolveSurfaceHeightMeters: mockState.resolveAnchorHeightMeters,
@@ -469,7 +474,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(text).toContain("Map detail returned 0.25 levels toward what you asked for");
   });
 
-  it("splits its sections between the Controls, Interface, Renderer and Settings tabs", async () => {
+  it("splits its sections between the Controls, Interface, Renderer and Settings tabs, with About a tab of its own", async () => {
     const { app } = await createAppUnderTest();
 
     expect(app.controlsSections.map(({ id, title, defaultOpen }) => [id, title, defaultOpen])).toEqual([
@@ -495,8 +500,8 @@ describe("createGlobeApp smoke behavior", () => {
       ["saved-settings", "Saved settings"],
       ["app-files", "App files"],
       ["diagnostics", "Diagnostics"],
-      ["about", "About"],
     ]);
+    expect(app.aboutTab.classList.contains("foss-earth-about")).toBe(true);
     // The Renderer tab ends with Performance debug.
     const rendererSections = [...app.rendererTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
     expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.lighting", "renderer.clipping", "renderer.experiments", "renderer.performance"]);

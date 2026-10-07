@@ -8,6 +8,8 @@ export type {
   HudBarSlotItem,
 } from "./hudBar";
 export { createHudBar, HUD_BAR_HEIGHT_PROPERTY } from "./hudBar";
+export { createAboutPanel, type AboutPanelHandle, type AboutPanelOptions } from "./aboutPanel";
+export type { BuiltFrom, BuiltFromCommit, BuiltFromPart, BuiltFromSource } from "../app/builtFrom";
 export { createMapSourceHud, type MapSourceHudHandle, type MapSourceHudOptions, type MapSourceHudStatus } from "./mapSourceHud";
 export { createMapDetailSlider, describeDetailStatus, type MapDetailSliderHandle, type MapDetailSliderOptions } from "./mapDetailSlider";
 export {

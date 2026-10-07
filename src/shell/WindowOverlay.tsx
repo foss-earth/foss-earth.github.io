@@ -30,7 +30,7 @@ import {
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
-type ElementTabId = "map" | "renderer" | "scenes" | "panorama" | "panorama-settings";
+type ElementTabId = "map" | "renderer" | "scenes" | "about" | "panorama" | "panorama-settings";
 /** Every tab the overlay can offer without the host defining it. */
 type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 
@@ -109,6 +109,8 @@ export interface WindowOverlayProps<TabId extends string = never> {
   rendererTab?: HTMLElement;
   /** Adds the shared Scenes tab showing this element, from `createScenesPanel`. */
   scenesTab?: HTMLElement;
+  /** Adds the shared About tab showing this element, from `createAboutPanel`: which version runs, and what it is built from. */
+  aboutTab?: HTMLElement;
   /**
    * A panorama's tabs, from `createPanoramaTabs`. Entering a panorama opens its
    * tab, titled "360: <title>", minimized while the camera flies in and shown
@@ -135,6 +137,7 @@ export function WindowOverlay<TabId extends string = never>({
   mapTab,
   rendererTab,
   scenesTab,
+  aboutTab,
   panoramaTabs,
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
@@ -157,11 +160,12 @@ export function WindowOverlay<TabId extends string = never>({
     ...(mapTab ? { map: mapTab } : {}),
     ...(rendererTab ? { renderer: rendererTab } : {}),
     ...(scenesTab ? { scenes: scenesTab } : {}),
+    ...(aboutTab ? { about: aboutTab } : {}),
     ...(panoramaTabs ? { panorama: panoramaTabs.panorama, "panorama-settings": panoramaTabs.settings } : {}),
   };
   const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
   const elementTabLabels: Record<ElementTabId, string> = {
-    map: "Map", renderer: "Renderer", scenes: "Scenes", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
+    map: "Map", renderer: "Renderer", scenes: "Scenes", about: "About", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
   };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);

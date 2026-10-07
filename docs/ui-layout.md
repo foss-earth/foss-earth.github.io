@@ -197,7 +197,9 @@ Every setting lives in exactly one place, a section of a tab.
   rate, Depth range and Performance debug; the Scenes tab is Content, Orbs,
   Motion, Loading and memory, Tiled images, Saved images and Credits; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
-  is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings, App files, Diagnostics and About. Map and
+  is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings, App files and Diagnostics. About is
+  a tab of its own (`createAboutPanel`): which version runs and what it is built from, as a tree from the app
+  down, where someone looking for the version looks for it, under +. Map and
   Renderer add a section for
   every section of their tab a host's parameters are homed in, such as 0sfs's
   Renderer → Instruments, so a host never builds a second copy of the tab.
@@ -233,11 +235,42 @@ Every setting lives in exactly one place, a section of a tab.
   Hiding a button never hides what it opened; its tab stays under
   +. The same section holds one two-position theme slider, with sun and moon icons,
   so theme remains changeable when its toolbar shortcut does not fit.
+- The menu under a tab strip's + closes on Escape, as on a click outside it, and
+  the key goes no further: no panorama is left and no binding reads it. Focus goes
+  back to the + button.
 - The menu under a tab strip's + is drawn outside its panel, in the overlay's own
   layer, fixed to the window where the + button is. The panel clips what passes
   its edges, and with many tabs the + sits at the strip's right end, so a menu
   drawn inside the panel was cut off there and the globe or a panorama showed in
   its place.
+
+## A control uses its input or passes it on
+
+Every control over the world either uses an input or passes it to the world behind
+it, the same way for every control, so that nothing in between swallows a gesture
+or a key meant for the camera or the vehicle.
+
+- **Swipes and pinches.** A two-finger swipe over a panel that cannot scroll that
+  way, over the HUD bar or over an instrument moves the camera as it would over the
+  map, and a pinch zooms it, whichever camera has the canvas
+  (`passUnusedInputToWorld` in `src/input/passToWorld.ts`, which the runtime
+  starts). A panel keeps the swipes it scrolls with, along its own axis; a listener
+  that calls `preventDefault` keeps the events it uses. The first event of a
+  gesture decides for all of it. Nothing unused reaches the browser, where a
+  sideways swipe went Back a page and a pinch zoomed the page, and the page itself
+  never overscrolls (`overscroll-behavior: none` on `html` and `body` in the shell's
+  stylesheet).
+- **Keys.** A focused control keeps the keys it uses and the bindings behind it
+  take the rest: a text field or a dropdown every key, a slider its arrows, Page and
+  Home/End keys, a checkbox Space, a button Space and Enter (`controlTakesKey` from
+  `@felipegalind0/gamepad-tools/browser`). A control whose keys none of these
+  describe names them in `data-takes-keys`. A trim slider just dragged therefore
+  still lets W, A, S and D fly, as the custom throttle lever always did, and a
+  focused slider's arrow keys move its thumb without also turning a panorama. Every
+  key binding asks this one rule, never a list of its own of which elements to
+  ignore.
+- **Escape** closes what is open over the world, such as the + menu, before it
+  reaches anything behind it.
 
 ## A panorama's tabs
 
@@ -279,6 +312,7 @@ of the context on screen:
 | Renderer | yes | yes | The panorama is drawn by the same renderer, at its resolution and frame-rate cap |
 | Controls | yes | yes | The input method and controller bindings drive the panorama's look too |
 | Interface, Settings | yes | yes | The toolbar, log, search, presets and saved settings apply anywhere |
+| About | yes | yes | Which version runs is the same anywhere |
 | Scenes | yes | yes | Its list enters any other panorama of the scene, and its budgets hold the image on screen |
 | 360: <title> | no | yes | The panorama on screen |
 | 360 image settings | no | yes | What matters only inside a panorama |

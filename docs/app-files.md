@@ -70,7 +70,7 @@ a trial of the old one.
 So the app asks, and a build says which build it is:
 
 - **Each page of a build carries its build's time**, in `<meta name="foss-earth-build">`,
-  written by the `appFiles` plugin. It is the time Settings → About shows.
+  written by the `appFiles` plugin. It is the time About shows.
 - **The app asks the site for its own page** (`fetch` with `cache: "no-cache"`), as it starts,
   when the page is shown again or the network is back, and every ten minutes while it is
   shown, and compares the stamp in the answer with its own page's. The answer is the page, a

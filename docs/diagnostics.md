@@ -106,11 +106,22 @@ build it is, in four places:
   with FOSS Earth 35ad0e3." The time is the build's, to the minute; the first commit is the
   app's own repository's and the second FOSS Earth's, in an app built on it from another
   repository. `-dirty` after a commit says the build had changes not committed.
-- **Settings → About**: the build's time, the two commits and the bundle, in full. Its last
-  line, the site's latest deploy, is asked of GitHub as the page opens and is the site's, not
-  this page's: a page a browser kept from days before shows the newest deploy there too. Until
-  2026-10-04 it was labelled "Deploy", and an iPhone running the UMN tour's app of 2026-10-03
-  showed that day's deploy under it.
+- **About**, a tab of its own under +: the build's time and bundle, whether the page is the
+  published version, and everything the app is built from as a tree, the app at the top and
+  what each part brings in under it. A checkout linked into the app, as FOSS Earth and
+  gamepad-tools are, gives its commit, whether it had changes not committed or was not
+  pushed when the app was built, its latest commits and, where it is built on its own, when;
+  a package gives its version. Each links to its commit, its history up to that commit and
+  its source. A package two parts bring in is listed in full once and pointed to from the
+  other, since the build holds one copy. It is read from the page itself, written there by
+  `builtFrom()` from `foss-earth/vite`, so a browser's own copy of an older page shows what
+  that page was built from. An app built without the plugin names its two commits there
+  instead. Its last line, the site's latest deploy, is asked of GitHub the first time About
+  is shown and is the site's, not this page's: a page a browser kept from days before shows
+  the newest deploy there too. Until 2026-10-04 it was labelled "Deploy", and an iPhone
+  running the UMN tour's app of 2026-10-03 showed that day's deploy under it. Until
+  2026-10-07 About was the last section of Settings, where someone looking for which version
+  runs did not find it.
 - **The report**, in its `Build:` line, with whether the page is the published one.
 - **The page's source**, for the version a site publishes
   ([app-files.md](app-files.md#what-a-published-page-says)).

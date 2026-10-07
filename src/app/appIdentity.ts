@@ -1,7 +1,7 @@
 /**
  * Which version of the app runs: when it was built, and from which commits.
  * A device with no console has no other way to say, so the app says it in its
- * log as it opens, and Settings → About and the diagnostics report repeat it
+ * log as it opens, and the About tab and the diagnostics report repeat it
  * (docs/diagnostics.md).
  */
 
@@ -22,6 +22,21 @@ export interface AppIdentity {
 /** FOSS Earth's commit as the build recorded it, or "". */
 export const fossEarthSource = (): string => (typeof __FOSS_EARTH_SOURCE__ === "string" ? __FOSS_EARTH_SOURCE__ : "");
 
+/** What identifies the app that runs, for About, the log and the diagnostics report. */
+export const getAppIdentity = (): AppIdentity => ({ build: __BUILD_TIME__, source: __SOURCE_VERSION__, fossEarth: fossEarthSource(), bundle: getLoadedBundleName() });
+
+/** The page's built script, whatever the app's entry is called: "index-1a2B3c4D.js", or "dev" for one not built. */
+export function getLoadedBundleName(): string {
+  const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>("script[src]"));
+  const bundle = scripts
+    .map((script) => script.src)
+    .map((src) => new URL(src, window.location.href).pathname.split("/").pop() ?? "")
+    // A build names each file with its content's hash.
+    .find((name) => /^[\w.]+-[\w-]{8}\.js$/.test(name));
+
+  return bundle ?? "dev";
+}
+
 /** "App built 2026-10-04T17:33:49.408Z from a2c6c2894e12 with FOSS Earth 35ad0e3f1c2a, bundle twinCities-BVTOJrr3.js". */
 export function describeAppIdentity(identity: AppIdentity): string {
   return `App built ${identity.build} from ${identity.source}${identity.fossEarth ? ` with FOSS Earth ${identity.fossEarth}` : ""}, bundle ${identity.bundle}`;
@@ -39,7 +54,7 @@ const short = (commit: string): string => commit.replace(/^([0-9a-f]{7})[0-9a-f]
 /**
  * The same in the few words a phone's log has room for, enough to tell one
  * release from another: "App built 2026-10-04 17:33 UTC from a2c6c28 with FOSS
- * Earth 35ad0e3". Settings → About and the report have it in full.
+ * Earth 35ad0e3". About and the report have it in full.
  */
 export function describeAppIdentityBriefly(identity: AppIdentity): string {
   return `App built ${buildMinute(identity.build)} from ${short(identity.source)}${identity.fossEarth ? ` with FOSS Earth ${short(identity.fossEarth)}` : ""}`;

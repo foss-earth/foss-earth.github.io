@@ -58,7 +58,7 @@ function real(folder: string): string {
 }
 
 /** A string the app's config defined, as `__BUILD_TIME__: JSON.stringify(…)`, or null. */
-function defined(define: Record<string, unknown> | undefined, name: string): string | null {
+export function definedString(define: Record<string, unknown> | undefined, name: string): string | null {
   try {
     const value: unknown = typeof define?.[name] === "string" ? JSON.parse(define[name]) : null;
     return typeof value === "string" && value ? value : null;
@@ -70,7 +70,7 @@ function defined(define: Record<string, unknown> | undefined, name: string): str
 
 /** A build's stamp: the time its About shows (`__BUILD_TIME__`) where the app's config defines one, so the page and the app name the build alike; else now. */
 export function buildStamp(define: Record<string, unknown> | undefined): string {
-  return defined(define, "__BUILD_TIME__") ?? new Date().toISOString();
+  return definedString(define, "__BUILD_TIME__") ?? new Date().toISOString();
 }
 
 /**
@@ -100,7 +100,7 @@ export function appFiles(): Plugin {
     // Where the app finds the worker: none while developing, where nothing is hashed.
     config(config, env) {
       stamp = env.command === "build" ? buildStamp(config.define) : "";
-      appSource = defined(config.define, "__SOURCE_VERSION__");
+      appSource = definedString(config.define, "__SOURCE_VERSION__");
       // FOSS Earth's own app is built from its own repository: its source is the app's.
       const own = real(config.root ?? process.cwd()) === real(FOSS_EARTH_ROOT);
       fossEarth = own ? "" : fossEarthSource();

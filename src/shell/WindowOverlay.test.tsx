@@ -276,6 +276,51 @@ it("adds Map and Renderer tabs showing the elements a host hands over", async ()
   } finally { await act(async () => root.unmount()); }
 });
 
+/**
+ * Someone wanting to know which version runs looked for an About tab under +,
+ * and found none: it was the last section of Settings. It is a tab of its own,
+ * offered on the globe and inside a panorama alike.
+ */
+it("offers an About tab under +, on the globe and in a panorama", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
+  const [aboutTab, panoramaTab, settingsTab] = ["Built from", "Photograph", "Looking"].map(element);
+  let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
+  const listeners = new Set<() => void>();
+  const panoramaTabs: PanoramaTabs = {
+    panorama: panoramaTab, settings: settingsTab, leave() {}, destroy() {},
+    getSnapshot: () => snapshot,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+  const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    aboutTab={aboutTab}
+    panoramaTabs={panoramaTabs}
+    overlayApiRef={overlayApiRef}
+  />));
+  const menu = async () => {
+    const plus = () => host.querySelector<HTMLButtonElement>('[aria-label="Open right panel"], [data-side="right"] [aria-label="Open new tab"]')!;
+    await act(async () => plus().click());
+    const items = Array.from(host.querySelectorAll('[role="menuitem"]'), (item) => item.textContent);
+    await act(async () => plus().click());
+    return items;
+  };
+  try {
+    expect(await menu()).toContain("About");
+    await act(async () => { snapshot = { title: "360: Northrop Mall", onScreen: true }; for (const listener of listeners) listener(); });
+    expect(await menu()).toContain("About");
+    await act(async () => overlayApiRef.current!.toggleTab("about"));
+    expect(host.contains(aboutTab)).toBe(true);
+  } finally { await act(async () => root.unmount()); }
+});
+
 it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leaves the panorama when the tab closes", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);

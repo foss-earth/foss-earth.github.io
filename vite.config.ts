@@ -2,6 +2,7 @@ import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
 import { appFiles } from './vite/appFiles.ts'
+import { builtFrom } from './vite/builtFrom.ts'
 
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1]
 // A `<owner>.github.io` repository is served from the domain root; any other
@@ -54,6 +55,7 @@ export default defineConfig({
     __SOURCE_VERSION__: JSON.stringify(sourceVersion),
     __REPOSITORY_SLUG__: JSON.stringify(getRepositorySlug()),
   },
-  // The app's own files are kept on the visitor's device by a service worker (docs/app-files.md).
-  plugins: [react(), appFiles()],
+  // The app's own files are kept on the visitor's device by a service worker (docs/app-files.md),
+  // and each page says what it is built from, for the About tab.
+  plugins: [react(), appFiles(), builtFrom()],
 })

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEscapeToClose } from "./useEscapeToClose";
 
 function cx(...parts: Array<string | null | undefined | false>): string {
   return parts.filter(Boolean).join(" ");
@@ -55,6 +56,7 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
     buttonTitle = "Open panel tab",
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const dragDepthRef = useRef(0);
 
@@ -90,6 +92,7 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
     document.addEventListener("pointerdown", handleOutsidePointerDown);
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [onOpenChange, open]);
+  useEscapeToClose(open, () => onOpenChange(false), () => buttonRef.current);
 
   const alignClassName = side === "right"
     ? (classNames?.menuAlignRight ?? "foss-earth-window-menu-align-right")
@@ -135,6 +138,7 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
       } : undefined}
     >
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => onOpenChange(!open)}
         className={cx("foss-earth-panel-launcher-button", classNames?.button)}
