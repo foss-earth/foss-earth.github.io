@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { BUILT_FROM_ID, type BuiltFrom, type BuiltFromPart } from "../src/app/builtFrom";
-import { builtFrom, bundledPackages, describeBuild, webRepository, type BuildReader, type PackageManifest } from "./builtFrom";
+import { builtFrom, bundledPackages, commitVersion, describeBuild, webRepository, type BuildReader, type PackageManifest } from "./builtFrom";
 
 const HEAD = "a2c6c2894e12a2c6c2894e12a2c6c2894e12a2c6";
 const EARTH = "35ad0e3f1c2a35ad0e3f1c2a35ad0e3f1c2a35ad";
@@ -46,7 +46,7 @@ function workspace(options: {
       if (command === "remote") return info.remote ?? null;
       if (command === "status") return info.changed ?? "";
       if (command === "branch") return info.pushed === false ? "" : "  origin/main";
-      if (command === "log") return info.log ?? `${info.head}\x1f2026-10-07T11:00:39-05:00\x1fThe latest change`;
+      if (command === "log") return info.log ?? `${info.head}\x1f2026-10-07T11:00:39-05:00\x1f2026-10-07\x1fThe latest change`;
       if (command === "ls-files") return info.tracked?.includes(rest.at(-1)!) ? rest.at(-1)! : null;
       return null;
     },
@@ -93,7 +93,12 @@ function flightWorkspace(pushed = true) {
     },
     checkouts: {
       [app]: { head: HEAD, remote: "https://someone:ghp_secret@github.com/0SFS/0SFS.github.io.git", pushed },
-      "/w/foss-earth": { head: EARTH, remote: "git@github.com:foss-earth/foss-earth.github.io.git" },
+      "/w/foss-earth": { head: EARTH, remote: "git@github.com:foss-earth/foss-earth.github.io.git", log: [
+        `${EARTH}\x1f2026-10-07T11:00:39-05:00\x1f2026-10-07\x1fThe latest change`,
+        `${"1".repeat(40)}\x1f2026-10-07T09:12:00-05:00\x1f2026-10-07\x1fThe one before it`,
+        `${"2".repeat(40)}\x1f2026-10-07T00:13:01-05:00\x1f2026-10-07\x1fThe day's first`,
+        `${"3".repeat(40)}\x1f2026-10-06T17:58:57-05:00\x1f2026-10-06\x1fThe day before's`,
+      ].join("\n") },
       "/w/pads": { head: PADS, remote: "https://github.com/Felipegalind0/gamepad-tools.git", changed: " M src/browser/source.ts", tracked: [] },
     },
     files: ["/w/pads/dist/index.js", "/w/pads/src/index.ts"],
@@ -111,12 +116,13 @@ describe("describeBuild", () => {
     expect(tree.built).toBe("2026-10-07T18:20:00.000Z");
     expect(tree.dev).toBeUndefined();
     expect(outline(tree.app)).toEqual([
-      "osfs app a2c6c28 dirty",
+      // The app's and each checkout's version is its commit's: the day, then the commit's count that day.
+      "osfs 26.10.7.1 app a2c6c28 dirty",
       // Checkouts first, then packages, each by name.
-      "  @felipegalind0/gamepad-tools 0.1.0 checkout fd1a3e6 dirty",
+      "  @felipegalind0/gamepad-tools 26.10.7.1 checkout fd1a3e6 dirty",
       "    @babylonjs/core 8.56.2 registry",
-      "  foss-earth 0.0.0 checkout 35ad0e3",
-      "    @felipegalind0/gamepad-tools 0.1.0 checkout listed above",
+      "  foss-earth 26.10.7.3 checkout 35ad0e3",
+      "    @felipegalind0/gamepad-tools 26.10.7.1 checkout listed above",
       // FOSS Earth's own React is not in the bundle: the app's is.
       "    react 19.2.6 registry listed above",
       "  @felipegalind0/jsbsim 1.2.4-fork.16 file",
@@ -134,7 +140,8 @@ describe("describeBuild", () => {
     // Built apart from the app, from a dist/ that git does not track.
     expect(pads.built).toBe("2026-10-07T18:10:34.467Z");
     expect(earth.built).toBeUndefined();
-    expect(earth.history).toEqual([{ hash: EARTH, at: "2026-10-07T11:00:39-05:00", subject: "The latest change" }]);
+    expect(earth.history!.map(commit => commit.subject)).toEqual(["The latest change", "The one before it", "The day's first", "The day before's"]);
+    expect(earth.history![0]).toEqual({ hash: EARTH, at: "2026-10-07T11:00:39-05:00", subject: "The latest change" });
     // A package not in the bundle is not listed, though the app declares it.
     expect(JSON.stringify(tree)).not.toContain("unused");
   });
@@ -157,12 +164,12 @@ describe("describeBuild", () => {
     const tree = describeBuild({ root: "/w/0sfs", built: "", bundled: null, dedupe: ["react"], reader: flightWorkspace() });
     expect(tree.dev).toBe(true);
     expect(outline(tree.app)).toEqual([
-      "osfs app a2c6c28",
-      "  @felipegalind0/gamepad-tools 0.1.0 checkout fd1a3e6 dirty",
+      "osfs 26.10.7.1 app a2c6c28",
+      "  @felipegalind0/gamepad-tools 26.10.7.1 checkout fd1a3e6 dirty",
       // A peer is the app's copy.
       "    @babylonjs/core 8.56.2 registry",
-      "  foss-earth 0.0.0 checkout 35ad0e3",
-      "    @felipegalind0/gamepad-tools 0.1.0 checkout listed above",
+      "  foss-earth 26.10.7.3 checkout 35ad0e3",
+      "    @felipegalind0/gamepad-tools 26.10.7.1 checkout listed above",
       // Deduplicated by the app's config: its copy.
       "    react 19.2.6 registry listed above",
       "  @felipegalind0/jsbsim 1.2.4-fork.16 file",
@@ -184,7 +191,7 @@ describe("describeBuild", () => {
   it("keeps a commit's first line short", () => {
     const reader = flightWorkspace();
     const long = "Size the profile and controller dropdowns to their own text ".repeat(6);
-    reader.git = (dir, args) => (args[0] === "log" ? `${HEAD}\x1f2026-10-07T11:00:39-05:00\x1f${long}` : flightWorkspace().git(dir, args));
+    reader.git = (dir, args) => (args[0] === "log" ? `${HEAD}\x1f2026-10-07T11:00:39-05:00\x1f2026-10-07\x1f${long}` : flightWorkspace().git(dir, args));
     const tree = describeBuild({ root: "/w/0sfs", built: "", bundled: new Set(["/w/0sfs"]), reader });
     const subject = tree.app.history![0].subject;
     expect(subject.length).toBeLessThanOrEqual(160);
@@ -214,13 +221,31 @@ describe("describeBuild with two installs of one package", () => {
       bundled: new Set(["/w/earth", "/w/pads", "/w/earth/node_modules/@babylonjs/core", "/w/pads/node_modules/@babylonjs/core"]),
     });
     expect(outline(tree.app)).toEqual([
-      "foss-earth app 35ad0e3",
-      "  @felipegalind0/gamepad-tools 0.1.0 checkout fd1a3e6",
+      "foss-earth 26.10.7.1 app 35ad0e3",
+      "  @felipegalind0/gamepad-tools 26.10.7.1 checkout fd1a3e6",
       "    @babylonjs/core 8.56.2 registry listed above",
       "  @babylonjs/core 8.56.2 registry",
       "  @babylonjs/core 8.56.2 registry",
     ]);
     expect(tree.app.parts!.map(part => part.anotherCopy ?? false)).toEqual([false, false, true]);
+  });
+});
+
+describe("commitVersion", () => {
+  /**
+   * FOSS Earth, 0sfs and gamepad-tools name their versions alike: the last two
+   * digits of the year, the month, the day, and the commit's count that day.
+   */
+  it("is the commit's day and its count among that day's commits", () => {
+    expect(commitVersion(["2026-10-07", "2026-10-07", "2026-10-07", "2026-10-06", "2026-10-06"])).toBe("26.10.7.3");
+    expect(commitVersion(["2026-10-07"])).toBe("26.10.7.1");
+    // Two digits of the year, and no zeros before a month or a day.
+    expect(commitVersion(["2105-01-09", "2105-01-09"])).toBe("05.1.9.2");
+  });
+
+  it("is nothing without a date", () => {
+    expect(commitVersion([])).toBeUndefined();
+    expect(commitVersion(["yesterday"])).toBeUndefined();
   });
 });
 
@@ -280,6 +305,7 @@ describe("builtFrom", () => {
     expect(tree.built).toBe("2026-10-04T17:33:49.408Z");
     expect(tree.app.name).toBe("foss-earth");
     expect(tree.app.commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(tree.app.version).toMatch(/^\d{2}\.\d{1,2}\.\d{1,2}\.\d+$/);
     expect(tree.app.dirty).toBeUndefined();
   });
 

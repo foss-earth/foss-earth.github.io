@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { fitMenu, menuBottom as menuBottomOf } from "./menuFit";
 
 function cx(...parts: Array<string | null | undefined | false>): string {
   return parts.filter(Boolean).join(" ");
@@ -35,6 +36,8 @@ export interface PanelLauncherProps<TabId extends string> {
   renderButtonContent?: ReactNode;
   buttonAriaLabel?: string;
   buttonTitle?: string;
+  /** The top of what the host draws over the window's bottom edge: the menu ends above it, in more columns if it must. */
+  menuBottom?: () => number | null | undefined;
 }
 
 export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<TabId>) {
@@ -54,9 +57,12 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
     renderButtonContent,
     buttonAriaLabel = "Open panel tab",
     buttonTitle = "Open panel tab",
+    menuBottom,
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuFit, setMenuFit] = useState<CSSProperties | undefined>(undefined);
   const [dragActive, setDragActive] = useState(false);
   const dragDepthRef = useRef(0);
 
@@ -93,6 +99,18 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
     return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
   }, [onOpenChange, open]);
   useEscapeToClose(open, () => onOpenChange(false), () => buttonRef.current);
+
+  // Every tab of the menu stays in sight: it ends above the host's toolbar, in more columns if it must.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const fit = (): void => {
+      const menu = menuRef.current;
+      if (menu) setMenuFit(fitMenu(menu, menu.getBoundingClientRect().top, menuBottomOf(menuBottom)));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [open, availableTabs.length, menuBottom]);
 
   const alignClassName = side === "right"
     ? (classNames?.menuAlignRight ?? "foss-earth-window-menu-align-right")
@@ -151,7 +169,9 @@ export function PanelLauncher<TabId extends string>(props: PanelLauncherProps<Ta
       {open ? (
         <div
           role="menu"
+          ref={menuRef}
           className={cx("foss-earth-window-menu", classNames?.menu, alignClassName)}
+          style={menuFit}
           onPointerDown={(event) => event.stopPropagation()}
         >
           {availableTabs.length === 0 ? (

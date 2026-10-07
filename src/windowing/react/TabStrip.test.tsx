@@ -103,3 +103,57 @@ it("closes the + menu on Escape, and the key goes no further", async () => {
     await act(async () => root.unmount());
   }
 });
+
+/**
+ * On 2026-10-07 the + menu of a short window ran under the map source chip at
+ * the window's bottom, which 0sfs draws above the panels, and About, last in
+ * it, was out of sight: it read as not there. The menu ends above what the
+ * host draws there, and takes another column for what does not fit.
+ */
+it("ends the + menu above the host's toolbar, in more columns when it has more tabs than fit", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("innerWidth", 1000);
+  vi.stubGlobal("innerHeight", 600);
+  const panel = document.createElement("div");
+  document.body.append(panel);
+  vi.spyOn(HTMLButtonElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLButtonElement) {
+    return this.classList.contains("foss-earth-tab-add")
+      ? { left: 300, right: 330, top: 12, bottom: 42, width: 30, height: 30, x: 300, y: 12, toJSON() {} } as DOMRect
+      : new DOMRect();
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(150);
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+    return this.getAttribute("role") === "menuitem" ? 32 : 0;
+  });
+  const tabs = ["location", "controls", "interface", "settings", "weather", "aircraft", "map", "renderer", "about"];
+  let toolbarTop = 190;
+  const root = createRoot(panel);
+  const render = () => act(async () => root.render(<TabStrip
+    openTabs={[]}
+    activeTab={null}
+    availableTabs={tabs}
+    addMenuOpen
+    onSelectTab={() => {}}
+    onCloseTab={() => {}}
+    onOpenTab={() => {}}
+    onAddMenuOpenChange={() => {}}
+    getLabel={(id) => id}
+    menuBottom={() => toolbarTop}
+  />));
+  try {
+    await render();
+    const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
+    // From the button's top at 12 to 8 px above the toolbar at 190: 170 px, five 32 px rows.
+    expect(menu.style.maxHeight).toBe("170px");
+    expect(menu.style.gridTemplateRows).toBe("repeat(5, auto)");
+    expect(menu.style.gridAutoFlow).toBe("column");
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(9);
+
+    // With room for every tab it is one column again.
+    toolbarTop = 560;
+    await act(async () => { window.dispatchEvent(new Event("resize")); });
+    expect(menu.style.maxHeight).toBe("540px");
+    expect(menu.style.gridTemplateRows).toBe("");
+    expect(menu.style.gridAutoFlow).toBe("");
+  } finally { await act(async () => root.unmount()); }
+});

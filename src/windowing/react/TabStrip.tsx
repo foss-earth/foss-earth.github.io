@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { fitMenu, menuBottom as menuBottomOf, MENU_EDGE_PX } from "./menuFit";
 
 function cx(...parts: Array<string | null | undefined | false>): string {
   return parts.filter(Boolean).join(" ");
@@ -53,10 +54,13 @@ export interface TabStripProps<TabId extends string> {
    * edges, and in front of everything under it. The document's body when absent.
    */
   menuContainer?: HTMLElement | null;
+  /**
+   * The y, in the window, of the top of what the host draws over the window's
+   * bottom edge, such as a toolbar: the + menu ends above it, taking further
+   * columns when it has more items than fit. The window's edge when absent.
+   */
+  menuBottom?: () => number | null | undefined;
 }
-
-/** Keeps the menu this far inside the window's edges. */
-const MENU_EDGE_PX = 8;
 
 export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
   const {
@@ -77,6 +81,7 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
     renderAddButtonContent,
     renderCloseButtonContent,
     menuContainer,
+    menuBottom,
   } = props;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const addRef = useRef<HTMLButtonElement | null>(null);
@@ -108,14 +113,15 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
       const menu = menuRef.current;
       const anchor = addRef.current?.getBoundingClientRect();
       if (!menu || !anchor) return;
+      // Fitted first: a menu that takes more columns to end above the host's toolbar is wider.
+      const fit = fitMenu(menu, anchor.top, menuBottomOf(menuBottom));
       const alignsRight = anchor.left + menu.offsetWidth > window.innerWidth - MENU_EDGE_PX;
       setMenuAlignsRight(alignsRight);
       setMenuPlace({
         position: "fixed",
         top: anchor.top,
         ...(alignsRight ? { right: Math.max(MENU_EDGE_PX, window.innerWidth - anchor.right) } : { left: Math.max(MENU_EDGE_PX, anchor.left) }),
-        maxHeight: Math.max(0, window.innerHeight - anchor.top - MENU_EDGE_PX),
-        overflowY: "auto",
+        ...fit,
       });
     };
     place();
@@ -125,7 +131,7 @@ export function TabStrip<TabId extends string>(props: TabStripProps<TabId>) {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [addMenuOpen, openTabs.length, availableTabs.length]);
+  }, [addMenuOpen, openTabs.length, availableTabs.length, menuBottom]);
 
   const alignClassName = menuAlignsRight
     ? (classNames?.addMenuAlignRight ?? "foss-earth-window-menu-align-right")

@@ -238,6 +238,11 @@ Every setting lives in exactly one place, a section of a tab.
 - The menu under a tab strip's + closes on Escape, as on a click outside it, and
   the key goes no further: no panorama is left and no binding reads it. Focus goes
   back to the + button.
+- The menu under a + ends above the HUD bar, and takes another column for the tabs
+  that do not fit between its button and the bar, so none is out of sight
+  (`menuFit.ts`; the overlay gives the bar's top as `menuBottom`). A host may draw
+  the bar over the panels' layer, as 0sfs does, and a menu that ran under it hid its
+  last tabs: on 2026-10-07 About, last in the menu, read as not there.
 - The menu under a tab strip's + is drawn outside its panel, in the overlay's own
   layer, fixed to the window where the + button is. The panel clips what passes
   its edges, and with many tabs the + sits at the strip's right end, so a menu

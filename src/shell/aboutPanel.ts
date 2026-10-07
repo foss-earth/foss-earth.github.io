@@ -6,10 +6,11 @@ import { createExternalLinkIcon } from "./externalLinkIcon";
 /**
  * The About tab: which version of the app runs, and everything it is built
  * from as a tree, the app at the top and what each part brings in under it.
- * Each part gives its version, the commit it was built from and when that was
- * committed, whether it had changes not committed or not pushed, and links to
- * its commit, its history up to that commit and its source; a checkout lists
- * its latest commits. What it shows comes from the page itself
+ * Each part's line gives its name and version, the app's and a checkout's
+ * being its commit's, "26.10.7.3", and whether it had changes not committed
+ * or not pushed. Opened, it lists its commits, the one it was built from
+ * first and every one alike, and links to that commit, the history up to it
+ * and its source. What it shows comes from the page itself
  * (src/app/builtFrom.ts), so a browser's own copy of an older page shows what
  * that page was built from.
  */
@@ -77,23 +78,38 @@ const FROM_LABELS: Record<BuiltFromPart["from"], string> = {
   registry: "from npm",
 };
 
-/** The one line a part shows closed: its name, version, commit and flags. */
+/** The one line a part shows closed: its name, its version and its flags. Its commit is the first of its commits, inside. */
 function partLine(part: BuiltFromPart): HTMLElement[] {
   const items: HTMLElement[] = [el("span", "foss-earth-about__name", part.name)];
   if (part.version) items.push(el("span", "foss-earth-about__version", part.version));
-  if (part.commit) items.push(commitLabel(part.commit));
   if (part.dirty) items.push(flag("changes not committed", "Built with changes that were not committed: no commit holds exactly this code."));
   if (part.unpushed) items.push(flag("not pushed when built", "No remote branch held this commit when the app was built, so its links may not open until it is pushed."));
   if (part.anotherCopy) items.push(flag("another copy in this build", "The build holds more than one copy of this package, installed in different places, so the app loads its code twice. Listing it in the app's Vite config resolve.dedupe holds one."));
   return items;
 }
 
-function historyList(history: readonly BuiltFromCommit[], repository: string | undefined): HTMLElement {
+/** A commit as a part's list shows it; one a package only names has no time or message. */
+type ListedCommit = Pick<BuiltFromCommit, "hash"> & Partial<BuiltFromCommit>;
+
+/**
+ * A part's commits, the one it was built from first, then those before it:
+ * what a checkout's history gives, or the one commit a package names. Every
+ * row is alike: the commit, linked where its source is known, then when it was
+ * committed and its message's first line.
+ */
+function commitsOf(part: BuiltFromPart): ListedCommit[] {
+  if (!part.commit) return [];
+  const history = part.history ?? [];
+  return history.some(commit => commit.hash === part.commit) ? history : [{ hash: part.commit }, ...history];
+}
+
+function commitList(commits: readonly ListedCommit[], repository: string | undefined): HTMLElement {
   const list = el("ol", "foss-earth-about__history");
-  for (const commit of history) {
+  for (const commit of commits) {
     const item = el("li");
-    const hash = repository ? externalLink(shortCommit(commit.hash), `${repository}/commit/${commit.hash}`) : commitLabel(commit.hash);
-    item.append(hash, el("span", "foss-earth-about__when", buildMinute(commit.at)), el("span", "foss-earth-about__subject", commit.subject));
+    item.append(repository ? externalLink(shortCommit(commit.hash), `${repository}/commit/${commit.hash}`) : commitLabel(commit.hash));
+    if (commit.at) item.append(el("span", "foss-earth-about__when", buildMinute(commit.at)));
+    if (commit.subject) item.append(el("span", "foss-earth-about__subject", commit.subject));
     list.append(item);
   }
   return list;
@@ -129,9 +145,10 @@ export function createAboutPanel(options: AboutPanelOptions = {}): AboutPanelHan
   const app = el("section", "foss-earth-about__app");
   app.append(el("h2", "foss-earth-about__title", options.title || document.title || builtFrom?.app.name || "This app"));
   const built = builtFrom ? builtFrom.built : identity.build;
+  const version = builtFrom?.app.version;
   app.append(el("p", "foss-earth-about__line", builtFrom?.dev
-    ? `Served by a development server, started ${buildMinute(identity.build)}: not a build.`
-    : `Built ${buildMinute(built)}.`));
+    ? `${version ? `Version ${version}, served` : "Served"} by a development server, started ${buildMinute(identity.build)}: not a build.`
+    : `${version ? `Version ${version}, built` : "Built"} ${buildMinute(built)}.`));
   if (!builtFrom) {
     // A build without the description names its commits only.
     app.append(el("p", "foss-earth-about__line", `Source: ${identity.source}`));
@@ -207,9 +224,7 @@ export function createAboutPanel(options: AboutPanelOptions = {}): AboutPanelHan
       summary.append(...partLine(part));
       details.append(summary);
       const body = el("div", "foss-earth-about__body");
-      const latest = part.history?.find(commit => commit.hash === part.commit);
       const facts: string[] = [];
-      if (latest) facts.push(`“${latest.subject}”, committed ${buildMinute(latest.at)}.`);
       if (part.built) facts.push(`Its own build: ${buildMinute(part.built)}.`);
       if (part.from !== "app") facts.push(`${FROM_LABELS[part.from][0].toUpperCase()}${FROM_LABELS[part.from].slice(1)}.`);
       if (facts.length) body.append(el("p", "foss-earth-about__line", facts.join(" ")));
@@ -219,10 +234,10 @@ export function createAboutPanel(options: AboutPanelOptions = {}): AboutPanelHan
         row.append(...links.map(link => externalLink(link.label, link.href)));
         body.append(row);
       }
-      const earlier = part.history?.filter(commit => commit.hash !== part.commit) ?? [];
-      if (earlier.length) {
-        body.append(el("p", "foss-earth-about__label", "Commits before it"));
-        body.append(historyList(earlier, part.repository));
+      const commits = commitsOf(part);
+      if (commits.length) {
+        body.append(el("p", "foss-earth-about__label", commits.length > 1 ? "Commits, the one it was built from first" : "The commit it was built from"));
+        body.append(commitList(commits, part.repository));
       }
       if (part.parts?.length) {
         const list = el("ul", "foss-earth-about__parts");

@@ -32,7 +32,12 @@ export type BuiltFromSource = "app" | "checkout" | "registry" | "file";
 export interface BuiltFromPart {
   /** The package's name, as its package.json gives it: "foss-earth", "@babylonjs/core". */
   name: string;
-  /** Its version, as its package.json gives it; absent for an app's own unpublished "0.0.0". */
+  /**
+   * Its version. The app's and a checkout's is its commit's, "26.10.7.3": the
+   * last two digits of the year, the month and the day of the commit, then
+   * its count among that day's commits (`commitVersion` in vite/builtFrom.ts).
+   * A package's is the one its package.json gives.
+   */
   version?: string;
   from: BuiltFromSource;
   /** The web page of its source: "https://github.com/foss-earth/foss-earth.github.io". */

@@ -106,12 +106,14 @@ build it is, in four places:
   with FOSS Earth 35ad0e3." The time is the build's, to the minute; the first commit is the
   app's own repository's and the second FOSS Earth's, in an app built on it from another
   repository. `-dirty` after a commit says the build had changes not committed.
-- **About**, a tab of its own under +: the build's time and bundle, whether the page is the
-  published version, and everything the app is built from as a tree, the app at the top and
-  what each part brings in under it. A checkout linked into the app, as FOSS Earth and
-  gamepad-tools are, gives its commit, whether it had changes not committed or was not
-  pushed when the app was built, its latest commits and, where it is built on its own, when;
-  a package gives its version. Each links to its commit, its history up to that commit and
+- **About**, a tab of its own under +: the app's version, the build's time and bundle, whether
+  the page is the published version, and everything the app is built from as a tree, the app
+  at the top and what each part brings in under it. Each part's line gives its name and its
+  version; the app's and a checkout's, as FOSS Earth's and gamepad-tools' are, is its
+  commit's ([Versions](#versions)), with whether it had changes not committed or was not
+  pushed when the app was built. Opened, a part lists its commits, the one it was built from
+  first and every one alike, with where it is built on its own, when; a package gives the
+  version its package.json does. Each links to its commit, its history up to that commit and
   its source. A package two parts bring in is listed in full once and pointed to from the
   other, since the build holds one copy. It is read from the page itself, written there by
   `builtFrom()` from `foss-earth/vite`, so a browser's own copy of an older page shows what
@@ -128,6 +130,27 @@ build it is, in four places:
 
 A page that is older than the published one reloads itself, or says so
 ([app-files.md](app-files.md#the-page-and-a-browsers-copy-of-it)).
+
+### Versions
+
+FOSS Earth, 0sfs, gamepad-tools and any other checkout an app is built from name their
+versions alike, from the commit:
+
+```text
+{last two digits of the year}.{month}.{day}.{the commit's count among that day's commits}
+```
+
+`26.10.7.3` is the third commit of 7 October 2026. The day is the commit's own, in the time
+zone it was committed in, and the count starts at 1 each day. It is read from the history when
+an app is built (`commitVersion` in `vite/builtFrom.ts`), so nothing is kept in step by hand, a
+later commit is always a later version, and two builds of one commit are one version. A build
+with changes not committed has its commit's version and says so beside it. A package.json
+cannot hold it, since npm takes three numbers, so those stay as they are and About does not
+show them for a checkout. For a checkout at hand:
+
+```sh
+git log -n 400 --format=%cd --date=short | awk 'NR==1{d=$0} $0==d{n++} END{split(d,p,"-"); printf "%s.%d.%d.%d\n", substr(p[1],3,2), p[2], p[3], n}'
+```
 
 ## Getting a report
 

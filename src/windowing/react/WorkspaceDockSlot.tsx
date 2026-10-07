@@ -91,6 +91,8 @@ export interface WorkspaceDockSlotProps<TabId extends string> {
   onBeforeCloseTab?: (tabId: TabId) => boolean | void;
   /** Where the tab strip's + menu is drawn, outside the panel; the document's body when absent. */
   menuContainer?: HTMLElement | null;
+  /** The top of what the host draws over the window's bottom edge, such as a toolbar: the + menus end above it. */
+  menuBottom?: () => number | null | undefined;
 }
 
 function availableTabsFromWorkspace<TabId extends string>(
@@ -130,6 +132,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
     dockPanelProps,
     onBeforeCloseTab,
     menuContainer,
+    menuBottom,
   } = props;
 
   if (!visible) return null;
@@ -215,6 +218,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
         renderButtonContent={renderLauncherButtonContent}
         buttonAriaLabel={strings?.openPanelTabAriaLabel}
         buttonTitle={strings?.openPanelTabTitle}
+        menuBottom={menuBottom}
       />
     );
   }
@@ -262,6 +266,7 @@ export function WorkspaceDockSlot<TabId extends string>(props: WorkspaceDockSlot
           renderAddButtonContent={renderTabAddButtonContent}
           renderCloseButtonContent={renderTabCloseButtonContent}
           menuContainer={menuContainer}
+          menuBottom={menuBottom}
         />
       )}
       {...dockPanelProps}

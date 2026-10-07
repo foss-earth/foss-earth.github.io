@@ -8,6 +8,7 @@ const APP = "7e80fdc8a1b2c3d4e5f60718293a4b5c6d7e8f90";
 const EARLIER = "9c195634a1b2c3d4e5f60718293a4b5c6d7e8f90";
 const EARTH = "e88e7ea93f53124ba31c9d448f4e6445fc48f95b";
 const PADS = "fd1a3e657401c4078c5bc293fa42a1da5ad9ac00";
+const ENGINE = "97fe6ddf1c8a7d9e10dad46a88e60e79e69fae28";
 const IDENTITY = { build: "2026-10-07T18:20:00.000Z", source: "7e80fdc8a1b2", fossEarth: "e88e7ea93f53", bundle: "index-AbCd1234.js" };
 
 /** The flight simulator as its build describes itself. */
@@ -15,6 +16,7 @@ const FLIGHT: BuiltFrom = {
   built: "2026-10-07T18:20:00.000Z",
   app: {
     name: "osfs",
+    version: "26.10.7.3",
     from: "app",
     commit: APP,
     repository: "https://github.com/0SFS/0SFS.github.io",
@@ -25,12 +27,14 @@ const FLIGHT: BuiltFrom = {
       { hash: EARLIER, at: "2026-10-07T09:00:00-05:00", subject: "Correct F135 particle optics" },
     ],
     parts: [
-      { name: "@felipegalind0/gamepad-tools", version: "0.1.0", from: "checkout", commit: PADS, repository: "https://github.com/Felipegalind0/gamepad-tools", built: "2026-10-07T18:10:34.467Z",
+      { name: "@felipegalind0/gamepad-tools", version: "26.10.7.1", from: "checkout", commit: PADS, repository: "https://github.com/Felipegalind0/gamepad-tools", built: "2026-10-07T18:10:34.467Z",
         history: [{ hash: PADS, at: "2026-10-05T01:58:11-05:00", subject: "Size the dropdowns to their own text" }] },
-      { name: "foss-earth", version: "0.0.0", from: "checkout", commit: EARTH, repository: "https://github.com/foss-earth/foss-earth.github.io",
+      { name: "foss-earth", version: "26.10.7.4", from: "checkout", commit: EARTH, repository: "https://github.com/foss-earth/foss-earth.github.io",
         history: [{ hash: EARTH, at: "2026-10-07T11:00:39-05:00", subject: "Draw rotations as arcs" }],
-        parts: [{ name: "@felipegalind0/gamepad-tools", version: "0.1.0", from: "checkout", listedAbove: true }] },
+        parts: [{ name: "@felipegalind0/gamepad-tools", version: "26.10.7.1", from: "checkout", listedAbove: true }] },
       { name: "react", version: "19.2.6", from: "registry", repository: "https://github.com/facebook/react" },
+      // A packed build that names its commit, and nothing else of it.
+      { name: "@felipegalind0/jsbsim", version: "1.2.4-fork.16", from: "file", commit: ENGINE, repository: "https://github.com/Felipegalind0/jsbsim" },
     ],
   },
 };
@@ -47,21 +51,47 @@ describe("createAboutPanel", () => {
     const about = createAboutPanel({ builtFrom: FLIGHT, identity: IDENTITY, title: "0SFS" });
     document.body.append(about.element);
     expect(about.element.querySelector("h2")?.textContent).toBe("0SFS");
-    expect(lines(about.element)).toEqual(["Built 2026-10-07 18:20 UTC.", "Bundle: index-AbCd1234.js"]);
+    expect(lines(about.element)).toEqual(["Version 26.10.7.3, built 2026-10-07 18:20 UTC.", "Bundle: index-AbCd1234.js"]);
 
     const app = about.element.querySelector<HTMLDetailsElement>(".foss-earth-about__tree > li > details")!;
     // The app opens on its parts, each a line; a part opens on request.
     expect(app.open).toBe(true);
-    expect(app.querySelector("summary")?.textContent).toBe("osfs7e80fdcchanges not committednot pushed when built");
+    // The version stands beside the name, where the commit's hash stood: the commit is the first of the list inside.
+    expect(app.querySelector("summary")?.textContent).toBe("osfs26.10.7.3changes not committednot pushed when built");
+    expect(app.querySelector("summary code")).toBeNull();
     const parts = [...app.querySelectorAll(":scope > .foss-earth-about__body > .foss-earth-about__parts > li")];
     expect(parts.map(part => part.querySelector(".foss-earth-about__row")?.textContent)).toEqual([
-      "@felipegalind0/gamepad-tools0.1.0fd1a3e6",
-      "foss-earth0.0.0e88e7ea",
+      "@felipegalind0/gamepad-tools26.10.7.1",
+      "foss-earth26.10.7.4",
       "react19.2.6",
+      "@felipegalind0/jsbsim1.2.4-fork.16",
     ]);
     expect(parts.every(part => !part.querySelector("details")?.open)).toBe(true);
-    expect(app.querySelector(".foss-earth-about__body > .foss-earth-about__line")?.textContent)
-      .toBe("“Draw each control surface's force”, committed 2026-10-07 16:10 UTC.");
+  });
+
+  it("lists a part's commits alike, the one it was built from first", () => {
+    const about = createAboutPanel({ builtFrom: FLIGHT, identity: IDENTITY });
+    const listOf = (index: number) => {
+      const body = about.element.querySelectorAll<HTMLDetailsElement>("details")[index].querySelector(":scope > .foss-earth-about__body")!;
+      return {
+        label: body.querySelector(":scope > .foss-earth-about__label")?.textContent,
+        rows: [...body.querySelectorAll(":scope > .foss-earth-about__history > li")].map(item => item.textContent),
+        links: [...body.querySelectorAll<HTMLAnchorElement>(":scope > .foss-earth-about__history > li > a")].map(link => link.href),
+      };
+    };
+    expect(listOf(0)).toEqual({
+      label: "Commits, the one it was built from first",
+      rows: ["7e80fdc2026-10-07 16:10 UTCDraw each control surface's force", "9c195632026-10-07 14:00 UTCCorrect F135 particle optics"],
+      links: [`https://github.com/0SFS/0SFS.github.io/commit/${APP}`, `https://github.com/0SFS/0SFS.github.io/commit/${EARLIER}`],
+    });
+    // A package that only names its commit lists that one, the same way.
+    expect(listOf(4)).toEqual({
+      label: "The commit it was built from",
+      rows: ["97fe6dd"],
+      links: [`https://github.com/Felipegalind0/jsbsim/commit/${ENGINE}`],
+    });
+    // A package from npm names none.
+    expect(listOf(3).rows).toEqual([]);
   });
 
   it("links each part's commit, its history up to it, its source and its npm page", () => {
@@ -82,9 +112,6 @@ describe("createAboutPanel", () => {
       expect(link.target).toBe("_blank");
       expect(link.rel).toBe("noopener noreferrer");
     }
-    // The commits before the built one, each linked.
-    const earlier = [...about.element.querySelectorAll("details")[0].querySelectorAll(":scope > .foss-earth-about__body > .foss-earth-about__history li")];
-    expect(earlier.map(item => item.textContent)).toEqual(["9c195632026-10-07 14:00 UTCCorrect F135 particle optics"]);
     // Built on its own before the app: when.
     expect(about.element.querySelectorAll("details")[1].textContent).toContain("Its own build: 2026-10-07 18:10 UTC.");
   });
@@ -98,7 +125,7 @@ describe("createAboutPanel", () => {
     const about = createAboutPanel({ builtFrom: FLIGHT, identity: IDENTITY });
     document.body.append(about.element);
     const above = about.element.querySelector<HTMLButtonElement>(".foss-earth-about__above")!;
-    expect(above.closest(".foss-earth-about__row")?.textContent).toBe("@felipegalind0/gamepad-tools0.1.0same copy as above");
+    expect(above.closest(".foss-earth-about__row")?.textContent).toBe("@felipegalind0/gamepad-tools26.10.7.1same copy as above");
     const full = about.element.querySelectorAll<HTMLDetailsElement>("details")[1];
     expect(full.open).toBe(false);
     above.click();
@@ -108,7 +135,7 @@ describe("createAboutPanel", () => {
 
   it("says when a dev server served the page, and that its list is declared", () => {
     const about = createAboutPanel({ builtFrom: { ...FLIGHT, built: "", dev: true }, identity: { ...IDENTITY, bundle: "dev" } });
-    expect(lines(about.element)[0]).toBe("Served by a development server, started 2026-10-07 18:20 UTC: not a build.");
+    expect(lines(about.element)[0]).toBe("Version 26.10.7.3, served by a development server, started 2026-10-07 18:20 UTC: not a build.");
     expect(about.element.querySelector(".foss-earth-about__note")?.textContent).toContain("a development server has no bundle to list");
   });
 

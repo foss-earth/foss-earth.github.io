@@ -96,6 +96,24 @@ export const nodeBuildReader: BuildReader = {
 /** FOSS Earth's checkout, whose own rule says what of it an app is built from (appFiles.ts). */
 const FOSS_EARTH_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMMIT = /^[0-9a-f]{40}$/;
+/** How many commits back a day's are counted: more than any day has had. */
+const VERSION_LOOKBACK = 400;
+
+/**
+ * A commit's version, as every checkout's is named: "26.10.7.3", the last two
+ * digits of the year, the month and the day it was committed, in the time zone
+ * it was committed in, then its count among that day's commits, the day's
+ * first being 1. Read from the history, so nothing has to be kept in step by
+ * hand, and a later commit is always a later version. `days` are the commit's
+ * date and those before it, newest first, as `git log --date=short` gives
+ * them; undefined where the first is no date.
+ */
+export function commitVersion(days: readonly string[]): string | undefined {
+  const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(days[0] ?? "");
+  if (!date) return undefined;
+  const revision = days.filter(day => day === days[0]).length;
+  return `${date[1].slice(2)}.${Number(date[2])}.${Number(date[3])}.${revision}`;
+}
 /** The most of a commit's first line that is kept: some messages are one long line. */
 const SUBJECT_CHARS = 160;
 const clip = (text: string): string => (text.length > SUBJECT_CHARS ? `${text.slice(0, SUBJECT_CHARS - 1).trimEnd()}…` : text);
@@ -241,11 +259,17 @@ export function describeBuild(input: DescribeBuildInput): BuiltFrom {
     return Boolean(reader.git(dir, ["status", "--porcelain", "--", ...(paths.length ? paths : ["."])]));
   };
 
-  const historyOf = (dir: string): BuiltFromCommit[] => (reader.git(dir, ["log", `-n${historyLength}`, "--format=%H%x1f%cI%x1f%s"]) ?? "")
-    .split("\n")
-    .map(line => line.split("\x1f"))
-    .filter(([hash, at]) => COMMIT.test(hash ?? "") && Boolean(at))
-    .map(([hash, at, ...subject]) => ({ hash, at, subject: clip(subject.join("\x1f")) }));
+  /** A checkout's latest commits, and its version, which counts the built commit among its day's. */
+  const historyOf = (dir: string): { history: BuiltFromCommit[]; version: string | undefined } => {
+    const commits = (reader.git(dir, ["log", `-n${Math.max(VERSION_LOOKBACK, historyLength)}`, "--date=short", "--format=%H%x1f%cI%x1f%cd%x1f%s"]) ?? "")
+      .split("\n")
+      .map(line => line.split("\x1f"))
+      .filter(([hash, at]) => COMMIT.test(hash ?? "") && Boolean(at));
+    return {
+      history: commits.slice(0, historyLength).map(([hash, at, , ...subject]) => ({ hash, at, subject: clip(subject.join("\x1f")) })),
+      version: commitVersion(commits.map(([, , day]) => day ?? "")),
+    };
+  };
 
   /** When a checkout's entry was built, where the entry is built rather than committed, as a dist/ is. */
   const builtAt = (dir: string, manifest: PackageManifest): string | undefined => {
@@ -272,8 +296,10 @@ export function describeBuild(input: DescribeBuildInput): BuiltFrom {
       if (repository && !reader.git(dir, ["branch", "-r", "--contains", commit])) part.unpushed = true;
       const built = from === "checkout" ? builtAt(dir, manifest) : undefined;
       if (built) part.built = built;
-      const history = historyOf(dir);
+      const { history, version } = historyOf(dir);
       if (history.length) part.history = history;
+      // A checkout's version is its commit's, whatever its package.json says.
+      if (version) part.version = version;
     } else {
       const repository = webRepository(manifest.repository);
       if (repository) part.repository = repository;

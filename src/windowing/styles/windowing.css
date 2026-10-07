@@ -191,6 +191,8 @@
   padding: 8px 10px;
   text-align: left;
   border-radius: 4px;
+  /* A menu in several columns is as wide as its tabs' names, which never break. */
+  white-space: nowrap;
 }
 
 .foss-earth-window-menu-item:hover {

@@ -183,6 +183,11 @@ export function WindowOverlay<TabId extends string = never>({
     overlayRef.current = element;
     setOverlayElement(element);
   }, []);
+  // The + menus end above the HUD bar, which a host may draw over the panels' layer: an item under it is out of reach.
+  const hudBarTop = useCallback(() => {
+    const bar = document.querySelector(".hud-bar")?.getBoundingClientRect();
+    return bar && bar.height > 0 ? bar.top : null;
+  }, []);
   // A reload comes back to the tabs that were open on the globe. A saved
   // workspace is always the globe's, so the panorama's own tabs are never in it.
   const [savedWorkspace] = useState(() => loadSavedWorkspace(new Set(tabDefinitions
@@ -417,6 +422,7 @@ export function WindowOverlay<TabId extends string = never>({
         strings={{ openPanelTabAriaLabel: "Open left panel", openPanelTabTitle: "Open left panel" }}
         onBeforeCloseTab={beforeCloseTab}
         menuContainer={overlayElement}
+        menuBottom={hudBarTop}
       />
       <WorkspaceDockSlot<OverlayTabId>
         side="right"
@@ -436,6 +442,7 @@ export function WindowOverlay<TabId extends string = never>({
         strings={{ openPanelTabAriaLabel: "Open right panel", openPanelTabTitle: "Open right panel" }}
         onBeforeCloseTab={beforeCloseTab}
         menuContainer={overlayElement}
+        menuBottom={hudBarTop}
       />
     </div>
   );

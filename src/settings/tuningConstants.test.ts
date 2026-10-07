@@ -273,7 +273,7 @@ const LEDGER: Record<string, [Kind, string]> = {
   "src/windowing/react/FloatingWindow.tsx@minHeight = 320": ["layout", "A floating window's placement and sizes."],
   "src/windowing/react/FloatingWindow.tsx@minWidth = 400": ["layout", "A floating window's placement and sizes."],
   "src/windowing/react/FloatingWindow.tsx@resizeClickThresholdPx = 6": ["layout", "How far a press on a resize edge moves before it resizes."],
-  "src/windowing/react/TabStrip.tsx#MENU_EDGE_PX": ["layout", "How far inside the window's edges a tab strip's + menu stays."],
+  "src/windowing/react/menuFit.ts#MENU_EDGE_PX": ["layout", "How far inside the window's edges, and above the host's toolbar, a + menu stays."],
   "src/windowing/react/WorkspaceDockSlot.tsx@dockPanelProps?.initialHeight ?? 512": ["layout", "A docked panel's height before the user resizes it."],
 };
 
