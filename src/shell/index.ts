@@ -67,7 +67,8 @@ export { PANEL_SECTIONS_OPEN_STORAGE_KEY } from "./panelSectionsOpen";
 export { SAVED_WORKSPACE_STORAGE_KEY } from "./savedWorkspace";
 export { trackViewportInsets, VIEWPORT_INSET_BOTTOM_PROPERTY, type ViewportInsetsHandle } from "./viewportInsets";
 export { createInputModeHud, type InputModeHudOptions, type InputModeHudHandle } from "../hud/inputModeHud";
-export { createPositionReadout, type PositionReading, type PositionReadoutHandle } from "../hud/positionReadout";
+export { createPositionReadout, type PositionReading, type PositionReadoutHandle, type PositionReadoutOptions } from "../hud/positionReadout";
+export { surfaceHeightDatum, type HeightDatum } from "../terrain/geoid";
 
 export { attachRendererActivity, attachTileStreamingActivity, type RenderActivitySource, type TileStreamingSource } from "./rendererActivity";
 

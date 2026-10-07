@@ -172,10 +172,16 @@ heading, pitch and zoom distance on the globe, heading in the flight. By default
 a globe drawn with only its parallels marks the latitude, and one drawn with only
 its meridians the longitude, each in the text colour at 1.2em; Interface →
 Position readout can write `lat` and `lon` instead, or nothing beyond the N/S and
-E/W. The same section says what the altitude is measured from, above sea level
-(the WGS84 ellipsoid) or above the terrain below, and whether it is in metres or
-feet. On the globe it is the camera's own altitude, not that of the point it
-looks at. Digits are tabular, so a changing number does not shift what follows.
+E/W. The same section says what the altitude is measured from, above mean sea
+level or above the terrain below, and whether it is in metres or feet. Mean sea
+level is NGA's EGM2008 geoid: raster terrain's heights are already above its
+source's sea level, and over Google 3D Tiles, drawn at their WGS84 ellipsoid
+heights, the readout takes away the geoid's height from a grid shipped with the
+app, downloaded once, when first needed (`src/terrain/geoid.ts`). The grid's
+spacing, 1°, 30′ or 15′, is the Sea level grid parameter beside it, each choice
+with its download and its measured error. On the globe the altitude is the
+camera's own, not that of the point it looks at. Digits are tabular, so a
+changing number does not shift what follows.
 
 ## One home for every control
 

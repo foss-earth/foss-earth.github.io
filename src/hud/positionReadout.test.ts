@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { INTERFACE_PARAMETERS } from "../settings/catalogue/interface";
 import { createSettingsRegistry, type SettingsRegistry } from "../settings/registry";
+import type { GeoidGridId, GeoidModel } from "../terrain/geoid";
 import { createPositionReadout, formatAltitude, type PositionReadoutHandle } from "./positionReadout";
 
 let settings: SettingsRegistry;
@@ -96,15 +97,90 @@ describe("position readout", () => {
   });
 });
 
+describe("altitude above sea level over Google 3D Tiles", () => {
+  // Sea level 27.3 m below the ellipsoid, as in Minneapolis.
+  const MODEL: GeoidModel = { spacingMinutes: 15, heightMeters: () => -27.3 };
+  const OVER_TILES = { ...MINNEAPOLIS, altitudeMeters: 1000, groundHeightMeters: 230, heightDatum: "ellipsoid" as const };
+
+  function withGrids(load: (grid: GeoidGridId) => Promise<GeoidModel>) {
+    readout.destroy();
+    const asked: GeoidGridId[] = [];
+    readout = createPositionReadout(chip, settings, { loadGeoid: grid => { asked.push(grid); return load(grid); } });
+    return asked;
+  }
+
+  it("takes away the geoid's height once the sea level grid has loaded, and asks for it once", async () => {
+    let arrive!: (model: GeoidModel) => void;
+    const asked = withGrids(() => new Promise(resolve => { arrive = resolve; }));
+
+    readout.update(OVER_TILES);
+    expect(part("altitude")!.textContent).toBe("—m ASL");
+    expect(part("altitude")!.title).toBe("Loading the sea level grid.");
+
+    arrive(MODEL);
+    await vi.waitFor(() => expect(part("altitude")!.textContent).toBe("1027m ASL"));
+    expect(part("altitude")!.title).toBe("");
+    readout.update({ ...OVER_TILES, altitudeMeters: 1001 });
+    expect(part("altitude")!.textContent).toBe("1028m ASL");
+    expect(asked).toEqual(["15"]);
+  });
+
+  it("loads the grid chosen, when it is chosen", async () => {
+    const asked = withGrids(async () => MODEL);
+    readout.update(OVER_TILES);
+    await vi.waitFor(() => expect(part("altitude")!.textContent).toBe("1027m ASL"));
+
+    settings.set("interface.position.seaLevelGrid", "60");
+    expect(part("altitude")!.textContent).toBe("—m ASL");
+    await vi.waitFor(() => expect(part("altitude")!.textContent).toBe("1027m ASL"));
+    expect(asked).toEqual(["15", "60"]);
+  });
+
+  it("needs no grid over raster terrain, nor above ground", () => {
+    const asked = withGrids(async () => MODEL);
+    readout.update({ ...OVER_TILES, heightDatum: "geoid" });
+    expect(part("altitude")!.textContent).toBe("1000m ASL");
+    readout.update({ ...MINNEAPOLIS, altitudeMeters: 1000 });
+    expect(part("altitude")!.textContent).toBe("1000m ASL");
+
+    settings.set("interface.position.altitude", "agl");
+    readout.update(OVER_TILES);
+    expect(part("altitude")!.textContent).toBe("770m AGL");
+    expect(asked).toEqual([]);
+  });
+
+  it("says why it shows a dash when the grid cannot load", async () => {
+    withGrids(async () => { throw new Error("HTTP 404"); });
+    readout.update(OVER_TILES);
+    await vi.waitFor(() => expect(part("altitude")!.title).toBe("The sea level grid could not load: HTTP 404"));
+    expect(part("altitude")!.textContent).toBe("—m ASL");
+  });
+
+  it("draws nothing for a grid that arrives after it is destroyed", async () => {
+    let arrive!: (model: GeoidModel) => void;
+    withGrids(() => new Promise(resolve => { arrive = resolve; }));
+    readout.update(OVER_TILES);
+    readout.destroy();
+    arrive(MODEL);
+    await Promise.resolve();
+    expect(chip.childNodes).toHaveLength(0);
+  });
+});
+
 describe("altitude text", () => {
   it("keeps whole metres to 100 km, then shortens as the zoom distance does", () => {
-    expect(formatAltitude(10_668, null, "asl", "m")).toBe("10668m ASL");
-    expect(formatAltitude(250_000, null, "asl", "m")).toBe("250km ASL");
-    expect(formatAltitude(20_000_000, null, "asl", "m")).toBe("20.0Mm ASL");
+    expect(formatAltitude(10_668, 0, "asl", "m")).toBe("10668m ASL");
+    expect(formatAltitude(250_000, 0, "asl", "m")).toBe("250km ASL");
+    expect(formatAltitude(20_000_000, 0, "asl", "m")).toBe("20.0Mm ASL");
   });
 
   it("reads below zero under sea level or under the ground sampled", () => {
-    expect(formatAltitude(-12, null, "asl", "m")).toBe("-12m ASL");
+    expect(formatAltitude(-12, 0, "asl", "m")).toBe("-12m ASL");
     expect(formatAltitude(95, 100, "agl", "ft")).toBe("-16ft AGL");
+  });
+
+  it("measures from sea level's height where it is not zero, and shows a dash while that is unknown", () => {
+    expect(formatAltitude(100, -27.3, "asl", "m")).toBe("127m ASL");
+    expect(formatAltitude(100, null, "asl", "ft")).toBe("—ft ASL");
   });
 });

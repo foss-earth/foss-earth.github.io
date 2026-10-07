@@ -2,11 +2,13 @@ import {
   POSITION_ALTITUDE_ID,
   POSITION_ALTITUDE_UNIT_ID,
   POSITION_COORDINATE_LABELS_ID,
+  POSITION_SEA_LEVEL_GRID_ID,
   type AltitudeReference,
   type AltitudeUnit,
   type CoordinateLabels,
 } from "../settings/catalogue";
 import type { SettingsRegistry } from "../settings/registry";
+import { loadGeoid, type GeoidGridId, type GeoidModel, type HeightDatum } from "../terrain/geoid";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const METERS_PER_FOOT = 0.3048;
@@ -14,10 +16,16 @@ const METERS_PER_FOOT = 0.3048;
 export interface PositionReading {
   latDeg: number;
   lonDeg: number;
-  /** Height above mean sea level, in metres. Left out, the readout shows no altitude. */
+  /** The height, in metres, measured as the drawn world's heights are (`heightDatum`). Left out, the readout shows no altitude. */
   altitudeMeters?: number;
-  /** The ground's height above mean sea level directly below, in metres; null while no terrain there has loaded. */
+  /** The height of the ground directly below, measured the same way; null while no terrain there has loaded. */
   groundHeightMeters?: number | null;
+  /**
+   * What the drawn world's heights are measured from (`surfaceHeightDatum`).
+   * Over the ellipsoid, the altitude above sea level takes the geoid's height
+   * away. Sea level when left out.
+   */
+  heightDatum?: HeightDatum;
   /** What follows the position, such as "h017° p71° z600m". */
   rest?: string;
 }
@@ -36,15 +44,21 @@ export function formatDistance(meters: number): string {
   return `${meters.toFixed(0)}m`;
 }
 
+export interface PositionReadoutOptions {
+  /** Where the sea level grids come from; the app's own files unless a test gives its own. */
+  loadGeoid?(grid: GeoidGridId): Promise<GeoidModel>;
+}
+
 /**
- * The altitude as the readout writes it, such as "1250m ASL" or "410ft AGL".
- * Above ground shows a dash while the ground's height is unknown. Metres stay
- * whole to 100 km, the range a height is read to the metre in.
+ * The altitude as the readout writes it, such as "1250m ASL" or "410ft AGL":
+ * `altitudeMeters` less `baseMeters`, the height of sea level or of the ground
+ * there, or a dash while that is not known. Metres stay whole to 100 km, the
+ * range a height is read to the metre in.
  */
-export function formatAltitude(altitudeMeters: number, groundHeightMeters: number | null, reference: AltitudeReference, unit: AltitudeUnit): string {
+export function formatAltitude(altitudeMeters: number, baseMeters: number | null, reference: AltitudeReference, unit: AltitudeUnit): string {
   const suffix = reference === "asl" ? "ASL" : "AGL";
-  if (reference === "agl" && groundHeightMeters === null) return `\u2014${unit} ${suffix}`;
-  const meters = altitudeMeters - (reference === "agl" ? groundHeightMeters! : 0);
+  if (baseMeters === null) return `\u2014${unit} ${suffix}`;
+  const meters = altitudeMeters - baseMeters;
   const value = unit === "ft" ? `${Math.round(meters / METERS_PER_FOOT)}ft`
     : Math.abs(meters) < 100_000 ? `${Math.round(meters)}m` : formatDistance(meters);
   return `${value} ${suffix}`;
@@ -113,7 +127,7 @@ function setText(part: Part, value: string): void {
  * adds. How the first two are marked, and what the altitude is measured from
  * and written in, are the `interface.position.*` parameters, followed live.
  */
-export function createPositionReadout(element: HTMLElement, settings: SettingsRegistry): PositionReadoutHandle {
+export function createPositionReadout(element: HTMLElement, settings: SettingsRegistry, options: PositionReadoutOptions = {}): PositionReadoutHandle {
   const latitude = createPart("latitude");
   const longitude = createPart("longitude");
   const altitude = createPart("altitude");
@@ -125,6 +139,24 @@ export function createPositionReadout(element: HTMLElement, settings: SettingsRe
   let last: PositionReading | null = null;
   let drawnLabels: CoordinateLabels | null = null;
   let drawnParts = "";
+  let destroyed = false;
+  // The grid the altitude above sea level is measured with, asked for the first time it is needed.
+  let geoid: { grid: GeoidGridId; model: GeoidModel | null; error: string | null } | null = null;
+
+  /** The height of sea level at the reading, measured as its altitude is; null while its grid loads. */
+  function seaLevel(reading: PositionReading): number | null {
+    if ((reading.heightDatum ?? "geoid") === "geoid") return 0;
+    const grid = settings.get<GeoidGridId>(POSITION_SEA_LEVEL_GRID_ID);
+    if (geoid?.grid !== grid) {
+      const asked: NonNullable<typeof geoid> = { grid, model: null, error: null };
+      geoid = asked;
+      (options.loadGeoid ?? loadGeoid)(grid).then(
+        model => { asked.model = model; },
+        (error: unknown) => { asked.error = error instanceof Error ? error.message : String(error); },
+      ).finally(() => { if (geoid === asked && !destroyed) draw(); });
+    }
+    return geoid.model?.heightMeters(reading.latDeg, reading.lonDeg) ?? null;
+  }
 
   function draw(): void {
     if (!last) return;
@@ -139,8 +171,13 @@ export function createPositionReadout(element: HTMLElement, settings: SettingsRe
     setText(longitude, `${labels === "words" ? "lon " : ""}${Math.abs(lonDeg).toFixed(4)}°${lonDeg >= 0 ? "E" : "W"}`);
     const shown = [latitude, longitude];
     if (last.altitudeMeters !== undefined) {
-      setText(altitude, formatAltitude(last.altitudeMeters, last.groundHeightMeters ?? null,
-        settings.get<AltitudeReference>(POSITION_ALTITUDE_ID), settings.get<AltitudeUnit>(POSITION_ALTITUDE_UNIT_ID)));
+      const reference = settings.get<AltitudeReference>(POSITION_ALTITUDE_ID);
+      const base = reference === "agl" ? last.groundHeightMeters ?? null : seaLevel(last);
+      setText(altitude, formatAltitude(last.altitudeMeters, base, reference, settings.get<AltitudeUnit>(POSITION_ALTITUDE_UNIT_ID)));
+      // Why a dash, for whoever points at it.
+      const note = base !== null ? "" : reference === "agl" ? "No terrain below has loaded yet."
+        : geoid?.error ? `The sea level grid could not load: ${geoid.error}` : "Loading the sea level grid.";
+      if (altitude.element.title !== note) altitude.element.title = note;
       shown.push(altitude);
     }
     if (last.rest) {
@@ -154,7 +191,7 @@ export function createPositionReadout(element: HTMLElement, settings: SettingsRe
     }
   }
 
-  const stopWatching = [POSITION_COORDINATE_LABELS_ID, POSITION_ALTITUDE_ID, POSITION_ALTITUDE_UNIT_ID]
+  const stopWatching = [POSITION_COORDINATE_LABELS_ID, POSITION_ALTITUDE_ID, POSITION_ALTITUDE_UNIT_ID, POSITION_SEA_LEVEL_GRID_ID]
     .map(id => settings.watch(id, draw));
 
   return {
@@ -164,6 +201,7 @@ export function createPositionReadout(element: HTMLElement, settings: SettingsRe
     },
     needsGroundHeight: () => settings.get<AltitudeReference>(POSITION_ALTITUDE_ID) === "agl",
     destroy() {
+      destroyed = true;
       for (const stop of stopWatching) stop();
       element.replaceChildren();
     },

@@ -1,13 +1,16 @@
 import type { GlobeViewState } from "../engine/types";
 import type { SettingsRegistry } from "../settings/registry";
+import type { HeightDatum } from "../terrain/geoid";
 import { createPositionReadout, formatDistance } from "./positionReadout";
 
 /** The camera's own height, as distinct from the point it looks at. */
 export interface CameraAltitude {
-  /** Above mean sea level, in metres. */
+  /** In metres, measured as the drawn world's heights are. */
   altitudeMeters: number;
   /** The ground's height directly below the camera; null while unknown or not asked for. */
   groundHeightMeters: number | null;
+  /** What the drawn world's heights are measured from. */
+  heightDatum: HeightDatum;
 }
 
 export interface StatusHudHandle {
@@ -30,6 +33,7 @@ export function createStatusHud(element: HTMLElement, settings: SettingsRegistry
       lonDeg,
       altitudeMeters: camera?.altitudeMeters,
       groundHeightMeters: camera?.groundHeightMeters,
+      heightDatum: camera?.heightDatum,
       rest: `${hdgStr} ${pitchStr} ${zoomStr}`,
     });
   }
