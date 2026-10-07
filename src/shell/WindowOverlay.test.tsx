@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { WindowOverlay, type WindowOverlayHandle } from "./WindowOverlay";
 import type { PanoramaTabs, PanoramaTabsSnapshot } from "./panoramaTabs";
+import { SAVED_WORKSPACE_STORAGE_KEY } from "./savedWorkspace";
 import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLog";
 
+// Each test starts from a device with nothing saved.
+let stored: Map<string, string>;
+beforeEach(() => {
+  stored = new Map();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => { stored.set(key, value); },
+    removeItem: (key: string) => { stored.delete(key); },
+  });
+});
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); });
 
 it("owns responsive launchers, cross-side tab moves, minimize/restore, and Location search", async () => {
@@ -407,4 +418,109 @@ it("opens a panorama's tab minimized while the camera flies in, and shows it onc
     expect(selected()).toBe("Scenes");
     expect(left().dataset.collapsed).toBe("false");
   } finally { await act(async () => root.unmount()); }
+});
+
+it("comes back after a reload with the same tabs in the same windows, dropping tabs the app no longer offers", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  type Tab = "aircraft" | "debug";
+  const mount = async (tabs: readonly { id: Tab; label: string }[]) => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const api: { current: WindowOverlayHandle<Tab> | null } = { current: null };
+    await act(async () => root.render(<WindowOverlay<Tab>
+      getViewState={() => ({ latDeg: 45, lonDeg: -93 })} setViewState={() => {}} overlayApiRef={api}
+      additionalTabs={tabs} renderAdditionalTab={(tabId) => <p>{tabId}</p>}
+    />));
+    return { host, root, api };
+  };
+  const side = (host: HTMLElement, name: "left" | "right") => Array.from(host.querySelectorAll(`[data-side="${name}"] .foss-earth-tab-button`), (button) => button.textContent);
+  const selected = (host: HTMLElement, name: "left" | "right") => host.querySelector(`[data-side="${name}"] .foss-earth-tab-shell-selected .foss-earth-tab-button`)?.textContent;
+
+  const first = await mount([{ id: "aircraft", label: "Aircraft" }, { id: "debug", label: "Debug" }]);
+  try {
+    await act(async () => first.api.current!.openOrSelectTab("location"));
+    await act(async () => first.api.current!.openOrSelectTab("debug"));
+    await act(async () => first.host.querySelector<HTMLButtonElement>('[aria-label="Open right panel"]')!.click());
+    const aircraft = Array.from(first.host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find((item) => item.textContent === "Aircraft")!;
+    await act(async () => aircraft.click());
+    await act(async () => first.host.querySelector<HTMLButtonElement>('[data-side="right"] .foss-earth-tab-shell-selected .foss-earth-tab-button')!.click());
+    expect(side(first.host, "left")).toEqual(["Location", "Debug"]);
+    expect(selected(first.host, "left")).toBe("Debug");
+    expect(side(first.host, "right")).toEqual(["Aircraft"]);
+    expect(first.host.querySelector<HTMLElement>('[data-side="right"]')!.dataset.collapsed).toBe("true");
+  } finally { await act(async () => first.root.unmount()); }
+
+  // The reload: the same windows, the same tab showing, the right one still minimized.
+  const second = await mount([{ id: "aircraft", label: "Aircraft" }, { id: "debug", label: "Debug" }]);
+  try {
+    expect(side(second.host, "left")).toEqual(["Location", "Debug"]);
+    expect(selected(second.host, "left")).toBe("Debug");
+    expect(side(second.host, "right")).toEqual(["Aircraft"]);
+    expect(second.host.querySelector<HTMLElement>('[data-side="right"]')!.dataset.collapsed).toBe("true");
+  } finally { await act(async () => second.root.unmount()); }
+
+  // A version without Debug: its tab is gone and its window shows the one beside it.
+  const third = await mount([{ id: "aircraft", label: "Aircraft" }]);
+  try {
+    expect(side(third.host, "left")).toEqual(["Location"]);
+    expect(selected(third.host, "left")).toBe("Location");
+    expect(side(third.host, "right")).toEqual(["Aircraft"]);
+  } finally { await act(async () => third.root.unmount()); }
+});
+
+it("saves the layout a wide window on the globe would show, even while folded or inside a panorama", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1280);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
+  const [mapTab, panoramaTab, settingsTab] = ["Basemaps", "Photograph", "Looking"].map(element);
+  let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
+  const listeners = new Set<() => void>();
+  const panoramaTabs: PanoramaTabs = {
+    panorama: panoramaTab, settings: settingsTab, leave() {}, destroy() {},
+    getSnapshot: () => snapshot,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+  const show = (next: PanoramaTabsSnapshot) => act(async () => { snapshot = next; for (const listener of listeners) listener(); });
+  const mount = async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const api: { current: WindowOverlayHandle | null } = { current: null };
+    await act(async () => root.render(<WindowOverlay
+      getViewState={() => ({ latDeg: 45, lonDeg: -93 })} setViewState={() => {}}
+      mapTab={mapTab} panoramaTabs={panoramaTabs} overlayApiRef={api}
+    />));
+    return { host, root, api };
+  };
+  const saved = () => JSON.parse(stored.get(SAVED_WORKSPACE_STORAGE_KEY)!) as { primary: { tabs: string[]; activeTab: string | null }; secondary: { tabs: string[] } };
+
+  const first = await mount();
+  try {
+    await act(async () => first.api.current!.openOrSelectTab("location"));
+    await act(async () => first.api.current!.openOrSelectTab("map"));
+    // A wide log folds both tabs onto the right; what is saved keeps them on the left.
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent<GameLogSizeChange>(GAME_LOG_SIZE_EVENT, { detail: { width: 960, resized: true } }));
+    });
+    expect(first.host.querySelector('[data-side="left"]')).toBeNull();
+    expect(saved().primary).toMatchObject({ tabs: ["location", "map"], activeTab: "map" });
+    // Inside a panorama the map's tabs are hidden; what is saved still has them.
+    await show({ title: "360: Northrop Mall", onScreen: true });
+    expect(first.host.querySelector('[data-side="right"] .foss-earth-tab-button')?.textContent).toBe("360: Northrop Mall");
+    expect(saved().primary).toMatchObject({ tabs: ["location", "map"], activeTab: "map" });
+    expect(saved().secondary.tabs).toEqual([]);
+  } finally { await act(async () => first.root.unmount()); }
+
+  // The reload lands on the globe in a wide window.
+  snapshot = { title: null, onScreen: false };
+  const second = await mount();
+  try {
+    expect(Array.from(second.host.querySelectorAll('[data-side="left"] .foss-earth-tab-button'), (button) => button.textContent)).toEqual(["Location", "Map"]);
+    expect(second.host.querySelector('[data-side="left"] .foss-earth-tab-shell-selected .foss-earth-tab-button')?.textContent).toBe("Map");
+    expect(second.host.querySelector('[data-side="right"] .foss-earth-tab-button')).toBeNull();
+  } finally { await act(async () => second.root.unmount()); }
 });

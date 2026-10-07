@@ -40,6 +40,15 @@ log messages never take resize priority. Minimizing releases the log's requested
 space; restoring reapplies its preference. Collapsed tab strips also fit their
 allocated widths.
 
+The workspace is remembered per device. After a reload each window holds the
+tabs it held, shows the one it showed, and keeps its width and whether it was
+minimized (`src/shell/savedWorkspace.ts`); the sections open inside each tab
+are remembered the same way (`panelSectionsOpen.ts`). What is saved is the
+layout a wide window on the globe would show: tabs folded onto the right are
+saved on their own sides, and inside a panorama the map's tabs are saved where
+they were and the panorama's own tabs not at all. A saved tab the application no
+longer offers is dropped.
+
 ## Paragraph grids, never fixed columns
 
 Lay out every set of controls (toggles, chips, buttons, short fields, cards) as a

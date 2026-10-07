@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   LocationPanel,
   openOrSelectTabInWorkspace,
@@ -18,6 +18,7 @@ import { GAME_LOG_SIZE_EVENT, type GameLogSizeChange } from "../log/createGameLo
 import { resolveDockLayout, type DockLayoutMode, type DockResizePriority } from "./dockLayout";
 import { foldWorkspace, restoreWorkspace, forgetCompactWorkspaceTab, type CompactWorkspaceMemory } from "./compactWorkspace";
 import { hideWorkspaceTabs, restoreWorkspaceTabs, type HiddenTab } from "./contextTabs";
+import { loadSavedWorkspace, saveWorkspace } from "./savedWorkspace";
 import type { PanoramaTabs, PanoramaTabsSnapshot } from "./panoramaTabs";
 import {
   closeTabInWorkspace,
@@ -40,6 +41,33 @@ const PANORAMA_ONLY: ReadonlySet<string> = new Set(["panorama", "panorama-settin
 const OUTSIDE_PANORAMA: PanoramaTabsSnapshot = { title: null, onScreen: false };
 /** Enough of the panorama tab's definition to open it; its label comes from the render. */
 const PANORAMA_TAB_DEFINITION: readonly WindowTabDefinition<"panorama">[] = [{ id: "panorama", label: "360" }];
+
+/** Where the tabs a context hid are, so each comes back where it was when its context returns. */
+interface PanoramaContextMemory<TabId extends string> {
+  globe: HiddenTab<TabId>[];
+  panorama: HiddenTab<TabId>[];
+  /** The slot the panorama's tab opened in, and whether it was collapsed before. */
+  opened: { slotId: WindowSlotId; collapsed: boolean } | null;
+  /** The panorama's tab opened minimized, and shows when the panorama is on screen. */
+  arriving: boolean;
+}
+
+/**
+ * The workspace as leaving a panorama leaves it: the panorama's tabs hidden,
+ * the map's back where they were, and the panel the panorama's tab opened as
+ * it was, if that tab was what it showed. Changes nothing in `memory`.
+ */
+function globeWorkspace<TabId extends string>(
+  state: WindowWorkspaceState<TabId>,
+  memory: PanoramaContextMemory<TabId>,
+  primaryAvailable: boolean,
+): { state: WindowWorkspaceState<TabId>; hidden: HiddenTab<TabId>[] } {
+  const hidden = hideWorkspaceTabs(state, PANORAMA_ONLY as ReadonlySet<TabId>);
+  const restored = restoreWorkspaceTabs(hidden.state, memory.globe, primaryAvailable);
+  const opened = memory.opened;
+  const panelBack = opened && hidden.hidden.some((entry) => entry.tabId === "panorama" && entry.slotId === opened.slotId && entry.active);
+  return { state: panelBack ? setWorkspaceSlotCollapsed(restored, opened.slotId, opened.collapsed) : restored, hidden: hidden.hidden };
+}
 
 const DEFAULT_LOCATION: GeodeticLocation = {
   latDeg: 44.977753,
@@ -151,7 +179,12 @@ export function WindowOverlay<TabId extends string = never>({
     overlayRef.current = element;
     setOverlayElement(element);
   }, []);
-  const workspace = useWindowWorkspace<OverlayTabId>();
+  // A reload comes back to the tabs that were open on the globe. A saved
+  // workspace is always the globe's, so the panorama's own tabs are never in it.
+  const [savedWorkspace] = useState(() => loadSavedWorkspace(new Set(tabDefinitions
+    .filter((tab) => (builtInTabs.includes(tab.id) ? !PANORAMA_ONLY.has(tab.id) : tab.available !== false))
+    .map((tab) => tab.id))));
+  const workspace = useWindowWorkspace<OverlayTabId>(savedWorkspace ? { initialState: savedWorkspace } : {});
   const compactMemory = useRef<CompactWorkspaceMemory<OverlayTabId> | null>(null);
   const forgetClosedTabs = (next: WindowWorkspaceState<OverlayTabId>): void => {
     if (!compactMemory.current) return;
@@ -258,14 +291,7 @@ export function WindowOverlay<TabId extends string = never>({
   // Entering a panorama hides the tabs about the map and opens the panorama's
   // tab; leaving hides the panorama's tabs. Each hidden tab comes back where
   // it was when its context returns.
-  const contextMemory = useRef<{
-    globe: HiddenTab<OverlayTabId>[];
-    panorama: HiddenTab<OverlayTabId>[];
-    /** The slot the panorama's tab opened in, and whether it was collapsed before. */
-    opened: { slotId: WindowSlotId; collapsed: boolean } | null;
-    /** The panorama's tab opened minimized, and shows when the panorama is on screen. */
-    arriving: boolean;
-  }>({ globe: [], panorama: [], opened: null, arriving: false });
+  const contextMemory = useRef<PanoramaContextMemory<OverlayTabId>>({ globe: [], panorama: [], opened: null, arriving: false });
   const contextShown = useRef(false);
   useLayoutEffect(() => {
     if (contextShown.current === inPanorama) return;
@@ -286,17 +312,11 @@ export function WindowOverlay<TabId extends string = never>({
       return;
     }
     memory.arriving = false;
-    const hidden = hideWorkspaceTabs(workspace.state, PANORAMA_ONLY as ReadonlySet<OverlayTabId>);
-    memory.panorama = hidden.hidden;
-    let restored = restoreWorkspaceTabs(hidden.state, memory.globe, primaryAvailable);
+    const left = globeWorkspace(workspace.state, memory, primaryAvailable);
+    memory.panorama = left.hidden;
     memory.globe = [];
-    // The panel the panorama's tab opened goes back to how it was, if that tab was what it showed.
-    const opened = memory.opened;
     memory.opened = null;
-    if (opened && hidden.hidden.some((entry) => entry.tabId === "panorama" && entry.slotId === opened.slotId && entry.active)) {
-      restored = setWorkspaceSlotCollapsed(restored, opened.slotId, opened.collapsed);
-    }
-    workspace.setState(restored);
+    workspace.setState(left.state);
   }, [inPanorama, panorama.onScreen, primaryAvailable, workspace]);
 
   // The panorama on screen: its tab shows, unless the person chose otherwise
@@ -310,6 +330,15 @@ export function WindowOverlay<TabId extends string = never>({
       workspace.setState(setWorkspaceSlotCollapsed(workspace.state, slotId, false));
     }
   }, [inPanorama, panorama.onScreen, workspace]);
+
+  // Save the workspace as a wide window on the globe would show it: a
+  // panorama is left, then tabs folded onto the right go back to their homes,
+  // so a reload outside the panorama or into another width starts from the
+  // person's own layout. Written only when the workspace changes.
+  useEffect(() => {
+    const onGlobe = inPanorama ? globeWorkspace(workspace.state, contextMemory.current, true).state : workspace.state;
+    saveWorkspace(compactMemory.current ? restoreWorkspace(onGlobe, compactMemory.current) : onGlobe);
+  }, [workspace.state, inPanorama]);
 
   // Closing the panorama's tab leaves the panorama, as Escape does.
   const beforeCloseTab = (tabId: OverlayTabId): boolean | void => {
