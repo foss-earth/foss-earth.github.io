@@ -21,10 +21,18 @@ beforeEach(() => {
 });
 
 describe("position readout", () => {
-  it("marks the latitude and the longitude with their icons unless asked otherwise", () => {
+  it("leaves which number is which to N or S and E or W unless asked otherwise", () => {
     readout.update(MINNEAPOLIS);
 
-    expect(settings.get("interface.position.coordinateLabels")).toBe("icons");
+    expect(settings.get("interface.position.coordinateLabels")).toBe("none");
+    expect(chip.textContent).toBe("44.9778°N 93.2650°W");
+    expect(chip.querySelector("svg")).toBeNull();
+  });
+
+  it("marks the latitude and the longitude with their icons when asked", () => {
+    settings.set("interface.position.coordinateLabels", "icons");
+    readout.update(MINNEAPOLIS);
+
     expect(chip.textContent).toBe("44.9778°N 93.2650°W");
     // Parallels are straight lines across the globe; meridians close into an ellipse.
     expect(part("latitude")!.querySelector("svg.hud-position__icon path")?.getAttribute("d")).toContain("h20");
@@ -33,19 +41,24 @@ describe("position readout", () => {
     expect(chip.querySelectorAll("svg[aria-hidden='true']")).toHaveLength(2);
   });
 
-  it("writes lat and lon, or nothing, the moment the setting changes", () => {
+  it("writes lat and lon, draws the icons or marks nothing, the moment the setting changes", () => {
     readout.update(MINNEAPOLIS);
 
     settings.set("interface.position.coordinateLabels", "words");
     expect(chip.textContent).toBe("lat 44.9778°N lon 93.2650°W");
     expect(chip.querySelector("svg")).toBeNull();
 
+    settings.set("interface.position.coordinateLabels", "icons");
+    expect(chip.textContent).toBe("44.9778°N 93.2650°W");
+    expect(chip.querySelectorAll("svg")).toHaveLength(2);
+
     settings.set("interface.position.coordinateLabels", "none");
     expect(chip.textContent).toBe("44.9778°N 93.2650°W");
     expect(chip.querySelector("svg")).toBeNull();
+  });
 
-    settings.set("interface.position.coordinateLabels", "icons");
-    expect(chip.querySelectorAll("svg")).toHaveLength(2);
+  it("offers the three as one row of choices, nothing first and icons last", () => {
+    expect(settings.spec("interface.position.coordinateLabels")!.choices!.map(choice => choice.id)).toEqual(["none", "words", "icons"]);
   });
 
   it("shows the altitude after the position, and the host's readings after that", () => {
@@ -77,6 +90,7 @@ describe("position readout", () => {
   });
 
   it("keeps its elements while only the numbers change", () => {
+    settings.set("interface.position.coordinateLabels", "icons");
     readout.update({ ...MINNEAPOLIS, altitudeMeters: 100 });
     const icon = chip.querySelector("svg");
     const altitude = part("altitude");

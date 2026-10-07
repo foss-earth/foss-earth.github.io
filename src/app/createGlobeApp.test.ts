@@ -310,7 +310,7 @@ describe("createGlobeApp smoke behavior", () => {
     mockState.frameCallback?.();
 
     expect(root.querySelector("#hudStatus")?.textContent).toBe("44.9778°N 93.2650°W 600m ASL h017° p71° z600m");
-    expect(root.querySelectorAll("#hudStatus svg.hud-position__icon")).toHaveLength(2);
+    expect(root.querySelector("#hudStatus svg")).toBeNull();
     expect(Array.from(root.querySelectorAll("#perfMetricsPill .perf-chip")).map((el) => el.textContent)).toEqual([
       "60fps",
     ]);

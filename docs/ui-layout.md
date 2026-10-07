@@ -169,11 +169,12 @@ Fitting changes only what is drawn. FPS shows its number above a smaller gray
 The position readout (`createPositionReadout`, shared with 0sfs's flight chip)
 writes the latitude, the longitude and the altitude, then what its host adds:
 heading, pitch and zoom distance on the globe, heading in the flight. By default
-a globe drawn with only its parallels marks the latitude, and one drawn with only
-its meridians the longitude, each in the text colour at 1.2em; Interface →
-Position readout can write `lat` and `lon` instead, or nothing beyond the N/S and
-E/W. The same section says what the altitude is measured from, above mean sea
-level or above the terrain below, and whether it is in metres or feet. Mean sea
+only the N/S and E/W after the numbers say which is which; Interface → Position
+readout can write `lat` and `lon` before them instead, or draw a globe with only
+its parallels before the latitude and one with only its meridians before the
+longitude, each in the text colour at 1.2em. The same section says what the
+altitude is measured from, above mean sea level or above the terrain below, and
+whether it is in metres or feet. Mean sea
 level is NGA's EGM2008 geoid: raster terrain's heights are already above its
 source's sea level, and over Google 3D Tiles, drawn at their WGS84 ellipsoid
 heights, the readout takes away the geoid's height from a grid shipped with the
