@@ -4,7 +4,8 @@ export {
   createMeshInspector, type MeshInspector, type MeshInspectorHandle, type MeshInspectorNode, type MeshInspectorOptions, type MeshInspectorSnapshot,
 } from "./createMeshInspector";
 export {
-  createVectorDebugDrawing, type DebugVector, type VectorDebugDrawingOptions, type VectorDebugDrawingSettings,
+  createVectorDebugDrawing, type ArcDebugDrawingSettings, type DebugVector, type VectorDebugDrawingOptions,
+  type VectorDebugDrawingSettings,
 } from "./createVectorDebugDrawing";
 export { buildReport, reportPage, type ReportParts, type ReportSetting } from "./report";
 export {

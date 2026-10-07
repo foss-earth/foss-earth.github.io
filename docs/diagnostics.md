@@ -18,6 +18,17 @@ Arrow geometry uses the input magnitude divided by `valuePerMeter`; labels retai
 the full magnitude even when the arrow is capped. Zero, missing or nonfinite
 vectors are hidden. Glyphs currently draw through other geometry for diagnostics.
 
+A vector with `shape: "arc"` is a rotation, such as a moment, a torque or an
+angular velocity. It draws as an arc about the vector's direction through its
+anchor, swept by the right-hand rule, with an arrowhead showing the sense. The
+optional `arcs` settings give its `valuePerDegree`, `radiusMeters` and
+`maxSweepDegrees` (at most a full turn); without them arcs stay hidden and the
+drawing reports it once. `arcValueDisplayScale` and `arcValueUnit` label arcs
+in their own unit. An arc starts from the parent's local up projected onto its
+plane, or from local forward when its axis is within 30° of up, so a reversed
+rotation starts at the same place and only its sense changes. Arrows and arcs
+share one drawing, its readiness and its label clock.
+
 Call `update(vectors, timeSeconds, withinScheduledFrame = false)` when the observed
 values change. Label refresh follows the supplied clock and holds when it holds;
 no internal timer runs. A scheduled scene tick passes `true` to avoid requesting
@@ -27,7 +38,8 @@ their own frame. `setSettings` applies live changes, and disabling or `dispose()
 frees geometry, materials and label textures and cancels pending readiness.
 
 Tests cover transformed anchors/directions, readiness, paused rendering, scale
-caps, label units/rate, invalid data and disposal with Babylon's NullEngine. They
+caps, label units/rate, invalid data and disposal with Babylon's NullEngine, and
+an arc's plane, radius, sense, start, sweep cap and shape changes. They
 do not qualify a device's renderer or graphics cost.
 
 ## Mesh tree and polygon edges

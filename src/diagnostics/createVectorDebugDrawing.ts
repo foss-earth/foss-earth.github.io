@@ -11,6 +11,21 @@ export interface DebugVector {
   /** Both vector and anchor are in the supplied parent's local coordinate system. */
   vector: readonly [number, number, number];
   anchor: readonly [number, number, number];
+  /**
+   * `arrow`, the default, draws the vector from its anchor. `arc` draws a
+   * rotation about the vector's direction through its anchor by the right-hand
+   * rule, for a moment, a torque or an angular velocity: the sweep is its
+   * magnitude and the arrowhead its sense.
+   */
+  shape?: "arrow" | "arc";
+}
+
+export interface ArcDebugDrawingSettings {
+  /** Scalar data units represented by one degree of sweep. */
+  valuePerDegree: number;
+  radiusMeters: number;
+  /** Caps the sweep, at most a full turn; labels keep the full magnitude. */
+  maxSweepDegrees: number;
 }
 
 export interface VectorDebugDrawingSettings {
@@ -20,6 +35,8 @@ export interface VectorDebugDrawingSettings {
   maxArrowMeters: number;
   labels: boolean;
   labelRefreshHz: number;
+  /** Needed only by vectors drawn as arcs, which stay hidden without it. */
+  arcs?: ArcDebugDrawingSettings;
 }
 
 export interface VectorDebugDrawingOptions {
@@ -27,13 +44,20 @@ export interface VectorDebugDrawingOptions {
   /** Unit conversion for label values; geometry uses the unscaled input vector. */
   valueDisplayScale: number;
   valueUnit: string;
+  /** Label conversion for arcs, whose quantity usually has a unit of its own; defaults to the arrows'. */
+  arcValueDisplayScale?: number;
+  arcValueUnit?: string;
   requestRender?(): void;
   onError?(message: string): void;
   whenReady?(meshes: readonly Mesh[], signal: AbortSignal): Promise<void>;
 }
 
+type GlyphShape = NonNullable<DebugVector["shape"]>;
+
 interface VectorGlyph {
+  shape: GlyphShape;
   root: TransformNode;
+  /** A unit cylinder scaled along the arrow, or an updatable tube along the arc. */
   shaft: Mesh;
   head: Mesh;
   label: Mesh | null;
@@ -44,6 +68,32 @@ interface VectorGlyph {
   labelTime: number;
   color: string;
   labelText: string;
+}
+
+interface GlyphExtent {
+  magnitude: number;
+  visible: boolean;
+  capped: boolean;
+  /** Arrow length in metres, or arc sweep in degrees. */
+  size: number;
+}
+
+/** Points along an arc's tube; a tube keeps its point count when updated. */
+const ARC_POINTS = 49;
+const HEAD_METERS = 0.35;
+const LABEL_GAP_METERS = 0.35;
+const shapeOf = (vector: DebugVector): GlyphShape => vector.shape ?? "arrow";
+
+/**
+ * An arc starts from parent-local up projected onto its plane, or from
+ * forward when its axis lies within 30 degrees of up, so a reversed rotation
+ * starts at the same place and only its sense changes.
+ */
+function arcBasis(axis: Vector3): { u: Vector3; v: Vector3 } {
+  let u = new Vector3(0, 1, 0).subtractInPlace(axis.scale(axis.y));
+  if (u.length() < 0.5) u = new Vector3(0, 0, 1).subtractInPlace(axis.scale(axis.z));
+  u.normalize();
+  return { u, v: Vector3.Cross(axis, u) };
 }
 
 /** World-space vector glyphs in parent-local coordinates, independent of any domain model. */
@@ -119,8 +169,19 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
     node.rotationQuaternion = Quaternion.Identity();
     node.doNotSerialize = true;
     const color = material(`vector-debug/${force.id}/material`, force.color);
-    const shaft = MeshBuilder.CreateCylinder(`vector-debug/${force.id}/shaft`, { height: 1, diameter: 0.045, tessellation: 6 }, scene);
+    const shape = shapeOf(force);
+    const shaft = shape === "arc"
+      ? MeshBuilder.CreateTube(`vector-debug/${force.id}/shaft`, {
+        path: Array.from({ length: ARC_POINTS }, (_, index) => {
+          const angle = index / (ARC_POINTS - 1) * Math.PI / 2;
+          return new Vector3(Math.cos(angle), 0, Math.sin(angle));
+        }),
+        radius: 0.0225, tessellation: 6, updatable: true,
+      }, scene)
+      : MeshBuilder.CreateCylinder(`vector-debug/${force.id}/shaft`, { height: 1, diameter: 0.045, tessellation: 6 }, scene);
     const head = MeshBuilder.CreateCylinder(`vector-debug/${force.id}/head`, { height: 1, diameterTop: 0, diameterBottom: 0.22, tessellation: 6 }, scene);
+    // An arrow turns its whole glyph; an arc's head turns alone along the arc.
+    if (shape === "arc") head.rotationQuaternion = Quaternion.Identity();
     for (const mesh of [shaft, head]) {
       mesh.parent = node;
       mesh.material = color;
@@ -158,15 +219,13 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
       labelMaterial.backFaceCulling = false;
       label.material = labelMaterial;
     }
-    const glyph = { root: node, shaft, head, label, labelAnchor, texture, key: "", text: "", labelTime: Number.NaN,
+    const glyph = { shape, root: node, shaft, head, label, labelAnchor, texture, key: "", text: "", labelTime: Number.NaN,
       color: force.color, labelText: force.label };
     if (texture) {
       // DynamicTexture becomes ready only after its first upload. Waiting for
       // material readiness before drawing text would wait for that upload
       // forever. Paint the initial label while its complete glyph is hidden.
-      const magnitude = Math.hypot(...force.vector);
-      const capped = Number.isFinite(magnitude) && magnitude > 0 && settings.valuePerMeter > 0
-        && magnitude / settings.valuePerMeter > settings.maxArrowMeters;
+      const { magnitude, capped } = extent(force);
       paintLabel(glyph, labelText(force, magnitude, capped), force.color);
       // Keep labelTime unset: the atomic reveal must refresh the latest
       // snapshot if observations changed while preparation was pending.
@@ -175,7 +234,65 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
   }
 
   function labelText(force: DebugVector, magnitude: number, capped: boolean): string {
-    return `${force.label}: ${(magnitude * options.valueDisplayScale).toFixed(1)} ${options.valueUnit}${capped ? " [capped]" : ""}`;
+    const arc = shapeOf(force) === "arc";
+    const scale = arc ? options.arcValueDisplayScale ?? options.valueDisplayScale : options.valueDisplayScale;
+    const unit = arc ? options.arcValueUnit ?? options.valueUnit : options.valueUnit;
+    return `${force.label}: ${(magnitude * scale).toFixed(1)} ${unit}${capped ? " [capped]" : ""}`;
+  }
+
+  function extent(force: DebugVector): GlyphExtent {
+    const magnitude = Math.hypot(...force.vector);
+    const finite = [...force.vector, ...force.anchor, magnitude].every(Number.isFinite);
+    const positive = (value: number): boolean => Number.isFinite(value) && value > 0;
+    let limit = 0, unscaled = 0;
+    if (shapeOf(force) === "arc") {
+      const arcs = settings.arcs;
+      if (finite && arcs && positive(arcs.valuePerDegree) && positive(arcs.radiusMeters) && positive(arcs.maxSweepDegrees)) {
+        limit = Math.min(arcs.maxSweepDegrees, 360);
+        unscaled = magnitude / arcs.valuePerDegree;
+      }
+    } else if (finite && positive(settings.valuePerMeter) && positive(settings.maxArrowMeters)) {
+      limit = settings.maxArrowMeters;
+      unscaled = magnitude / settings.valuePerMeter;
+    }
+    const size = Math.min(unscaled, limit);
+    const visible = magnitude > 0 && size > 0;
+    return { magnitude, visible, capped: visible && unscaled > limit, size };
+  }
+
+  function poseArrow(glyph: VectorGlyph, vector: DebugVector["vector"], magnitude: number, length: number): void {
+    const direction = new Vector3(vector[0] / magnitude, vector[1] / magnitude, vector[2] / magnitude);
+    // The helper compares 1 + dot(from,to) with epsilon. Its default
+    // .001 treats directions within ~2.56 degrees of down as exactly
+    // opposite, erasing real vector components. Limit that fallback to
+    // floating-point indistinguishability while retaining exact down.
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), direction, glyph.root.rotationQuaternion!, 4 * Number.EPSILON);
+    const headLength = Math.min(HEAD_METERS, length * 0.25);
+    glyph.shaft.scaling.y = length - headLength;
+    glyph.shaft.position.y = (length - headLength) / 2;
+    glyph.head.scaling.y = headLength;
+    glyph.head.position.y = length - headLength / 2;
+    if (glyph.labelAnchor) glyph.labelAnchor.position.y = length + LABEL_GAP_METERS;
+  }
+
+  function poseArc(glyph: VectorGlyph, vector: DebugVector["vector"], magnitude: number, sweepDegrees: number): void {
+    const radius = settings.arcs!.radiusMeters;
+    const { u, v } = arcBasis(new Vector3(vector[0] / magnitude, vector[1] / magnitude, vector[2] / magnitude));
+    const point = (angle: number, distance = radius): Vector3 =>
+      u.scale(distance * Math.cos(angle)).addInPlace(v.scale(distance * Math.sin(angle)));
+    const end = sweepDegrees * Math.PI / 180;
+    const headLength = Math.min(HEAD_METERS, radius * end * 0.25);
+    const tubeEnd = end - headLength / radius;
+    const path = Array.from({ length: ARC_POINTS }, (_, index) => point(tubeEnd * index / (ARC_POINTS - 1)));
+    // A sweep too small to separate its points has no tube direction to draw.
+    const drawable = path.every((next, index) => index === 0 || !next.equals(path[index - 1]));
+    glyph.shaft.setEnabled(drawable);
+    if (drawable) MeshBuilder.CreateTube(glyph.shaft.name, { path, instance: glyph.shaft });
+    const tangent = v.scale(Math.cos(tubeEnd)).subtractInPlace(u.scale(Math.sin(tubeEnd)));
+    glyph.head.position.copyFrom(point(tubeEnd).addInPlace(tangent.scale(headLength / 2)));
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), tangent, glyph.head.rotationQuaternion!, 4 * Number.EPSILON);
+    glyph.head.scaling.y = headLength;
+    if (glyph.labelAnchor) glyph.labelAnchor.position.copyFrom(point(end, radius + LABEL_GAP_METERS));
   }
 
   function paintLabel(glyph: VectorGlyph, text: string, color: string, styleChanged = false): boolean {
@@ -197,15 +314,11 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
       const glyph = glyphs.get(force.id);
       if (!glyph) continue;
       seen.add(force.id);
-      const magnitude = Math.hypot(...force.vector);
-      const valid = [...force.vector, ...force.anchor, magnitude].every(Number.isFinite)
-        && Number.isFinite(settings.valuePerMeter) && settings.valuePerMeter > 0
-        && Number.isFinite(settings.maxArrowMeters) && settings.maxArrowMeters > 0;
-      const length = valid ? Math.min(magnitude / settings.valuePerMeter, settings.maxArrowMeters) : 0;
-      const visible = valid && magnitude > 0 && length > 0;
-      const capped = visible && magnitude / settings.valuePerMeter > settings.maxArrowMeters;
+      if (glyph.shape === "arc" && !settings.arcs) warn("Arc vectors need arc settings; they stay hidden without them.");
+      const { magnitude, visible, capped, size } = extent(force);
       const styleChanged = glyph.color !== force.color || glyph.labelText !== force.label;
-      const key = [...force.vector, ...force.anchor, length, visible, force.color, force.label].join("/");
+      const key = [...force.vector, ...force.anchor, size, visible, force.color, force.label,
+        glyph.shape === "arc" ? settings.arcs?.radiusMeters : ""].join("/");
       if (key !== glyph.key) {
         glyph.key = key;
         if (styleChanged) {
@@ -219,21 +332,11 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
         glyph.root.setEnabled(visible);
         if (visible) {
           glyph.root.position.set(...force.anchor);
-          const vector = force.vector;
-          const direction = new Vector3(vector[0] / magnitude, vector[1] / magnitude, vector[2] / magnitude);
-          // The helper compares 1 + dot(from,to) with epsilon. Its default
-          // .001 treats directions within ~2.56 degrees of down as exactly
-          // opposite, erasing real vector components. Limit that fallback to
-          // floating-point indistinguishability while retaining exact down.
-          Quaternion.FromUnitVectorsToRef(Vector3.Up(), direction, glyph.root.rotationQuaternion!, 4 * Number.EPSILON);
-          const headLength = Math.min(0.35, length * 0.25);
-          glyph.shaft.scaling.y = length - headLength;
-          glyph.shaft.position.y = (length - headLength) / 2;
-          glyph.head.scaling.y = headLength;
-          glyph.head.position.y = length - headLength / 2;
-          if (glyph.labelAnchor) glyph.labelAnchor.position.y = length + 0.35;
+          if (glyph.shape === "arc") poseArc(glyph, force.vector, magnitude, size);
+          else poseArrow(glyph, force.vector, magnitude, size);
         }
-        glyph.root.metadata = { debugVector: { ...force, magnitude: magnitude, arrowMeters: length, capped } };
+        glyph.root.metadata = { debugVector: { ...force, magnitude, capped,
+          ...(glyph.shape === "arc" ? { sweepDegrees: size } : { arrowMeters: size }) } };
         changed = true;
       }
       const time = snapshot.timeSeconds;
@@ -284,7 +387,7 @@ export function createVectorDebugDrawing(scene: Scene, parent: TransformNode, op
     try {
       snapshot = { vectors, timeSeconds };
       if (!root) createGeometry();
-      else if (vectors.some(vector => !glyphs.has(vector.id))) { clearGeometry(true); createGeometry(); }
+      else if (vectors.some(vector => glyphs.get(vector.id)?.shape !== shapeOf(vector))) { clearGeometry(true); createGeometry(); }
       applySnapshot();
     } finally { withinScheduledFrame = previous; }
   }

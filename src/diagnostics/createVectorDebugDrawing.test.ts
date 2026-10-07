@@ -226,6 +226,76 @@ describe("shared world vector drawing", () => {
     t.drawing.dispose(); expect(t.scene.meshes).toHaveLength(0); expect(t.scene.materials).toHaveLength(0);
   });
 
+  describe("arcs", () => {
+    const arcs = { valuePerDegree: 100, radiusMeters: 2, maxSweepDegrees: 300 };
+    const moment: DebugVector = { ...vector, label: "Moment", shape: "arc", vector: [0, 0, 9000] };
+    const arcFixture = (overrides: Partial<Parameters<typeof createVectorDebugDrawing>[2]> = {}) => fixture({
+      settings: { ...settings, arcs }, arcValueDisplayScale: 0.001, arcValueUnit: "kN·m", ...overrides,
+    });
+    const headTip = (scene: Scene) => {
+      const head = scene.getMeshByName("vector-debug/sample/head")!;
+      return Vector3.TransformCoordinates(new Vector3(0, 0.5, 0), head.computeWorldMatrix(true));
+    };
+
+    it.each([
+      ["sweeps by the right-hand rule about its axis", [0, 0, 9000] as const, [-2, 0, 0]],
+      ["reverses its sense, not its start, for the opposite rotation", [0, 0, -9000] as const, [2, 0, 0]],
+      ["starts from forward when its axis is near up", [0, 9000, 0] as const, [2, 0, 0]],
+    ])("%s", async (_name, components, tipOffset) => {
+      const t = arcFixture();
+      t.drawing.update([{ ...moment, vector: components }], 1); await t.drawing.ready;
+      expect(t.node().metadata.debugVector).toMatchObject({ magnitude: 9000, sweepDegrees: 90, capped: false });
+      const anchor = Vector3.FromArray(moment.anchor);
+      // The arrowhead ends a quarter turn from the start, on the circle the radius sets.
+      expect(Vector3.Distance(headTip(t.scene), anchor.add(Vector3.FromArray(tipOffset)))).toBeLessThan(0.05);
+      const axis = Vector3.FromArray(components).normalize();
+      const shaft = t.scene.getMeshByName("vector-debug/sample/shaft")!;
+      const positions = shaft.getVerticesData("position")!;
+      for (let index = 0; index < positions.length; index += 3) {
+        const offset = Vector3.FromArray(positions, index);
+        const along = Vector3.Dot(offset, axis);
+        expect(Math.abs(along)).toBeLessThan(0.0226);
+        expect(Math.abs(offset.subtract(axis.scale(along)).length() - arcs.radiusMeters)).toBeLessThan(0.0226);
+      }
+      t.drawing.dispose();
+    });
+
+    it("caps the sweep, keeps the full magnitude in its own unit, and follows a new radius", async () => {
+      const fillText = mockCanvas();
+      const t = arcFixture({ settings: { ...settings, labels: true, arcs } });
+      t.drawing.update([{ ...moment, vector: [0, 0, 50000] }], 1); await t.drawing.ready;
+      expect(t.node().metadata.debugVector).toMatchObject({ sweepDegrees: 300, capped: true });
+      expect(fillText.mock.calls.at(-1)![0]).toBe("Moment: 50.0 kN·m [capped]");
+      const label = t.scene.getTransformNodeByName("vector-debug/sample/label-anchor")!;
+      expect(label.position.length()).toBeCloseTo(arcs.radiusMeters + 0.35, 6);
+      t.requestRender.mockClear();
+      t.drawing.setSettings({ ...settings, labels: true, arcs: { ...arcs, radiusMeters: 4 } });
+      expect(label.position.length()).toBeCloseTo(4.35, 6);
+      expect(t.requestRender).toHaveBeenCalledOnce();
+      t.drawing.dispose();
+    });
+
+    it("hides arcs without arc settings and says so once", async () => {
+      const onError = vi.fn();
+      const t = fixture({ onError });
+      t.drawing.update([moment], 1); await t.drawing.ready;
+      t.drawing.update([moment], 2);
+      expect(t.node().isEnabled()).toBe(false);
+      expect(onError).toHaveBeenCalledOnce();
+      t.drawing.dispose();
+    });
+
+    it("rebuilds a glyph whose shape changes, keeping arrows and arcs in one drawing", async () => {
+      const t = arcFixture();
+      t.drawing.update([vector, { ...moment, id: "moment" }], 1); await t.drawing.ready;
+      expect(t.scene.getMeshByName("vector-debug/moment/shaft")!.getTotalVertices()).toBeGreaterThan(
+        t.scene.getMeshByName("vector-debug/sample/shaft")!.getTotalVertices());
+      t.drawing.update([{ ...vector, shape: "arc" }, { ...moment, id: "moment" }], 2); await t.drawing.ready;
+      expect(t.node().metadata.debugVector).toMatchObject({ sweepDegrees: 50 });
+      t.drawing.dispose();
+    });
+  });
+
   it("keeps labels in real units and refreshes changed values only on the supplied clock", async () => {
     const fillText = mockCanvas();
     const t = fixture({ settings: { ...settings, labels: true } });
