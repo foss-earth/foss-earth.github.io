@@ -37,6 +37,7 @@ const LEDGER: Record<string, [Kind, string]> = {
   "src/airports/geometry.ts#EARTH_RADIUS": ["fact", "The mean Earth radius, for great-circle distances."],
   "src/airports/geometry.ts#RAD": ["fact", "Degrees to radians."],
   "src/hud/performanceChips.ts#PERFORMANCE_METRIC_DEFINITIONS": ["layout", "How the performance HUD formats each reading: its digits and units."],
+  "src/hud/positionReadout.ts#METERS_PER_FOOT": ["fact", "The international foot, in metres."],
   "src/app/createGlobeApp.ts#POI_EXIT_BTN_OFFSET_PX": ["layout", "Where the leave-orbit button sits beside a point of interest."],
   "src/camera/anchorPan.ts#ANCHOR_PAN_CHASE": ["guard", "How the grab-pan solver closes the last pixels between the grabbed point and the cursor; the point follows the cursor either way."],
   "src/camera/cameraGlide.ts#TURN_PROBE_RAD": ["guard", "The small turn a look's rate of turning is measured over: small enough to be the rate there, large enough for float64."],

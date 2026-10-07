@@ -133,7 +133,7 @@ Default visibility follows this priority, highest first:
 | 3 | Fullscreen | Enters or leaves fullscreen where the browser supports it |
 | 4 | FPS | Useful feedback for anyone |
 | 5 | WebGPU / WebGL 1 / WebGL 2 | Explains which renderer is drawing when FPS is low |
-| 6 | Camera position (`lat/lon/h/p/z`) | Opens the Location tab |
+| 6 | Camera position (latitude, longitude, altitude, `h/p/z`) | Opens the Location tab |
 | 7 | Theme | Also available in Interface → Toolbar |
 | 8 | Settings | Also available as a tab under + |
 
@@ -166,6 +166,17 @@ Auto stays selected even when its chip does not fit, including Camera position.
 Fitting changes only what is drawn. FPS shows its number above a smaller gray
 `fps` label, within the same toolbar row height.
 
+The position readout (`createPositionReadout`, shared with 0sfs's flight chip)
+writes the latitude, the longitude and the altitude, then what its host adds:
+heading, pitch and zoom distance on the globe, heading in the flight. By default
+a globe drawn with only its parallels marks the latitude, and one drawn with only
+its meridians the longitude, each in the text colour at 1.2em; Interface →
+Position readout can write `lat` and `lon` instead, or nothing beyond the N/S and
+E/W. The same section says what the altitude is measured from, above sea level
+(the WGS84 ellipsoid) or above the terrain below, and whether it is in metres or
+feet. On the globe it is the camera's own altitude, not that of the point it
+looks at. Digits are tabular, so a changing number does not shift what follows.
+
 ## One home for every control
 
 Every setting lives in exactly one place, a section of a tab.
@@ -197,7 +208,7 @@ Every setting lives in exactly one place, a section of a tab.
   rate, Depth range and Performance debug; the Scenes tab is Content, Orbs,
   Motion, Loading and memory, Tiled images, Saved images and Credits; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
-  is Toolbar, Log and Search; and the Settings tab is Presets, Saved settings, App files and Diagnostics. About is
+  is Toolbar, Position readout, Log and Search; and the Settings tab is Presets, Saved settings, App files and Diagnostics. About is
   a tab of its own (`createAboutPanel`): which version runs and what it is built from, as a tree from the app
   down, where someone looking for the version looks for it, under +. Map and
   Renderer add a section for

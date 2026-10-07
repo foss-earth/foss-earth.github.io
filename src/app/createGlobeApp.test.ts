@@ -228,6 +228,8 @@ beforeEach(() => {
     geospatialCamera: {
       center: { x: 1, y: 0, z: 0 },
       globalPosition: { x: 2, y: 0, z: 0 },
+      // On the equator, 600 m above the WGS84 ellipsoid.
+      position: { x: 6_378_737, y: 0, z: 0 },
       radius: 600,
     },
     getViewState: mockState.getViewState,
@@ -307,7 +309,8 @@ describe("createGlobeApp smoke behavior", () => {
 
     mockState.frameCallback?.();
 
-    expect(root.querySelector("#hudStatus")?.textContent).toBe("44.9778°N 93.2650°W h017° p71° z600m");
+    expect(root.querySelector("#hudStatus")?.textContent).toBe("44.9778°N 93.2650°W 600m ASL h017° p71° z600m");
+    expect(root.querySelectorAll("#hudStatus svg.hud-position__icon")).toHaveLength(2);
     expect(Array.from(root.querySelectorAll("#perfMetricsPill .perf-chip")).map((el) => el.textContent)).toEqual([
       "60fps",
     ]);
@@ -494,7 +497,7 @@ describe("createGlobeApp smoke behavior", () => {
     expect(controls("mouse")).toEqual(expect.arrayContaining(["input.mouse.orbitRate", "input.mouse.dragThreshold", "input.wheel.zoomRate"]));
     expect(controls("touch")).toEqual(expect.arrayContaining(["input.touch.orbitRate", "input.touch.panRate", "input.touch.zoomExponent"]));
     expect(controls("controller")).toContain("input.gamepad.deadzone");
-    expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"], ["log", "Log"], ["search", "Search"]]);
+    expect(app.interfaceSections.map(({ id, title }) => [id, title])).toEqual([["toolbar", "Toolbar"], ["position", "Position readout"], ["log", "Log"], ["search", "Search"]]);
     expect(app.settingsSections.map(({ id, title }) => [id, title])).toEqual([
       ["presets", "Presets"],
       ["saved-settings", "Saved settings"],
