@@ -42,6 +42,7 @@ export {
   type SectionsElementHandle,
 } from "./settings/parameterSection";
 export { createParameterControl, describeProvenance, type ParameterControlHandle } from "./settings/controls";
+export { createHelpTooltip, closeHelpTooltipWithin, type HelpTooltipHandle, type HelpTooltipOptions } from "./helpTooltip";
 export { createParameterList, createSettingsTransfer, type ParameterListHandle, type SettingsTransferHandle } from "./settings/parameterList";
 export { createTrack, detailColour, type TrackFrame, type TrackHandle, type TrackOptions, type TrackRamp, type TrackThumb } from "./settings/track";
 export { createMapCacheSection, type MapCacheSectionHandle } from "./mapCacheSection";
@@ -62,6 +63,8 @@ export { SectionsPanel, type PanelSection } from "./SectionsPanel";
 export { MeshInspectorPanel, type MeshInspectorPanelProps } from "./MeshInspectorPanel";
 export { createMapSourcePanel, type MapSourcePanelHandle, type MapSourcePanelOptions, type MapSourceStatus } from "./mapSourcePanel";
 export { createRendererPanel, getRendererLabel, type RendererPanelHandle, type RendererPanelOptions } from "./rendererPanel";
+export { createSkyPanel, describeSun, type SkyPanelHandle, type SkyPanelOptions } from "./skyPanel";
+export { createDateTimePanel, fixedTimeValues, instantInUse, type DateTimePanelHandle, type DateTimePanelOptions } from "./dateTimePanel";
 export { createFrameBudgetPanel, type FrameBudgetPanelHandle, type FrameBudgetPanelOptions } from "./frameBudgetPanel";
 export { createSceneHotspots, createSceneHud, createScenesPanel, type SceneHudHandle, type ScenesPanelHandle } from "./scenesPanel";
 export { createPanoramaTabs, type PanoramaTabs, type PanoramaTabsOptions, type PanoramaTabsSnapshot } from "./panoramaTabs";

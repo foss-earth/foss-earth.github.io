@@ -4,6 +4,7 @@ import { formatNumber, formatQuantity, formatValue, isNumberRange, sameValue } f
 import { createExternalLinkIcon } from "../externalLinkIcon";
 import { createTrack, type TrackHandle } from "./track";
 import { createTwoPositionSlider } from "./twoPositionSlider";
+import { createHelpTooltip } from "../helpTooltip";
 
 export interface ParameterControlHandle {
   /** The control and its compact help and source actions. */
@@ -107,26 +108,11 @@ function setNote(note: HTMLElement, text: string, reveal = false): void {
   if (reveal && text) note.dispatchEvent(new Event("parameter-invalid", { bubbles: true }));
 }
 
-let helpCount = 0;
-let closeOpenHelp: (() => void) | null = null;
-
 /** One compact accessory row; explanations stay closed until requested. */
 function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, control: ParameterControlHandle): ParameterControlHandle {
-  const help = document.createElement("button");
-  help.type = "button";
-  help.className = "foss-earth-choice foss-earth-parameter__action foss-earth-parameter__icon-action foss-earth-parameter__help-button";
-  help.textContent = "?";
-  help.setAttribute("aria-label", `Explain ${spec.label}`);
-  help.setAttribute("aria-expanded", "false");
-  help.title = `Explain ${spec.label}`;
   const explanation = document.createElement("div");
-  explanation.className = "foss-earth-parameter__help";
-  explanation.id = `foss-earth-parameter-help-${++helpCount}`;
-  explanation.setAttribute("role", "tooltip");
-  explanation.hidden = true;
-  const nativePopover = typeof explanation.showPopover === "function" && typeof explanation.hidePopover === "function";
-  if (nativePopover) explanation.setAttribute("popover", "manual");
-  help.setAttribute("aria-controls", explanation.id);
+  const tooltip = createHelpTooltip({ label: `Explain ${spec.label}`, content: explanation, onOpen: () => updateActions() });
+  const help = tooltip.button;
   const description = document.createElement("p");
   description.className = "foss-earth-parameter-row__description";
   description.textContent = spec.description;
@@ -169,69 +155,14 @@ function withParameterActions(settings: SettingsRegistry, spec: ParameterSpec, c
     const defaultValue = spec.sensitive ? (state.defaultValue ? "set" : "none") : describe(state.defaultValue);
     meta.textContent = `Now ${value} (${describeProvenance(state)}). ${sentence(`Default ${defaultValue}: ${state.defaultDerivedFrom}`)}${spec.appliesLive ? "" : " Applies on the next start."}`;
   };
-  const position = (): void => {
-    const anchor = help.getBoundingClientRect();
-    const viewport = window.visualViewport;
-    const left = viewport?.offsetLeft ?? 0;
-    const top = viewport?.offsetTop ?? 0;
-    const width = viewport?.width ?? window.innerWidth;
-    const height = viewport?.height ?? window.innerHeight;
-    explanation.style.maxWidth = `${Math.max(0, width - 16)}px`;
-    explanation.style.maxHeight = `${Math.max(0, height - 16)}px`;
-    const box = explanation.getBoundingClientRect();
-    explanation.style.left = `${Math.max(left + 8, Math.min(anchor.left, left + width - box.width - 8))}px`;
-    explanation.style.top = `${Math.max(top + 8, Math.min(anchor.bottom + 6, top + height - box.height - 8))}px`;
-  };
-  const close = (): void => {
-    if (explanation.hidden) return;
-    if (nativePopover && explanation.matches(":popover-open")) explanation.hidePopover();
-    explanation.hidden = true;
-    if (!nativePopover) control.element.append(explanation);
-    help.setAttribute("aria-expanded", "false");
-    help.removeAttribute("aria-describedby");
-    document.removeEventListener("pointerdown", onOutside);
-    document.removeEventListener("keydown", onKey, true);
-    document.removeEventListener("scroll", position, true);
-    window.removeEventListener("resize", position);
-    window.visualViewport?.removeEventListener("resize", position);
-    if (closeOpenHelp === close) closeOpenHelp = null;
-  };
-  const open = (): void => {
-    closeOpenHelp?.();
-    updateActions();
-    if (!nativePopover) document.body.append(explanation);
-    explanation.hidden = false;
-    if (nativePopover) explanation.showPopover();
-    help.setAttribute("aria-expanded", "true");
-    help.setAttribute("aria-describedby", explanation.id);
-    closeOpenHelp = close;
-    position();
-    document.addEventListener("pointerdown", onOutside);
-    document.addEventListener("keydown", onKey, true);
-    document.addEventListener("scroll", position, true);
-    window.addEventListener("resize", position);
-    window.visualViewport?.addEventListener("resize", position);
-  };
-  const onHelp = (): void => { if (explanation.hidden) open(); else close(); };
-  const onOutside = (event: PointerEvent): void => {
-    if (event.target instanceof Node && !help.contains(event.target) && !explanation.contains(event.target)) close();
-  };
-  const onKey = (event: KeyboardEvent): void => {
-    if (event.key === "Escape") { close(); event.preventDefault(); event.stopPropagation(); }
-  };
-  const onPopoverToggle = (): void => { if (nativePopover && !explanation.matches(":popover-open") && !explanation.hidden) close(); };
-  help.addEventListener("click", onHelp);
-  explanation.addEventListener("toggle", onPopoverToggle);
-  note?.addEventListener("parameter-invalid", open);
+  note?.addEventListener("parameter-invalid", tooltip.open);
   updateActions();
   return {
     element: control.element,
     update() { control.update(); updateActions(); },
     destroy() {
-      close();
-      help.removeEventListener("click", onHelp);
-      explanation.removeEventListener("toggle", onPopoverToggle);
-      note?.removeEventListener("parameter-invalid", open);
+      note?.removeEventListener("parameter-invalid", tooltip.open);
+      tooltip.destroy();
       control.destroy();
     },
   };

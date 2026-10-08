@@ -11,13 +11,13 @@ import {
   TransformNode,
   Vector3,
 } from "@babylonjs/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { createMeshInspector, type MeshInspectorHandle } from "./createMeshInspector";
 
 let engine: NullEngine;
 let scene: Scene;
 let inspector: MeshInspectorHandle;
-let requestRender: ReturnType<typeof vi.fn>;
+let requestRender: Mock<() => void>;
 
 const overlays = (): Mesh[] => scene.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.name.startsWith("mesh-inspector-wireframe:"));
 const settled = async (): Promise<void> => { await Promise.resolve(); await Promise.resolve(); };
@@ -34,7 +34,7 @@ function model(): { root: TransformNode; wing: Mesh; flap: Mesh } {
 beforeEach(() => {
   engine = new NullEngine();
   scene = new Scene(engine);
-  requestRender = vi.fn();
+  requestRender = vi.fn<() => void>();
   inspector = createMeshInspector(scene, { requestRender, whenReady: async () => {} });
 });
 

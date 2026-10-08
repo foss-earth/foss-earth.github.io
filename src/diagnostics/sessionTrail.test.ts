@@ -185,6 +185,7 @@ describe("a visit's trail", () => {
   it("goes on in memory where the device refuses to store it", async () => {
     const browser = fakeBrowser();
     const page = browser.page("a");
+    if (!page.storage) throw new Error("Expected the fake page's storage");
     page.storage.setItem = () => { throw new Error("QuotaExceededError"); };
     const trail = createSessionTrail(options(page));
     trail.step("one");

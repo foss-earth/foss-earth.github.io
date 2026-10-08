@@ -149,9 +149,24 @@ html[data-dock-layout="dual"] .game-log {
   background: rgba(4, 7, 11, 0.66);
   text-shadow: 0 1px 1px #000;
   transition: opacity 500ms ease;
+  pointer-events: auto;
+  cursor: copy;
 }
 .game-log__icon { color: #9aabb8; text-align: center; }
-.game-log__text { overflow-wrap: anywhere; white-space: pre-line; }
+.game-log__text {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-shadow: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  cursor: copy;
+  user-select: text;
+}
+.game-log__text:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .game-log__text a { color: var(--game-log-accent); pointer-events: auto; }
 .game-log__value { color: #9aabb8; font-variant-numeric: tabular-nums; }
 .game-log__actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }

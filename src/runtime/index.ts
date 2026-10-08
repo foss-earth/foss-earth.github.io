@@ -9,8 +9,13 @@ export {
   type GoogleTerrainDetailState,
   type RendererMode,
   type RuntimeMode,
+  type GroundLightSource,
+  type SkyCost,
+  type SkyEnvironment,
+  type SkyGroundLight,
   NAVIGATION_PRESENTATION_LAYER,
 } from "../engine/babylon/createBabylonRuntime";
+export { createLightPoints, type LightPoint, type LightPointsHandle, type LightPointsOptions } from "../engine/babylon/createLightPoints";
 export {
   whenMeshesReady,
   type ReadinessTimers,
@@ -59,6 +64,18 @@ export {
   type TerrainGrid,
 } from "../terrain/terrainTiles";
 export type { RasterDetailFeedback } from "../engine/babylon/createRasterTilesRuntime";
+export type {
+  ImageryAtlasConstraint,
+  ImageryBindingConstraint,
+  ImageryBudgetConstraint,
+  ImageryConstraint,
+  ImageryConstraintCause,
+  ImageryNodeConstraint,
+  ImageryReloadConstraint,
+  ImageryRendererConstraint,
+  ImagerySourceConstraint,
+  ImageryTableConstraint,
+} from "../terrain/imagery/imageryConstraints";
 export {
   chooseDeviceHintErrorTarget,
   clampDetailValue,

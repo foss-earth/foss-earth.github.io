@@ -30,12 +30,12 @@ import {
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
-type ElementTabId = "map" | "renderer" | "scenes" | "about" | "bug-report" | "panorama" | "panorama-settings";
+type ElementTabId = "map" | "renderer" | "sky" | "time" | "scenes" | "about" | "bug-report" | "panorama" | "panorama-settings";
 /** Every tab the overlay can offer without the host defining it. */
 type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 
-/** Tabs about the map, which a panorama hides: the map is not drawn inside one, and the camera is the panorama's. */
-const HIDDEN_IN_PANORAMA: ReadonlySet<string> = new Set(["location", "map"]);
+/** Tabs about the map and its sky, and the time the sky is shown at, which a panorama hides: neither is drawn inside one, and the camera is the panorama's. */
+const HIDDEN_IN_PANORAMA: ReadonlySet<string> = new Set(["location", "map", "sky", "time"]);
 /** Tabs that exist only inside a panorama: its own, and 360 image settings. */
 const PANORAMA_ONLY: ReadonlySet<string> = new Set(["panorama", "panorama-settings"]);
 const OUTSIDE_PANORAMA: PanoramaTabsSnapshot = { title: null, onScreen: false };
@@ -107,6 +107,10 @@ export interface WindowOverlayProps<TabId extends string = never> {
   mapTab?: HTMLElement;
   /** Adds the shared Renderer tab showing this element, from `createRendererPanel`. */
   rendererTab?: HTMLElement;
+  /** Adds the shared Sky tab showing this element, from `createSkyPanel`: where the Sun is, the atmosphere, the ground under it and exposure. */
+  skyTab?: HTMLElement;
+  /** Adds the shared Date and time tab showing this element, from `createDateTimePanel`: the dials that set the time the Sun is placed for. */
+  timeTab?: HTMLElement;
   /** Adds the shared Scenes tab showing this element, from `createScenesPanel`. */
   scenesTab?: HTMLElement;
   /** Adds the shared About tab showing this element, from `createAboutPanel`: which version runs, and what it is built from. */
@@ -140,6 +144,8 @@ export function WindowOverlay<TabId extends string = never>({
   settingsSections,
   mapTab,
   rendererTab,
+  skyTab,
+  timeTab,
   scenesTab,
   aboutTab,
   bugReportTab,
@@ -165,6 +171,8 @@ export function WindowOverlay<TabId extends string = never>({
   const elementTabs: Partial<Record<ElementTabId, HTMLElement>> = {
     ...(mapTab ? { map: mapTab } : {}),
     ...(rendererTab ? { renderer: rendererTab } : {}),
+    ...(skyTab ? { sky: skyTab } : {}),
+    ...(timeTab ? { time: timeTab } : {}),
     ...(scenesTab ? { scenes: scenesTab } : {}),
     ...(aboutTab ? { about: aboutTab } : {}),
     ...(bugReportTab ? { "bug-report": bugReportTab } : {}),
@@ -172,7 +180,7 @@ export function WindowOverlay<TabId extends string = never>({
   };
   const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
   const elementTabLabels: Record<ElementTabId, string> = {
-    map: "Map", renderer: "Renderer", scenes: "Scenes", about: "About", "bug-report": "Bug report", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
+    map: "Map", renderer: "Renderer", sky: "Sky", time: "Date and time", scenes: "Scenes", about: "About", "bug-report": "Bug report", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
   };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);

@@ -1,12 +1,15 @@
 {
   "id": "smooth-motion",
   "name": "Smooth motion",
-  "description": "Three quarters of the pixels and coarser terrain, adjusted to the frame time: frames keep their pace while the view moves fast, and the map is softer.",
+  "description": "Three quarters of the pixels, coarser terrain adjusted to the frame time, and a sky computed less often in a climb: frames keep their pace while the view moves fast, and the map is softer.",
   "values": {
     "renderer.resolutionScale": 0.75,
     "map.detail.terrain.range": { "min": 4, "max": 32 },
     "map.detail.terrain.default": 8,
     "map.auto.terrainDetail": true,
-    "map.auto.imageryDetail": true
+    "map.auto.imageryDetail": true,
+    "sky.dome.zenithSamples": 24,
+    "sky.dome.azimuthSamples": 24,
+    "sky.update.densityChange": 0.05
   }
 }

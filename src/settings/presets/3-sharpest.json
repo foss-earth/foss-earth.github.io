@@ -1,7 +1,7 @@
 {
   "id": "sharpest",
   "name": "Sharpest",
-  "description": "The finest detail each map allows, a large GPU budget, and the ground within 5 km of the focus point loaded as well as the view: sharper, for more memory, data and GPU work.",
+  "description": "The finest detail each map allows, a large GPU budget, the ground within 5 km of the focus point loaded as well as the view, and a sky sampled twice as finely: sharper, for more memory, data, GPU and CPU work.",
   "values": {
     "map.detail.imagery.range": { "min": -3, "max": 1 },
     "map.detail.imagery.default": 1,
@@ -13,6 +13,9 @@
     "map.google.cacheBytes": { "min": 512, "max": 768 },
     "map.terrain.maxTiles": 1024,
     "map.focus.mode": "both",
-    "map.focus.radius": 5000
+    "map.focus.radius": 5000,
+    "sky.dome.zenithSamples": 64,
+    "sky.dome.azimuthSamples": 64,
+    "sky.dome.integrationSteps": 32
   }
 }

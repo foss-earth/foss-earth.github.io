@@ -36,6 +36,8 @@ export async function mountGlobeApp(rootElement: HTMLElement, options: Omit<Glob
       settingsSections={globeApp.settingsSections}
       mapTab={globeApp.mapTab}
       rendererTab={globeApp.rendererTab}
+      skyTab={globeApp.skyTab}
+      timeTab={globeApp.timeTab}
       scenesTab={globeApp.scenesTab}
       aboutTab={globeApp.aboutTab}
       bugReportTab={globeApp.bugReportTab}

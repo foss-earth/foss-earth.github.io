@@ -139,7 +139,7 @@ describe("parameter section", () => {
     expect(explanation.hidden).toBe(true);
   });
 
-  it("portals fallback help beyond clipped panels and restores it on close or destroy", () => {
+  it("portals fallback help beyond clipped panels, restores it on close, and removes it on destroy", () => {
     const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover");
     Object.defineProperty(HTMLElement.prototype, "showPopover", { configurable: true, value: undefined });
     try {
@@ -163,8 +163,17 @@ describe("parameter section", () => {
       help.click();
       section.destroy();
       expect(explanation.hidden).toBe(true);
-      expect(explanation.parentElement).toBe(flag);
+      expect(explanation.parentElement).toBeNull();
       expect(document.body.contains(explanation)).toBe(false);
+      expect(document.getElementById(explanation.id)).toBeNull();
+      expect(help.getAttribute("aria-expanded")).toBe("false");
+      expect(help.hasAttribute("aria-describedby")).toBe(false);
+      help.click();
+      expect(explanation.isConnected).toBe(false);
+      expect(explanation.hidden).toBe(true);
+      const unusedEscape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      document.dispatchEvent(unusedEscape);
+      expect(unusedEscape.defaultPrevented).toBe(false);
     } finally {
       if (original) Object.defineProperty(HTMLElement.prototype, "showPopover", original);
       else Reflect.deleteProperty(HTMLElement.prototype, "showPopover");

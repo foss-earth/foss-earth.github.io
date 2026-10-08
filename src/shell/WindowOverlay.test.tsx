@@ -366,7 +366,7 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
   document.body.append(host);
   const root = createRoot(host);
   const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
-  const [mapTab, scenesTab, panoramaTab, settingsTab] = ["Basemaps", "Scenes list", "Photograph", "Looking"].map(element);
+  const [mapTab, scenesTab, panoramaTab, settingsTab, skyTab, timeTab] = ["Basemaps", "Scenes list", "Photograph", "Looking", "Atmosphere", "Dials"].map(element);
   let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
   const listeners = new Set<() => void>();
   const leave = vi.fn();
@@ -381,6 +381,8 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
     getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
     setViewState={() => {}}
     mapTab={mapTab}
+    skyTab={skyTab}
+    timeTab={timeTab}
     scenesTab={scenesTab}
     panoramaTabs={panoramaTabs}
     overlayApiRef={overlayApiRef}
@@ -400,14 +402,14 @@ it("opens a panorama's tab on entering, hides the map's tabs meanwhile, and leav
     expect(side("left")).toEqual(["Map", "Location"]);
     expect(selected("left")).toBe("Map");
     expect(await menu("left")).not.toContain("360 image settings");
+    expect(await menu("left")).toEqual(expect.arrayContaining(["Sky", "Date and time"]));
 
-    // Entering: the map's tabs go, the panorama's opens and shows.
+    // Entering: the map's tabs go, and the sky's and its time, which a panorama does not draw; the panorama's opens and shows.
     await enter("360: Northrop Mall");
     expect(side("left")).toEqual(["360: Northrop Mall"]);
     expect(host.contains(panoramaTab)).toBe(true);
     expect(await menu("left")).toEqual(expect.arrayContaining(["360 image settings", "Scenes"]));
-    expect(await menu("left")).not.toEqual(expect.arrayContaining(["Map"]));
-    expect(await menu("left")).not.toEqual(expect.arrayContaining(["Location"]));
+    for (const hidden of ["Map", "Location", "Sky", "Date and time"]) expect(await menu("left")).not.toContain(hidden);
     await act(async () => overlayApiRef.current!.openOrSelectTab("panorama-settings"));
     expect(side("left")).toEqual(["360: Northrop Mall", "360 image settings"]);
 

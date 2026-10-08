@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GameLogEntry } from "../log/createGameLog";
+import { createGameLog, GAME_LOG_FADE_MS, type GameLogEntry } from "../log/createGameLog";
 import { FOSS_EARTH_PARAMETERS } from "../settings/catalogue";
 import { createSettingsRegistry } from "../settings/registry";
 import type { SceneEntryStatus, SceneFailure, SceneProgress, SceneRuntime, SceneStatus } from "../scenes/loadScene";
 import { createSceneController, type SceneController, type SceneControllerState } from "../scenes/sceneController";
 import { connectSceneLog } from "./sceneLog";
 
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 function fakeLog() {
   const lines: (GameLogEntry & { removed: boolean; updates: number })[] = [];
@@ -102,6 +102,60 @@ describe("the scene log", () => {
     progress(image);
     off();
     expect(log.entries()).toHaveLength(0);
+  });
+
+  it("removes completed images after the configured duration even in open history while other panoramas keep downloading", () => {
+    vi.useFakeTimers();
+    const settings = createSettingsRegistry({ storage: null });
+    settings.register(FOSS_EARTH_PARAMETERS);
+    settings.set("interface.log.lineDuration", 2);
+    const log = createGameLog(settings);
+    log.setOpen(true);
+    const { controller, show, progress } = fakeController();
+    const off = connectSceneLog(controller, log);
+    const rows = () => [...log.element.querySelectorAll<HTMLElement>(".game-log__line")];
+    const readyRows = () => rows().filter(row => row.dataset.tone === "success");
+    const image = { ...download, kind: "image" as const, id: "p0/image" };
+    try {
+      show(status(["loading", "idle"]));
+      progress(image);
+      vi.advanceTimersByTime(2000 + GAME_LOG_FADE_MS);
+      expect(rows().every(row => !row.hasAttribute("data-expired"))).toBe(true);
+
+      progress({ ...image, receivedBytes: 1024, state: "ready" });
+      vi.advanceTimersByTime(1000);
+      progress({ ...image, id: "p1/image", title: "Place 1" });
+      progress(download);
+      vi.advanceTimersByTime(1000);
+      expect(readyRows()[0].hasAttribute("data-fading")).toBe(true);
+      progress({ ...image, id: "p1/image", title: "Place 1", receivedBytes: 768 });
+      progress({ ...download, receivedBytes: 768 });
+      vi.advanceTimersByTime(GAME_LOG_FADE_MS);
+      expect(readyRows()).toHaveLength(0);
+      expect(rows()).toHaveLength(2);
+
+      progress({ ...image, id: "p1/image", title: "Place 1", receivedBytes: 1024, state: "ready" });
+      vi.advanceTimersByTime(1000);
+      // Repeated completion and camera status events do not renew finished lines.
+      progress({ ...image, id: "p1/image", title: "Place 1", receivedBytes: 1024, state: "ready" });
+      show(status(["loading", "idle"]));
+      vi.advanceTimersByTime(1000 + GAME_LOG_FADE_MS);
+      expect(readyRows()).toHaveLength(0);
+      expect(rows()).toHaveLength(1);
+
+      show(status(["ready", "ready"]));
+      vi.advanceTimersByTime(1000);
+      show(status(["ready", "ready"]));
+      vi.advanceTimersByTime(1000 + GAME_LOG_FADE_MS);
+      // The scene's preview summary remains available in history.
+      expect(rows()).toHaveLength(1);
+      expect(rows()[0].hasAttribute("data-expired")).toBe(true);
+      expect(rows()[0].textContent).toContain("2 of 2 panorama previews ready");
+      expect(log.isOpen()).toBe(true);
+    } finally {
+      off();
+      log.destroy();
+    }
   });
 
   it("finishes metadata only once the scene is mounted, with a byte bar while it arrives", () => {

@@ -66,7 +66,7 @@ describe("tapConsole", () => {
   });
 
   it("does not tell a listener of what the listener itself writes, nor fail the caller when the listener does", () => {
-    const target = { warn: (): void => {}, error: (): void => {} };
+    const target: Pick<Console, "warn" | "error"> = { warn: () => {}, error: () => {} };
     const told: string[] = [];
     tapConsole(target, (_level, text) => {
       told.push(text);

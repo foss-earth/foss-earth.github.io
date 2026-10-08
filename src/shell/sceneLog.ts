@@ -124,7 +124,11 @@ export function connectSceneLog(controller: SceneController, log: Pick<GameLog, 
         tone: "progress", progress: progress.totalBytes ? progress.receivedBytes / progress.totalBytes : null,
       }));
     } else {
-      if (progress.state === "ready" && existing) update(existing, { text: `${progress.title}: panorama image ready.`, tone: "success", progress: 1 });
+      if (progress.state === "ready" && existing) update(existing, {
+        text: `${progress.title}: panorama image ready.`, tone: "success", progress: 1,
+        // Repeated visits should not fill the open history with ready notices.
+        keepInHistory: false,
+      });
       else existing?.handle.remove();
       imageLines.delete(progress.id);
     }

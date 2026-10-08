@@ -52,6 +52,7 @@ named `INSTALLATION_COMPLETE` there.
 | [benchmarks/scene-ab/run.mjs](../../benchmarks/scene-ab/run.mjs) | Any built FOSS Earth app with a scene, such as the UMN tour, at a phone's viewport, tiles recorded and replayed | A/B of registry values: pixel equivalence, and CPU and GPU milliseconds per frame. [Details](../../benchmarks/scene-ab/README.md) |
 | [benchmarks/map-detail/](../../benchmarks/map-detail/README.md) | The raster runtime on WebGPU, WebGL 2 and WebGL 1 | Map imagery binding and detail sweeps |
 | [scripts/validation/depth-precision.mjs](../../scripts/validation/depth-precision.mjs) | Separated opaque surfaces through the production renderer on WebGPU, WebGL 2 and WebGL 1; no network or server | Pixel-level depth ordering at flight camera distances, with conventional depth as a negative control. [Map quality recovery](map-quality-recovery.md) also records streaming, LOD and live-indicator regressions. |
+| [scripts/validation/imagery-continuity.mjs](../../scripts/validation/imagery-continuity.mjs) | The raster runtime in atlas mode over flat ground, with synthetic imagery that names its level and texels and answers held as the check decides, through the production renderer on WebGPU, WebGL 2 and WebGL 1; no network or server | That a stand-in the source answers missing after finer imagery is drawn coarsens no pixel or frame: pixels and the selected, resident and bound levels before and after, then a still view doing nothing. Correctness only. [Record](map-quality-recovery.md#browser-check) |
 | [scripts/validation/mesh-inspector.mjs](../../scripts/validation/mesh-inspector.mjs) | Solid cubes and a moving nested mesh through the production renderer on real WebGPU, WebGL 2 and WebGL 1; no network or server | Orange triangle-edge continuity, preserved solid fill, hierarchy selection, motion, visibility and occlusion, shared geometry, and resources released while off. Correctness only; no timing claim. |
 | [benchmarks/spherical-image-representation/run-gpu.mjs](../../benchmarks/spherical-image-representation/run-gpu.mjs) | A standalone Babylon page on WebGL 1, WebGL 2 and WebGPU: a panorama held in each of seven spherical grids, drawn by ray lookup and as mesh patches, with tiles decoded and uploaded while it draws | What a representation costs to draw, upload and refine, per frame. [Details](../../benchmarks/spherical-image-representation/README.md) |
 | [benchmarks/eac-progressive-prototype/run-gpu-checks.mjs](../../benchmarks/eac-progressive-prototype/run-gpu-checks.mjs) | The progressive 360° prototype's page on WebGL 1, WebGL 2 and WebGPU, put into hard states (seams, cube corners, mixed levels) and read back | What the GPU draws against an independent CPU renderer and a closed-form pattern. [Details](../../benchmarks/eac-progressive-prototype/README.md) |
@@ -65,6 +66,24 @@ checking marker movement, thumb alignment and hit-through in both themes. Its
 [retained report](../../validation/evidence/map-detail/2026-10-05-loaded-detail/report.json)
 and [screenshot](../../validation/evidence/map-detail/2026-10-05-loaded-detail/dark.png)
 cover the shared control used by 0sfs.
+
+The no-GPU [sky model check](../../scripts/validation/sky-model.mjs) prints the
+numbers behind the [sky](../proposals/sky.md) on the CPU alone: the Sun and the
+Moon against their sources' worked examples, light from noon to night and under the
+Moon against published values, the tables' and step counts' error, the stars,
+exposure through a day, and unqualified costs. Its
+[retained run](../../validation/evidence/sky/2026-10-07-sky-model/sky-model.json)
+says nothing about a rendered frame.
+
+The [sky render check](../../scripts/validation/sky-render.mjs) draws the sky's
+shaders through WebGL 2, WebGL 1 and WebGPU and compares pixels with the model: map
+imagery lit by each point's own Sun and Moon, as a 2D tile's material and as an
+unlit glTF one; a lamp's beam; the planet's terminator; the Moon's disc, a star and
+a point of light; and the light from the ground read back. It is the one check
+here that can be told to accept a software renderer: `--software` draws with
+Chrome's SwiftShader, for when a GPU run is not wanted, and its report says so. Its
+[retained run](../../validation/evidence/sky/2026-10-07-sky-render/report.json) is
+a software one; on a GPU the check has not been run.
 
 - A forced WebGL 1 context needs either an engine built with `disableWebGL2Support` (the
   fixtures) or Chrome started with `--disable-webgl2` (`scene-ab --webgl1`). The app's

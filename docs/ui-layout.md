@@ -40,6 +40,11 @@ log messages never take resize priority. Minimizing releases the log's requested
 space; restoring reapplies its preference. Collapsed tab strips also fit their
 allocated widths.
 
+Clicking a log message copies its text and appends `(copied 2 clipboard)` after
+the clipboard write succeeds. The message is also a keyboard button. Panorama
+image-ready notices leave the log after Interface → Log's **Log line time**,
+including while history is open, so repeated visits do not accumulate ready notices.
+
 The workspace is remembered per device. After a reload each window holds the
 tabs it held, shows the one it showed, and keeps its width and whether it was
 minimized (`src/shell/savedWorkspace.ts`); the sections open inside each tab
@@ -212,7 +217,10 @@ Every setting lives in exactly one place, a section of a tab.
   (`createMapSourcePanel`) is Source, Detail, Automatic adjustment, Loading
   and memory, Imagery selection and Terrain selection; the
   Renderer tab (`createRendererPanel`) is Renderer, Resolution and frame
-  rate, Depth range and Performance debug; the Scenes tab is Content, Orbs,
+  rate, Depth range and Performance debug; the Sky tab (`createSkyPanel`) is a
+  line saying where the Sun is, with a button that opens Date and time, then
+  Atmosphere and illumination, Moon and stars, Ground and Exposure and display; the
+  Date and time tab (`createDateTimePanel`) is one section, its two dials; the Scenes tab is Content, Orbs,
   Motion, Loading and memory, Tiled images, Saved images and Credits; the Controls tab is Input method,
   Camera, Orbit, Mouse and trackpad, Touch and Controller; the Interface tab
   is Toolbar, Position readout, Log and Search; and the Settings tab is Presets, Saved settings, App files and Diagnostics. About is
@@ -235,9 +243,30 @@ Every setting lives in exactly one place, a section of a tab.
   default and its reason, current value and provenance, parameter ID, limits
   and restart notes. It closes on another click, Escape or a click outside.
   The tooltip contains explanation only; the setting keeps its single home.
+  Hosts use `createHelpTooltip` from the public `foss-earth/shell` export for the
+  same behavior. Its `label` is the button's complete accessible name, `content`
+  is the explanation HTMLElement, and optional `onOpen` refreshes that text when
+  requested. Only one explanation is open across settings and host controls;
+  clicking `?` toggles it, and Escape or a click outside closes it. The tooltip
+  stays within the visible viewport without changing the panel's layout. Its
+  handle exposes the wrapper, button and content, plus `open`, `close` and
+  `destroy`; callers destroy it when removing or rebuilding the panel so no
+  detached explanation or input listener remains.
+  `closeHelpTooltipWithin(container)` closes the explanation whose button belongs
+  to a panel before that panel collapses or detaches, while leaving another
+  panel's explanation alone.
   An invalid edit opens its explanation so the rejection is visible. The source
   icon retains its accessible name and opens the code in a new tab. Per-setting
   reset buttons are removed; Reset all remains in the section's transfer controls.
+- A quantity that comes round again, the time of day or the day of the year, is a
+  dial (`createDial` in `src/shell/dial.ts`): a knob on a ring, which a press on the
+  ring takes there and a drag turns on past the top into the next day or year, as a
+  clock's hand does, never jumping back. The moments that matter are marks round
+  the edge, their names written along it, upright, and pushed apart where they
+  would overlap, each a press away; the readout and a button sit in the middle. A
+  dial is 140 px across, so two side by side fit a 320 px panel; where they do not
+  fit they wrap, as any item of a paragraph grid does. The knob takes a slider's
+  keys, and its ring takes its own touches (`touch-action: none`).
 - A range is one track with two thumbs, never two sliders. Choosing an acceptable
   part of one continuous scale is one control: the thumbs are its ends, the part
   outside them stays visible but dimmed, and a default or a host's marker (such

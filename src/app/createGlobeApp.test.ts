@@ -239,6 +239,7 @@ beforeEach(() => {
     getNavigationState: vi.fn(() => null),
     // Off, a session attaches nothing to the scene.
     frameProfile: createFrameProfileSession({ scene: {} as never, engine: { getCaps: () => ({}) } as never }),
+    sky: { getEnvironment: () => null, subscribe: () => () => {} },
     setInputMode: mockState.setInputMode,
     setInputSensitivity: mockState.setInputSensitivity,
     configureOrbitTargetHeight: mockState.configureOrbitTargetHeight,
@@ -503,6 +504,24 @@ describe("createGlobeApp smoke behavior", () => {
     expect(text).toContain("Map detail returned 0.25 levels toward what you asked for");
   });
 
+  it("logs a limit on 2D imagery once delivery settles, and when it ends", async () => {
+    const { app, root } = await createAppUnderTest();
+    const text = () => `${root.textContent ?? ""}${document.body.textContent ?? ""}`;
+    const report = (feedback: Record<string, unknown>) => {
+      vi.mocked(app.runtime.getRasterDetailFeedback).mockReturnValue({
+        support: "ready", pending: false, limits: [], effectiveTarget: null, source: { id: "usgs-imagery", version: "1", label: "USGS Imagery" }, constraints: [], ...feedback,
+      });
+      for (const [listener] of vi.mocked(app.runtime.onRasterDetailFeedback).mock.calls) listener();
+    };
+    const tables = { cause: "page-tables", parameter: "map.imagery.pageTablePatches", configured: 16, effective: 16, needed: 20, patches: 4 } as const;
+    report({ pending: true, limits: ["backend", "loading"], constraints: [tables] });
+    expect(text()).not.toContain("page tables");
+    report({ limits: ["backend"], constraints: [tables] });
+    expect(text()).toContain("2D imagery is limited by the page tables: 16 available, 20 needed by visible patches. 4 patches draw one coarser page instead.");
+    report({ limits: [], constraints: [] });
+    expect(text()).toContain("2D imagery is no longer limited by the page tables.");
+  });
+
   it("splits its sections between the Controls, Interface, Renderer and Settings tabs, with About a tab of its own", async () => {
     const { app } = await createAppUnderTest();
 
@@ -533,7 +552,12 @@ describe("createGlobeApp smoke behavior", () => {
     expect(app.aboutTab.classList.contains("foss-earth-about")).toBe(true);
     // The Renderer tab ends with Performance debug.
     const rendererSections = [...app.rendererTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
-    expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.lighting", "renderer.clipping", "renderer.experiments", "renderer.performance"]);
+    expect(rendererSections).toEqual(["renderer.backend", "renderer.frame", "renderer.clipping", "renderer.experiments", "renderer.performance"]);
+    // Exposure and the fill light are the Sky tab's, with the atmosphere, the Moon and stars, the ground and night lights; the time is the Date and time tab's two dials.
+    const skySections = [...app.skyTab.querySelectorAll<HTMLElement>("[data-section]")].map(element => element.dataset.section);
+    expect(skySections).toEqual(["sky.atmosphere", "sky.night", "sky.surface", "sky.nightLights", "sky.exposure"]);
+    expect(app.timeTab.querySelector('[data-settings-section="time/instant"]')).not.toBeNull();
+    expect(app.timeTab.querySelectorAll(".foss-earth-dial")).toHaveLength(2);
     const performance = performanceSection(app);
     expect(performance.querySelector('[data-parameter^="interface.performanceHud."]')).toBeNull();
     const toolbar = sectionElement(app.interfaceSections, "toolbar");

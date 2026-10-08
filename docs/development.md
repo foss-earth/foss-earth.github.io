@@ -113,6 +113,8 @@ Or the exact sequence CI uses:
 npm run ci
 ```
 
+How these checks work, what each costs and what makes them slow: [CI/CD](ci-cd.md).
+
 The suite covers camera and geodetic math, terrain streaming, and jsdom smoke tests for app
 startup, URL key parsing, north-up reset behavior, layer lifecycle delegation, and cleanup. The
 built-in controller profile is tested against simulated gamepad input: stick, trigger and button

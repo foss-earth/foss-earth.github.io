@@ -12,7 +12,7 @@ That's it. A minute or so later, https://foss-earth.github.io/ serves the new bu
 
 `npm run deploy` runs `deploy:gh-pages`, which is two steps:
 
-1. `npm run build` — typechecks (`tsc -b`), then builds with Vite. This repository,
+1. `npm run build` — typechecks (`npm run typecheck`), then builds with Vite. This repository,
    `foss-earth/foss-earth.github.io`, is the organization's Pages site, which GitHub serves from
    the domain root. So the build keeps Vite's default base of `/`, and every asset URL in the
    bundle starts with `/assets/`.

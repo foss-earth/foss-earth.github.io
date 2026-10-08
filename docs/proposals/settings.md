@@ -325,22 +325,23 @@ implementation marked as starting values.
 | `renderer.frameRateCap` | fps or off | **Missing** |
 | `renderer.clipping` | choice: automatic, fixed near/far (m) | Set every frame by Babylon's geospatial clipping behaviour; not changeable |
 
-Implemented on 2026-10-06 in **Renderer → Lighting and exposure**:
+Implemented on 2026-10-06 in Renderer → Lighting and exposure, and moved on
+2026-10-07, ids and saved values kept, to the **Sky** tab, whose parameters and
+their meaning are in [Sky](sky.md#settings):
 
 | Parameter | Unit / bounds / default | Behavior |
 | --- | --- | --- |
-| `renderer.exposureEV` | EV, −16…16, default 0 | Sets shared material exposure to `2 ** EV`; +1 EV doubles linear intensity. Fixed relative exposure, with no camera calibration or automatic adaptation. |
-| `renderer.ambientFillMultiplier` | ratio, 0…4, default 1 | Multiplies the existing fallback/simulation/Google hemispheric intensities (0.95/1.1/1.0). New lights inherit the current value; local emitters are unchanged. |
+| `renderer.exposureEV` | EV, −16…16, default 0 | Sky → Exposure and display. Sets shared material exposure to `2 ** EV`; +1 EV doubles linear intensity. With the sky model off it is the only exposure, fixed and relative. With a sky model on it is compensation on top of the sky's metered or fixed exposure, and a note says how much brighter or darker it shows everything. |
+| `renderer.ambientFillMultiplier` | ratio, 0…4, default 1 | Sky → Atmosphere and illumination, shown with the sky model off. Multiplies the existing fallback/simulation/Google hemispheric intensities (0.95/1.1/1.0). New lights inherit the current value; local emitters are unchanged. A sky model turns these lights off and lights the scene itself. |
 
 These controls apply live through the shared registry, including imports and
 presets. A combined change requests one frame; unchanged values request none.
 Zero ambient fill affects lit surfaces, not emissive map imagery or the clear
-background, and is not a night simulation. Exposure affects materials using
-the shared image-processing configuration; custom panorama shaders currently
-encode their own output. This change introduces no HDR postprocess or new
-render target. Linear HDR composition, calibrated illumination and day/night
-lighting remain separate work. Runtime and UI behavior are checked with
-NullEngine/jsdom; GPU appearance remains unverified.
+background, and is not a night simulation; the sky model is. Exposure affects
+materials using the shared image-processing configuration; custom panorama
+shaders currently encode their own output. Neither introduces an HDR postprocess
+or a render target. Runtime and UI behavior are checked with NullEngine/jsdom;
+GPU appearance remains unverified.
 
 ### Camera and input (Controls tab)
 
@@ -396,6 +397,8 @@ file they came from.
 | `foss-earth.inputSensitivity`, `.inputMode`, `.hudButtons`, `.theme`, `.performanceMetricVisibility`, `.panelSectionsOpen`, `.globeAnchorRotation`, compass and POI keys | Parameters under `input.`, `interface.` and `visualization.` |
 | `foss-earth-map-source`, `foss-earth-elevation-source` | `map.source.*` |
 | `?rasterImagery` | `map.detail.imageryPath` |
+| Renderer → Lighting and exposure (`renderer.exposureEV`, `renderer.ambientFillMultiplier`) | The same ids and values in the Sky tab; exposure is compensation under a sky model ([Sky](sky.md#migration)) |
+| Sky → Time and location (`sky.time.mode`, `sky.time.date`, `sky.time.utcHours`) | The same ids and values in the Date and time tab, set on its two dials ([Sky](sky.md#date-and-time)) |
 
 ## Acceptance
 
@@ -716,9 +719,11 @@ Where stage 1 differs from this spec:
   `src/settings/presets/*.json`, in file-name order. A preset may list
   `reset`: ids, or prefixes ending in ".", that it returns to their defaults.
   This device is nothing but a reset list (the map's detail, automatic
-  adjustment, focus, imagery, terrain, Google and cache parameters, and the
-  renderer's resolution scale, antialiasing and frame-rate cap), so it follows
-  the device, where a list of values could not. Secrets, read-only and
+  adjustment, focus, imagery, terrain, Google and cache parameters; the
+  renderer's resolution scale, antialiasing and frame-rate cap; and the sky's
+  model, Moon, stars, map imagery lighting, light from the ground, dome
+  sampling and recompute thresholds), so it follows the device, where a list of
+  values could not. Secrets, read-only and
   URL-only values are never reset, and a value the app holds is listed as left
   as it is. Two differences from the text above: Sharpest sets a 512 MiB GPU
   budget, not the largest the backend allows, since that bound depends on the

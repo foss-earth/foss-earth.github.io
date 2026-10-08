@@ -97,7 +97,7 @@ const READ = `(() => {
     stamp: document.querySelector('meta[name="foss-earth-build"]')?.content ?? null,
     state: t.publishedVersion.state(),
     controlled: Boolean(navigator.serviceWorker?.controller),
-    log: [...document.querySelectorAll("#app-log .game-log__line")].map(line => ({ text: line.querySelector(".game-log__text").textContent, tone: line.dataset.tone, actions: [...line.querySelectorAll("button")].map(button => button.textContent) })),
+    log: [...document.querySelectorAll("#app-log .game-log__line")].map(line => ({ text: line.querySelector(".game-log__text").textContent, tone: line.dataset.tone, actions: [...line.querySelectorAll(".game-log__actions button")].map(button => button.textContent) })),
   };
 })()`;
 const VERSION_LINE = /older (page|version) of the app|published version of the app/;

@@ -16,6 +16,8 @@ export interface GameLogAction {
 export interface GameLogEntry {
   text: string;
   tone?: GameLogTone;
+  /** False removes a finished notice after its TTL, including from open history. */
+  keepInHistory?: boolean;
   /** Omit for no bar, null when the total is unknown, else completion from 0 to 1. */
   progress?: number | null;
   actions?: readonly GameLogAction[];
@@ -74,6 +76,33 @@ function previewText(text: string): string {
 function positive(settings: SettingsRegistry, id: string, fallback: number): number {
   const value = settings.get(id);
   return typeof value === "number" && value > 0 ? value : fallback;
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch { /* Local HTTP pages may still allow copying a selection. */ }
+  }
+  const focused = document.activeElement;
+  const selection = document.getSelection();
+  const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, i) => selection.getRangeAt(i).cloneRange()) : [];
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.readOnly = true;
+  field.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+  document.body.append(field);
+  try {
+    field.focus({ preventScroll: true });
+    field.select();
+    if (!document.execCommand?.("copy")) throw new Error("Clipboard unavailable");
+  } finally {
+    field.remove();
+    if (focused instanceof HTMLElement) focused.focus({ preventScroll: true });
+    selection?.removeAllRanges();
+    for (const range of ranges) selection?.addRange(range);
+  }
 }
 
 /**
@@ -179,7 +208,7 @@ export function createGameLog(settings: SettingsRegistry = getAppSettings()): Ga
 
   const canFade = (row: HTMLElement): boolean => {
     if (row.dataset.tone === "progress") return false;
-    if (!row.querySelector("button:not(:disabled)")) return true;
+    if (!row.querySelector(".game-log__actions button:not(:disabled)")) return true;
     return !busy && row.dataset.tone !== "error";
   };
 
@@ -187,6 +216,16 @@ export function createGameLog(settings: SettingsRegistry = getAppSettings()): Ga
     if (open || minimized) return;
     const rows = [...lines.children] as HTMLElement[];
     if (rows.length > 0 && rows.every((row) => row.hasAttribute("data-expired"))) setMinimized(true);
+  };
+
+  const removeRow = (row: HTMLElement): void => {
+    clearTimeout(timers.get(row));
+    timers.delete(row);
+    row.remove();
+    syncPeek();
+    syncScrollable();
+    if (lines.childElementCount === 0) setMinimized(false);
+    else maybeMinimize();
   };
 
   const schedule = (row: HTMLElement): void => {
@@ -197,6 +236,10 @@ export function createGameLog(settings: SettingsRegistry = getAppSettings()): Ga
     timers.set(row, setTimeout(() => {
       row.setAttribute("data-fading", "");
       timers.set(row, setTimeout(() => {
+        if (row.hasAttribute("data-transient")) {
+          removeRow(row);
+          return;
+        }
         timers.delete(row);
         row.removeAttribute("data-fading");
         row.setAttribute("data-expired", "");
@@ -211,16 +254,42 @@ export function createGameLog(settings: SettingsRegistry = getAppSettings()): Ga
     row.className = "game-log__line";
     const icon = span("game-log__icon");
     icon.setAttribute("aria-hidden", "true");
-    const text = span("game-log__text");
+    const text = document.createElement("button");
+    text.type = "button";
+    text.className = "game-log__text";
+    text.title = "Copy message to clipboard";
     const value = span("game-log__value");
     const actions = span("game-log__actions");
     const bar = span("game-log__bar");
     row.append(icon, text, value, actions, bar);
 
+    let content = "";
+    let revision = 0;
+    row.addEventListener("click", (event) => {
+      // An action may replace its own button before this click bubbles here.
+      if (event.composedPath().includes(actions)) return;
+      if (destroyed || row.parentElement !== lines) return;
+      const copiedRevision = revision;
+      void copyText(content).then(
+        () => confirm(" (copied 2 clipboard)"),
+        () => confirm(" (could not copy)"),
+      );
+      function confirm(suffix: string): void {
+        // A download may update or remove the message while copying.
+        if (destroyed || row.parentElement !== lines || revision !== copiedRevision) return;
+        text.textContent = content + suffix;
+        syncPeek();
+        syncScrollable();
+      }
+    });
+
     const update = (next: GameLogEntry): void => {
       if (destroyed) return;
+      content = next.text;
+      revision++;
       const tone = next.tone ?? "info";
       row.dataset.tone = tone;
+      row.toggleAttribute("data-transient", next.keepInHistory === false);
       icon.textContent = ICONS[tone];
       text.textContent = next.text;
 
@@ -277,14 +346,7 @@ export function createGameLog(settings: SettingsRegistry = getAppSettings()): Ga
     return {
       update,
       focusAction: () => actions.querySelector("button")?.focus({ preventScroll: true }),
-      remove: () => {
-        clearTimeout(timers.get(row));
-        timers.delete(row);
-        row.remove();
-        syncPeek();
-        syncScrollable();
-        if (lines.childElementCount === 0) setMinimized(false);
-      },
+      remove: () => removeRow(row),
     };
   };
 
