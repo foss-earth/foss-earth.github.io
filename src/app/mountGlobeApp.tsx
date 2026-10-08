@@ -16,7 +16,7 @@ import { showReportOnly, wantsReportOnly } from "./reportOnly";
 export async function mountGlobeApp(rootElement: HTMLElement, options: Omit<GlobeAppOptions, "overlayApiRef"> = {}): Promise<GlobeAppHandle> {
   // `?report`: the diagnostics report and nothing else, for an app that stops before its settings can be reached. The app never starts.
   if (wantsReportOnly(window.location.search)) {
-    showReportOnly(rootElement, { settings: getAppSettings(), identity: getAppIdentity() });
+    showReportOnly(rootElement, { settings: getAppSettings(), identity: getAppIdentity(), issueReporter: options.issueReporter });
     return new Promise<GlobeAppHandle>(() => {});
   }
   // Lift the fixed HUD clear of any browser toolbar overlaying the page bottom.
@@ -38,6 +38,8 @@ export async function mountGlobeApp(rootElement: HTMLElement, options: Omit<Glob
       rendererTab={globeApp.rendererTab}
       scenesTab={globeApp.scenesTab}
       aboutTab={globeApp.aboutTab}
+      bugReportTab={globeApp.bugReportTab}
+      onBugReportShow={globeApp.onBugReportShow}
       panoramaTabs={globeApp.panoramaTabs}
       overlayApiRef={overlayApi}
     />,

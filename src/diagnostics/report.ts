@@ -28,6 +28,7 @@ export interface ReportParts {
   userAgent: string;
   screen: { width: number; height: number; devicePixelRatio: number; touch: boolean };
   device: { cores: number | null; memoryGiB: number | null };
+  environment?: readonly string[];
   renderer: {
     asked: string;
     mode: string;
@@ -37,11 +38,13 @@ export interface ReportParts {
     fallbackReason: string | null;
     /** Times the GPU's context or device was lost this visit. */
     lost: number;
+    capabilities?: readonly string[];
   };
   /** One line each, as the host words them: the app's kept files, the scene, what is saved. */
   state: readonly string[];
   /** Every parameter that is not at its default. */
   settings: readonly ReportSetting[];
+  settingsComplete?: boolean;
   steps: readonly TrailStep[];
   errors: readonly (CapturedError & { count: number })[];
   previous: PreviousVisit | null;
@@ -64,11 +67,13 @@ export function buildReport(parts: ReportParts): string {
     `Build: ${parts.build} · source ${parts.source}${parts.fossEarth ? ` · FOSS Earth ${parts.fossEarth}` : ""} · bundle ${parts.bundle}`,
     `Browser: ${parts.userAgent}`,
     `Screen: ${screen.width} × ${screen.height} CSS px at ${screen.devicePixelRatio}×, ${screen.touch ? "touch" : "no touch"}; ${device.cores ?? "unknown"} cores; memory ${device.memoryGiB === null ? "not reported" : `${device.memoryGiB} GiB or more`}`,
+    ...(parts.environment ?? []),
     `Renderer: ${renderer.mode} (asked for ${renderer.asked})${renderer.fallbackReason ? `; fell back: ${renderer.fallbackReason}` : ""}; largest texture ${renderer.maxTextureSize ?? "unknown"} px; lost ${renderer.lost} ${renderer.lost === 1 ? "time" : "times"} this visit`,
     `GPU: ${renderer.driver ?? "not named"}`,
+    ...(renderer.capabilities ?? []),
     ...parts.state,
     "",
-    parts.settings.length ? "Settings not at their defaults:" : "Settings: all at their defaults.",
+    parts.settingsComplete ? "Settings (all effective values):" : parts.settings.length ? "Settings not at their defaults:" : "Settings: all at their defaults.",
     ...parts.settings.map(setting => `  ${setting.id} = ${setting.value} (${setting.from}; default ${setting.defaultValue})`),
     "",
     parts.errors.length ? "Errors nothing handled:" : "Errors nothing handled: none.",

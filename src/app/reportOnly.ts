@@ -8,7 +8,11 @@ import { buildReport, reportPage } from "../diagnostics/report";
 import { createSessionTrail, TRAIL_STEPS_DEFAULT } from "../diagnostics/sessionTrail";
 import type { SettingsRegistry } from "../settings/registry";
 import { createDiagnosticsSection } from "../shell/diagnosticsSection";
-import { settingsNotAtDefaults } from "./appDiagnostics";
+import { createBugReportPanel } from "../shell/bugReportPanel";
+import { effectiveReportSettings, reportSecrets } from "./appDiagnostics";
+import { readBrowserReportDetails } from "../diagnostics/browserDetails";
+import { issueReporterFromBuild } from "./issueReporting";
+import type { IssueReporterConfig } from "../diagnostics/issueReport";
 import type { AppIdentity } from "./appIdentity";
 import { describePublishedVersion, readPublishedVersion } from "./publishedVersion";
 
@@ -24,7 +28,7 @@ export function addressWithoutReport(href: string): string {
   return url.href;
 }
 
-export function showReportOnly(rootElement: HTMLElement, options: { settings: SettingsRegistry; identity: AppIdentity }): void {
+export function showReportOnly(rootElement: HTMLElement, options: { settings: SettingsRegistry; identity: AppIdentity; issueReporter?: IssueReporterConfig }): void {
   const { settings, identity } = options;
   // Read, not written: the page may be opened again, and the app's next visit is still told of the one that stopped.
   const trail = createSessionTrail({ app: () => "", kept: () => false, limit: () => TRAIL_STEPS_DEFAULT, readOnly: true });
@@ -41,9 +45,11 @@ export function showReportOnly(rootElement: HTMLElement, options: { settings: Se
       userAgent: navigator.userAgent,
       screen: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio, touch: context.touch },
       device: { cores: context.hardwareConcurrency, memoryGiB: context.deviceMemoryGiB },
+      environment: readBrowserReportDetails(),
       renderer: { asked: "not started", mode: "not started", driver: null, maxTextureSize: null, fallbackReason: null, lost: 0 },
       state: [`Published: ${describePublishedVersion(await published, Date.now())}`],
-      settings: settingsNotAtDefaults(settings),
+      settings: effectiveReportSettings(settings),
+      settingsComplete: true,
       steps: trail.steps(),
       errors: [],
       previous: await previous.catch(() => null),
@@ -59,9 +65,14 @@ export function showReportOnly(rootElement: HTMLElement, options: { settings: Se
   const back = document.createElement("a");
   back.href = addressWithoutReport(location.href);
   back.textContent = "Open the app";
-  const section = createDiagnosticsSection({ report, previous: () => previous });
-  page.append(title, why, section.element, back);
+  const source = { report, previous: () => previous, reportSecrets: () => reportSecrets(settings) };
+  const section = createDiagnosticsSection(source);
+  const bugReport = createBugReportPanel(source, { issueReporter: options.issueReporter ?? issueReporterFromBuild() });
+  const bugTitle = document.createElement("h2");
+  bugTitle.textContent = "Bug report";
+  page.append(title, why, section.element, back, bugTitle, bugReport.element);
   rootElement.replaceChildren(page);
   // Shown at once: on this page the report is what the person came for.
   section.element.querySelector("button")?.click();
+  bugReport.show();
 }

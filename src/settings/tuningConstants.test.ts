@@ -34,6 +34,7 @@ type Kind =
   | "tool";
 
 const LEDGER: Record<string, [Kind, string]> = {
+  "src/diagnostics/issueReport.ts#ISSUE_DRAFT_URL_LIMIT": ["guard", "A conservative interoperability bound for GitHub issue links and mobile sign-in redirects. It only shortens the URL summary; the local report file retains all activity and description text."],
   "src/airports/geometry.ts#EARTH_RADIUS": ["fact", "The mean Earth radius, for great-circle distances."],
   "src/airports/geometry.ts#RAD": ["fact", "Degrees to radians."],
   "src/hud/performanceChips.ts#PERFORMANCE_METRIC_DEFINITIONS": ["layout", "How the performance HUD formats each reading: its digits and units."],

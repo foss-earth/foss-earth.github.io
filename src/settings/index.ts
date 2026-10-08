@@ -16,6 +16,7 @@ export {
   type UrlAliasResult,
 } from "./registry";
 export { FOSS_EARTH_PARAMETERS } from "./catalogue";
+export { TOOLBAR_EDIT_PRIORITIES_ID, TOOLBAR_PRIORITIES, toolbarPriorityParameterId, type ToolbarItemId } from "./catalogue/interface";
 export { BUILT_IN_PRESETS } from "./presets";
 export { readDeviceContext } from "./deviceContext";
 export {

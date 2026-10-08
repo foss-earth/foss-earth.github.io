@@ -154,6 +154,10 @@ git log -n 400 --format=%cd --date=short | awk 'NR==1{d=$0} $0==d{n++} END{split
 
 ## Getting a report
 
+The **Bug report** tab prepares a reviewed `.txt` download and
+a GitHub issue draft. Attach the downloaded file in GitHub and submit: no report
+text to paste and no additional backend. See [Reporting bugs](bug-reporting.md).
+
 - **Settings → Diagnostics → Copy report.** The report is put on the clipboard and shown in
   the section, so the person sees what they are passing on. Where the browser gives the page no
   clipboard, the text is left selected to copy by hand.

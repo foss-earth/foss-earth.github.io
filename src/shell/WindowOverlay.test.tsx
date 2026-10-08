@@ -289,7 +289,7 @@ it("offers an About tab under +, on the globe and in a panorama", async () => {
   document.body.append(host);
   const root = createRoot(host);
   const element = (text: string) => Object.assign(document.createElement("div"), { textContent: text });
-  const [aboutTab, panoramaTab, settingsTab] = ["Built from", "Photograph", "Looking"].map(element);
+  const [aboutTab, panoramaTab, settingsTab, bugReportTab] = ["Built from", "Photograph", "Looking", "Bug form"].map(element);
   let snapshot: PanoramaTabsSnapshot = { title: null, onScreen: false };
   const listeners = new Set<() => void>();
   const panoramaTabs: PanoramaTabs = {
@@ -302,6 +302,7 @@ it("offers an About tab under +, on the globe and in a panorama", async () => {
     getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
     setViewState={() => {}}
     aboutTab={aboutTab}
+    bugReportTab={bugReportTab}
     panoramaTabs={panoramaTabs}
     overlayApiRef={overlayApiRef}
   />));
@@ -314,10 +315,46 @@ it("offers an About tab under +, on the globe and in a panorama", async () => {
   };
   try {
     expect(await menu()).toContain("About");
+    expect(await menu()).toContain("Bug report");
     await act(async () => { snapshot = { title: "360: Northrop Mall", onScreen: true }; for (const listener of listeners) listener(); });
     expect(await menu()).toContain("About");
+    expect(await menu()).toContain("Bug report");
     await act(async () => overlayApiRef.current!.toggleTab("about"));
     expect(host.contains(aboutTab)).toBe(true);
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("prepares the Bug report tab only as it becomes visible and toggles it closed", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const host = document.createElement("div"); document.body.append(host);
+  const root = createRoot(host);
+  const bugReportTab = document.createElement("div");
+  bugReportTab.textContent = "The report form";
+  const onBugReportShow = vi.fn();
+  const overlayApiRef: { current: WindowOverlayHandle | null } = { current: null };
+  await act(async () => root.render(<WindowOverlay
+    getViewState={() => ({ latDeg: 45, lonDeg: -93 })}
+    setViewState={() => {}}
+    bugReportTab={bugReportTab}
+    onBugReportShow={onBugReportShow}
+    overlayApiRef={overlayApiRef}
+  />));
+  try {
+    expect(onBugReportShow).not.toHaveBeenCalled();
+    await act(async () => overlayApiRef.current!.toggleTab("bug-report"));
+    expect(host.contains(bugReportTab)).toBe(true);
+    expect(onBugReportShow).toHaveBeenCalledOnce();
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-side="left"] .foss-earth-tab-button')!.click());
+    expect(onBugReportShow).toHaveBeenCalledOnce();
+    await act(async () => overlayApiRef.current!.toggleTab("bug-report"));
+    expect(onBugReportShow).toHaveBeenCalledTimes(2);
+    await act(async () => overlayApiRef.current!.toggleTab("bug-report"));
+    expect(host.querySelector('[aria-label="Close Bug report tab"]')).toBeNull();
+    expect(onBugReportShow).toHaveBeenCalledTimes(2);
+    await act(async () => overlayApiRef.current!.toggleTab("bug-report"));
+    expect(onBugReportShow).toHaveBeenCalledTimes(3);
   } finally { await act(async () => root.unmount()); }
 });
 

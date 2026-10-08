@@ -11,6 +11,8 @@ export interface DiagnosticsSource {
   previous(): Promise<PreviousVisit | null>;
   /** Puts text on the clipboard; rejects where the browser does not allow it. */
   copy?(text: string): Promise<void>;
+  /** Secrets known to the host, redacted even when an error or activity repeats them. */
+  reportSecrets?(): readonly string[];
 }
 
 function paragraph(text: string): HTMLParagraphElement {
@@ -57,15 +59,17 @@ export function createDiagnosticsSection(source: DiagnosticsSource): Diagnostics
   element.append(last, copyButton, how, status, text);
 
   let disposed = false;
-  void source.previous().then(previous => {
+  void Promise.resolve().then(() => source.previous()).then(previous => {
     if (!disposed) last.textContent = describeLastVisit(previous);
   }, () => {
     if (!disposed) last.textContent = "Could not read the last visit's trail.";
   });
 
   const copy = source.copy ?? ((value: string): Promise<void> => (navigator.clipboard ? navigator.clipboard.writeText(value) : Promise.reject(new Error("No clipboard"))));
-  copyButton.addEventListener("click", () => {
-    void source.report().then(async report => {
+  const onCopy = (): void => {
+    if (disposed || copyButton.disabled) return;
+    copyButton.disabled = true;
+    void Promise.resolve().then(() => source.report()).then(async report => {
       if (disposed) return;
       text.value = report;
       text.hidden = false;
@@ -83,14 +87,17 @@ export function createDiagnosticsSection(source: DiagnosticsSource): Diagnostics
     }, () => {
       if (disposed) return;
       status.hidden = false;
-      status.textContent = "The report could not be made.";
-    });
-  });
+      status.textContent = "The report could not be made. Try Copy report again.";
+    }).finally(() => { if (!disposed) copyButton.disabled = false; });
+  };
+  copyButton.addEventListener("click", onCopy);
 
   return {
     element,
     destroy() {
       disposed = true;
+      copyButton.removeEventListener("click", onCopy);
+      text.value = "";
       element.remove();
     },
   };

@@ -269,6 +269,31 @@ beforeEach(() => {
 });
 
 describe("createGlobeApp smoke behavior", () => {
+  it("gives Bug report one tab and a toolbar toggle while Diagnostics retains only its report tools", async () => {
+    const overlay = fakeOverlay();
+    const { app, root } = await createAppUnderTest({ overlayApiRef: overlay, issueReporter: { repository: "foss-earth/foss-earth.github.io" } });
+    const bugButton = root.querySelector<HTMLButtonElement>("#bugReportButton")!;
+    try {
+      const diagnostics = sectionElement(app.settingsSections, "diagnostics");
+      expect(diagnostics.textContent).toContain("Copy report");
+      expect(diagnostics.querySelector('[name="title"]')).toBeNull();
+      expect(diagnostics.textContent).not.toContain("Report bug");
+      expect(app.bugReportTab.querySelector('[name="title"]')).not.toBeNull();
+      const report = app.bugReportTab.querySelector<HTMLTextAreaElement>('[name="report"]')!;
+      expect(report.value).toBe("");
+      bugButton.click();
+      expect(overlay.current.toggleTab).toHaveBeenCalledWith("bug-report");
+      app.onBugReportShow();
+      await vi.waitFor(() => expect(report.value).toContain("Renderer: webgl"));
+      report.value = "Reviewed report";
+      app.onBugReportShow();
+      expect(report.value).toBe("Reviewed report");
+    } finally { app.destroy(); }
+    overlay.current.toggleTab.mockClear();
+    bugButton.click();
+    expect(overlay.current.toggleTab).not.toHaveBeenCalled();
+  });
+
   it("boots the raster basemap shell and updates HUD/perf state on the frame callback", async () => {
     const { root, app } = await createAppUnderTest();
 
@@ -288,7 +313,8 @@ describe("createGlobeApp smoke behavior", () => {
       root.querySelector<HTMLElement>("#hudStatus")!.style.order,
       root.querySelector<HTMLElement>("#themeButton")!.style.order,
       root.querySelector<HTMLElement>("#settingsButton")!.style.order,
-    ]).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
+      root.querySelector<HTMLElement>("#bugReportButton")!.style.order,
+    ]).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
     // Which version runs is its own tab, About, no longer a section of Settings.
     expect(app.settingsSections.map(section => section.id)).not.toContain("about");
     const aboutLines = () => [...app.aboutTab.querySelectorAll(".foss-earth-about__app .foss-earth-about__line")].map(line => line.textContent);
@@ -672,6 +698,26 @@ describe("createGlobeApp smoke behavior", () => {
       settings.set("interface.toolbar.priority.north", 99);
       await flush();
       expect(root.querySelector("#northButton")!.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+
+      const bugReport = root.querySelector<HTMLElement>("#bugReportButton")!;
+      expect(hudChoice(section, "interface.toolbar.bugReport", "auto").checked).toBe(true);
+      expect(bugReport.hasAttribute("data-hud-overflow-hidden")).toBe(true);
+      width = 2000;
+      window.dispatchEvent(new Event("resize"));
+      await flush();
+      expect(bugReport.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      hudChoice(section, "interface.toolbar.bugReport", "off").click();
+      await flush();
+      expect(bugReport.hasAttribute("data-hud-choice-hidden")).toBe(true);
+      hudChoice(section, "interface.toolbar.bugReport", "on").click();
+      width = 180;
+      window.dispatchEvent(new Event("resize"));
+      await flush();
+      expect(bugReport.hasAttribute("data-hud-choice-hidden")).toBe(false);
+      expect(bugReport.hasAttribute("data-hud-overflow-hidden")).toBe(false);
+      hudChoice(section, "interface.toolbar.bugReport", "auto").click();
+      await flush();
+      expect(bugReport.hasAttribute("data-hud-overflow-hidden")).toBe(true);
     } finally {
       app.destroy();
       geometry.mockRestore();

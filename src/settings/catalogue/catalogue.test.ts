@@ -90,8 +90,8 @@ describe("FOSS Earth's catalogue", () => {
     const settings = getAppSettings();
     expect(settings.get(TOOLBAR_EDIT_PRIORITIES_ID)).toBe(false);
     expect(settings.spec(TOOLBAR_EDIT_PRIORITIES_ID)).toMatchObject({ label: "Priorities", booleanControl: "auto-custom" });
-    expect(TOOLBAR_PRIORITIES.slice(0, 9).map(([item]) => item)).toEqual([
-      "north", "help", "inputMode", "fullscreen", "fps", "renderer", "position", "theme", "settings",
+    expect(TOOLBAR_PRIORITIES.slice(0, 10).map(([item]) => item)).toEqual([
+      "north", "help", "inputMode", "fullscreen", "fps", "renderer", "position", "theme", "settings", "bugReport",
     ]);
     expect(TOOLBAR_PRIORITIES.map(([item]) => item).sort()).toEqual([
       "north", ...TOOLBAR_BUTTONS.map(([button]) => button), ...PERFORMANCE_HUD_METRICS.map(([metric]) => metric),

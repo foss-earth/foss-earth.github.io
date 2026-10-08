@@ -30,7 +30,7 @@ import {
 /** Tabs the overlay builds from a host's sections. */
 type SectionTabId = "controls" | "interface" | "settings";
 /** Tabs that show one element the host built, such as `createMapSourcePanel`'s. */
-type ElementTabId = "map" | "renderer" | "scenes" | "about" | "panorama" | "panorama-settings";
+type ElementTabId = "map" | "renderer" | "scenes" | "about" | "bug-report" | "panorama" | "panorama-settings";
 /** Every tab the overlay can offer without the host defining it. */
 type BuiltInTabId = "location" | SectionTabId | ElementTabId;
 
@@ -111,6 +111,10 @@ export interface WindowOverlayProps<TabId extends string = never> {
   scenesTab?: HTMLElement;
   /** Adds the shared About tab showing this element, from `createAboutPanel`: which version runs, and what it is built from. */
   aboutTab?: HTMLElement;
+  /** The one Bug report tab, from `createBugReportPanel`; also available under +. */
+  bugReportTab?: HTMLElement;
+  /** Prepare a report when its tab becomes visible; hidden or minimized tabs do not call it. */
+  onBugReportShow?: () => void;
   /**
    * A panorama's tabs, from `createPanoramaTabs`. Entering a panorama opens its
    * tab, titled "360: <title>", minimized while the camera flies in and shown
@@ -138,6 +142,8 @@ export function WindowOverlay<TabId extends string = never>({
   rendererTab,
   scenesTab,
   aboutTab,
+  bugReportTab,
+  onBugReportShow,
   panoramaTabs,
   locationSearchProvider = searchLocations,
   enableAirportPresets = false,
@@ -161,11 +167,12 @@ export function WindowOverlay<TabId extends string = never>({
     ...(rendererTab ? { renderer: rendererTab } : {}),
     ...(scenesTab ? { scenes: scenesTab } : {}),
     ...(aboutTab ? { about: aboutTab } : {}),
+    ...(bugReportTab ? { "bug-report": bugReportTab } : {}),
     ...(panoramaTabs ? { panorama: panoramaTabs.panorama, "panorama-settings": panoramaTabs.settings } : {}),
   };
   const sectionTabLabels: Record<SectionTabId, string> = { controls: "Controls", interface: "Interface", settings: "Settings" };
   const elementTabLabels: Record<ElementTabId, string> = {
-    map: "Map", renderer: "Renderer", scenes: "Scenes", about: "About", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
+    map: "Map", renderer: "Renderer", scenes: "Scenes", about: "About", "bug-report": "Bug report", panorama: panorama.title ?? "360", "panorama-settings": "360 image settings",
   };
   const builtInSectionTabs = (Object.keys(sectionTabLabels) as SectionTabId[]).filter((id) => sectionTabs[id]);
   const builtInElementTabs = (Object.keys(elementTabLabels) as ElementTabId[]).filter((id) => elementTabs[id]);
@@ -250,6 +257,15 @@ export function WindowOverlay<TabId extends string = never>({
     previousMode: layoutMode,
   });
   const primaryAvailable = layout.mode === "dual";
+  const bugReportVisible = Boolean(bugReportTab) && (
+    (primaryAvailable && workspace.state.primary.activeTab === "bug-report" && !workspace.state.primary.collapsed)
+    || (workspace.state.secondary.activeTab === "bug-report" && !workspace.state.secondary.collapsed)
+  );
+  const bugReportWasVisible = useRef(false);
+  useLayoutEffect(() => {
+    if (bugReportVisible && !bugReportWasVisible.current) onBugReportShow?.();
+    bugReportWasVisible.current = bugReportVisible;
+  }, [bugReportVisible, onBugReportShow]);
   // Remember actual transitions so resizing a single right window cannot force
   // a wide log into the center by shrinking it solely to create another window.
   if (layoutMode !== layout.mode) setLayoutMode(layout.mode);

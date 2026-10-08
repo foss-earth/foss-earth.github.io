@@ -12,7 +12,10 @@ import type { RendererSelection } from "../engine/babylon/createRendererMode";
 import type { GameLog, GameLogEntry, GameLogLine } from "../log/createGameLog";
 import type { SceneControllerState } from "../scenes/sceneController";
 import type { SettingsRegistry } from "../settings/registry";
-import { formatValue } from "../settings/values";
+import { formatValue, sameValue, copyValue } from "../settings/values";
+import type { ParameterValue } from "../settings/types";
+import { readBrowserReportDetails } from "../diagnostics/browserDetails";
+import { readBuiltFrom, type BuiltFromPart } from "./builtFrom";
 import { describeAppIdentity, describeAppIdentityBriefly, type AppIdentity } from "./appIdentity";
 
 export const TRAIL_KEPT = "diagnostics.trail";
@@ -32,6 +35,42 @@ export function settingsNotAtDefaults(settings: SettingsRegistry): ReportSetting
   return changed;
 }
 
+/** Actual registered secrets, including saved and URL layers, to remove from a publication preview. */
+export function reportSecrets(settings: SettingsRegistry): string[] {
+  return settings.list().filter(spec => spec.sensitive).flatMap(spec => {
+    const state = settings.inspect(spec.id);
+    return [state.value, ...Object.values(state.layers).map(layer => layer?.value)]
+      .filter((value): value is string => typeof value === "string" && value.length > 0);
+  });
+}
+
+/** Include derived defaults too: another device can have different effective defaults. */
+export function effectiveReportSettings(settings: SettingsRegistry): ReportSetting[] {
+  return settings.list().map(spec => {
+    const state = settings.inspect(spec.id);
+    const location = /(?:^|\.)(?:latitude|longitude|lat|lon|latdeg|londeg)(?:\.|$)/i.test(spec.id);
+    return {
+      id: spec.id,
+      value: location ? "omitted from public reports" : formatValue(spec, state.value, state.choices),
+      defaultValue: location ? "omitted" : formatValue(spec, state.defaultValue, state.choices),
+      from: FROM[state.provenance] ?? `${state.provenance}${state.defaultDerivedFrom ? `: ${state.defaultDerivedFrom}` : ""}`,
+    };
+  });
+}
+
+function buildParts(): string[] {
+  const built = typeof document === "undefined" ? null : readBuiltFrom(document);
+  if (!built) return [];
+  const lines: string[] = [];
+  const visit = (part: BuiltFromPart, indent = "", depth = 0): void => {
+    if (!part || typeof part !== "object" || typeof part.name !== "string" || depth > 30) return;
+    lines.push(`${indent}${part.name} ${part.version ?? "version unknown"}${part.commit ? `; commit ${part.commit}` : ""}${part.dirty ? "; uncommitted changes" : ""}${part.unpushed ? "; unpushed" : ""}${part.repository ? `; ${part.repository}` : ""}`);
+    for (const child of Array.isArray(part.parts) ? part.parts : []) visit(child, `${indent}  `, depth + 1);
+  };
+  visit(built.app);
+  return ["Build components:", ...lines];
+}
+
 export interface AppDiagnosticsOptions {
   /** The app's log. The diagnostics' own `log` prints to it and records each line. */
   log: GameLog;
@@ -46,7 +85,14 @@ export interface AppDiagnosticsOptions {
 
 /** What of the renderer the diagnostics read; BabylonRuntime gives it. */
 export interface DiagnosedRuntime {
-  renderer: Pick<RendererSelection, "requested" | "mode" | "fallbackReason"> & { engine: { getInfo?(): { vendor: string; renderer: string; version: string } } };
+  renderer: Pick<RendererSelection, "requested" | "mode" | "fallbackReason"> & { engine: {
+    getInfo?(): { vendor: string; renderer: string; version: string };
+    getCaps?(): {
+      maxTextureSize?: number; maxRenderTextureSize?: number; maxTexturesImageUnits?: number;
+      maxMSAASamples?: number; uintIndices?: boolean; textureFloatRender?: boolean;
+      textureHalfFloatRender?: boolean; highPrecisionShaderSupported?: boolean;
+    };
+  } };
   onDeviceLost(listener: () => void): () => void;
   onDeviceRestored(listener: () => void): () => void;
 }
@@ -60,7 +106,7 @@ export interface AppDiagnostics {
   sceneChanged(state: SceneControllerState): void;
   /** More lines for the report, such as what of the app is kept on the device. */
   addState(read: () => Promise<string | null> | string | null): void;
-  report(): Promise<string>;
+  report(options?: { allSettings?: boolean }): Promise<string>;
   previous(): Promise<PreviousVisit | null>;
   destroy(): void;
 }
@@ -83,6 +129,21 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
     ...(options.trailEnvironment ? { environment: options.trailEnvironment } : {}),
   });
   stops.push(settings.watch(TRAIL_KEPT, () => trail.refresh()));
+  const previousSettings = new Map<string, ParameterValue>(settings.list().map(spec => [spec.id, copyValue(settings.get(spec.id))]));
+  stops.push(settings.subscribe(changed => {
+    for (const id of changed) {
+      const next = settings.get(id);
+      // A host can register its parameters after capture has started. Their
+      // initial defaults are context, not hundreds of actions in the trail.
+      if (!previousSettings.has(id)) { previousSettings.set(id, copyValue(next)); continue; }
+      if (sameValue(previousSettings.get(id), next)) continue;
+      previousSettings.set(id, copyValue(next));
+      const state = settings.inspect(id);
+      // Starting coordinates and secrets have no place in a public activity log.
+      const privateLocation = /(?:^|\.)(?:latitude|longitude|lat|lon|latdeg|londeg)(?:\.|$)/i.test(id);
+      trail.step(`Setting ${id}: ${privateLocation ? "location changed (value omitted)" : formatValue(state.spec, next, state.choices)}`);
+    }
+  }));
 
   // The log's lines are the visit's story: each is a step, and so is a line that changes its tone, as a download that ends.
   // A warning or an error may come again and again, as a tile that fails does: those are troubles, counted by kind.
@@ -204,7 +265,7 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
     },
     addState(read) { stateReaders.push(read); },
     previous: () => previous,
-    async report() {
+    async report(options = {}) {
       const context = settings.getDeviceContext();
       const status = scene?.status ?? null;
       const state: string[] = [
@@ -217,6 +278,13 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
         const line = await Promise.resolve().then(read).catch(() => null);
         if (line) state.push(line);
       }
+      let capabilities: string[] = [];
+      try {
+        const caps = runtime?.renderer.engine.getCaps?.();
+        if (caps) capabilities = Object.entries(caps)
+          .filter(([key, value]) => ["maxTextureSize", "maxRenderTextureSize", "maxTexturesImageUnits", "maxMSAASamples", "uintIndices", "textureFloatRender", "textureHalfFloatRender", "highPrecisionShaderSupported"].includes(key) && (typeof value === "number" || typeof value === "boolean"))
+          .map(([key, value]) => `Graphics capability ${key}: ${value}`);
+      } catch { /* A lost device must still be reportable. */ }
       return buildReport({
         at: new Date(),
         page: reportPage(location.href),
@@ -227,12 +295,15 @@ export function startAppDiagnostics(options: AppDiagnosticsOptions): AppDiagnost
         userAgent: navigator.userAgent,
         screen: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio, touch: context.touch },
         device: { cores: context.hardwareConcurrency, memoryGiB: context.deviceMemoryGiB },
+        environment: readBrowserReportDetails(),
         renderer: {
           asked: runtime?.renderer.requested ?? "not started", mode: runtime?.renderer.mode ?? "not started", driver: driverOf(),
           maxTextureSize: context.maxTextureSize, fallbackReason: runtime?.renderer.fallbackReason ?? null, lost,
+          capabilities,
         },
-        state,
-        settings: settingsNotAtDefaults(settings),
+        state: [...state, ...buildParts()],
+        settings: options.allSettings ? effectiveReportSettings(settings) : settingsNotAtDefaults(settings),
+        settingsComplete: options.allSettings,
         steps: trail.steps(),
         errors: [...errors.values()].map(({ error, count }) => ({ ...error, count })),
         previous: await previous.catch(() => null),

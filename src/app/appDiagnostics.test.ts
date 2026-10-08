@@ -6,7 +6,7 @@ import type { GameLog, GameLogEntry } from "../log/createGameLog";
 import type { SceneControllerState } from "../scenes/sceneController";
 import { FOSS_EARTH_PARAMETERS } from "../settings/catalogue";
 import { createSettingsRegistry } from "../settings/registry";
-import { startAppDiagnostics, TRAIL_KEPT, type DiagnosedRuntime } from "./appDiagnostics";
+import { reportSecrets, startAppDiagnostics, TRAIL_KEPT, type DiagnosedRuntime } from "./appDiagnostics";
 
 /** A log that keeps what was printed, newest last, each line as it now reads. */
 function fakeLog() {
@@ -70,6 +70,55 @@ const sceneState = (active: string | null, revision = "r1"): SceneControllerStat
 });
 
 describe("the app's diagnostics", () => {
+  it("records effective setting changes once, leaving secrets and location values out of activity", () => {
+    const { diagnostics, settings, texts } = start();
+    settings.register([{ id: "test.latitude", label: "Latitude", description: "Test position", kind: "number", unit: "deg", default: 0, defaultReason: "Test", home: { tab: "test", section: "test", level: "main" }, appliesLive: true, source: "test", bounds: () => ({ min: -90, max: 90 }) }]);
+    expect(texts()).not.toContain("Setting test.latitude: location changed (value omitted)");
+    settings.set("scene.panorama.previewSheets", false);
+    settings.set("scene.panorama.previewSheets", false);
+    settings.set("map.source.googleKey", "secret-key-for-report");
+    settings.set("test.latitude", 44.97);
+    expect(texts().filter(text => text.includes("Setting scene.panorama.previewSheets"))).toEqual(["Setting scene.panorama.previewSheets: off"]);
+    expect(texts()).toContain("Setting map.source.googleKey: set");
+    expect(texts()).toContain("Setting test.latitude: location changed (value omitted)");
+    expect(texts().join("\n")).not.toContain("secret-key-for-report");
+    expect(texts().join("\n")).not.toContain("44.97");
+    diagnostics.destroy();
+    settings.set("scene.panorama.previewSheets", true);
+    expect(texts().filter(text => text.includes("Setting scene.panorama.previewSheets"))).toHaveLength(1);
+  });
+
+  it("includes effective defaults, build components, browser details and renderer caps for publication", async () => {
+    const { diagnostics, settings, browser } = start();
+    settings.register([{ id: "test.longitude", label: "Longitude", description: "Test position", kind: "number", unit: "deg", default: -93, defaultReason: "Test", home: { tab: "test", section: "test", level: "main" }, appliesLive: true, source: "test", bounds: () => ({ min: -180, max: 180 }) }]);
+    const script = document.createElement("script");
+    script.id = "foss-earth-built-from";
+    script.type = "application/json";
+    script.textContent = JSON.stringify({ built: "now", app: { name: "tour", version: "1", commit: "app-commit", parts: [{ name: "foss-earth", commit: "globe-commit", parts: [{ name: "@babylonjs/core", version: "8.21.1" }, { name: "malformed", parts: {} }, null] }] } });
+    document.body.append(script);
+    const fixture = fakeRuntime({ engine: { getInfo: () => ({ vendor: "test", renderer: "GPU", version: "driver" }), getCaps: () => ({ maxTextureSize: 4096, textureFloatRender: false }) } });
+    diagnostics.attachRuntime(fixture.runtime);
+    const asked = diagnostics.report({ allSettings: true });
+    await browser.settle();
+    const report = await asked;
+    script.remove();
+    expect(report).toContain("Settings (all effective values):");
+    expect(report).toContain("scene.panorama.previewSheets = on");
+    expect(report).toContain("test.longitude = omitted from public reports");
+    expect(report).toContain("Browser platform:");
+    expect(report).toContain("Graphics capability textureFloatRender: false");
+    expect(report).toContain("@babylonjs/core 8.21.1");
+    expect(report).toContain("foss-earth version unknown; commit globe-commit");
+    diagnostics.destroy();
+  });
+
+  it("collects known secrets from every settings layer for the publication filter", () => {
+    const { diagnostics, settings } = start();
+    settings.set("map.source.googleKey", "saved-secret");
+    expect(reportSecrets(settings)).toContain("saved-secret");
+    expect(reportSecrets(settings)).not.toContain("");
+    diagnostics.destroy();
+  });
   it("says which version of the app runs as it opens, in the log and the trail", () => {
     const { lines, texts } = start();
     expect(lines).toEqual([{ text: `${WHO}.` }]);

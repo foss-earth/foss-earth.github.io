@@ -18,17 +18,17 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("toolbar button visibility", () => {
   it("shows every button on a first visit", () => {
-    expect(loadHudButtonVisibility()).toEqual({ help: "auto", renderer: "auto", settings: "auto", theme: "auto", inputMode: "auto", fullscreen: "auto", position: "auto" });
+    expect(loadHudButtonVisibility()).toEqual({ help: "auto", renderer: "auto", settings: "auto", bugReport: "auto", theme: "auto", inputMode: "auto", fullscreen: "auto", position: "auto" });
   });
 
   it("keeps a hidden button hidden, and shows one it has never heard of", () => {
     values.set(HUD_BUTTON_VISIBILITY_STORAGE_KEY, JSON.stringify({ theme: false }));
-    expect(loadHudButtonVisibility()).toEqual({ help: "auto", renderer: "auto", settings: "auto", theme: "off", inputMode: "auto", fullscreen: "auto", position: "auto" });
+    expect(loadHudButtonVisibility()).toEqual({ help: "auto", renderer: "auto", settings: "auto", bugReport: "auto", theme: "off", inputMode: "auto", fullscreen: "auto", position: "auto" });
   });
 
   it("round-trips a choice", () => {
-    saveHudButtonVisibility({ help: "off", renderer: "on", settings: "auto", theme: "on", inputMode: "off", fullscreen: "auto", position: "auto" });
-    expect(loadHudButtonVisibility()).toEqual({ help: "off", renderer: "on", settings: "auto", theme: "on", inputMode: "off", fullscreen: "auto", position: "auto" });
+    saveHudButtonVisibility({ help: "off", renderer: "on", settings: "auto", bugReport: "off", theme: "on", inputMode: "off", fullscreen: "auto", position: "auto" });
+    expect(loadHudButtonVisibility()).toEqual({ help: "off", renderer: "on", settings: "auto", bugReport: "off", theme: "on", inputMode: "off", fullscreen: "auto", position: "auto" });
   });
 
   it("shows everything rather than throwing on unreadable storage", () => {
@@ -39,6 +39,6 @@ describe("toolbar button visibility", () => {
       setItem: () => { throw new Error("private browsing"); },
     });
     expect(loadHudButtonVisibility().settings).toBe("auto");
-    expect(() => saveHudButtonVisibility({ help: "off", renderer: "off", settings: "off", theme: "off", inputMode: "off", fullscreen: "auto", position: "off" })).not.toThrow();
+    expect(() => saveHudButtonVisibility({ help: "off", renderer: "off", settings: "off", bugReport: "off", theme: "off", inputMode: "off", fullscreen: "auto", position: "off" })).not.toThrow();
   });
 });

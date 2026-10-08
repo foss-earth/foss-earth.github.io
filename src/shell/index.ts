@@ -9,6 +9,9 @@ export type {
 } from "./hudBar";
 export { createHudBar, HUD_BAR_HEIGHT_PROPERTY } from "./hudBar";
 export { createAboutPanel, type AboutPanelHandle, type AboutPanelOptions } from "./aboutPanel";
+export { createDiagnosticsSection, type DiagnosticsSectionHandle, type DiagnosticsSource } from "./diagnosticsSection";
+export { createBugReportPanel, type BugReportPanelHandle, type BugReportPanelOptions } from "./bugReportPanel";
+export { fitHudBar, type HudBarFitItem } from "./hudBarFit";
 export type { BuiltFrom, BuiltFromCommit, BuiltFromPart, BuiltFromSource } from "../app/builtFrom";
 export { createMapSourceHud, type MapSourceHudHandle, type MapSourceHudOptions, type MapSourceHudStatus } from "./mapSourceHud";
 export { createMapDetailSlider, describeDetailStatus, type MapDetailSliderHandle, type MapDetailSliderOptions } from "./mapDetailSlider";
