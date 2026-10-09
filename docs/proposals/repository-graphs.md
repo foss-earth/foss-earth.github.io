@@ -7,13 +7,25 @@ extractions.
 The [exhaustive tab inventory](tab-inventory.md) records all 13 current shared
 tabs, host/context availability and the reason for every shared-owner exception.
 
-FOSS Earth owns the shared globe, sky/weather, panorama, UI, renderer, toolbar,
+FOSS Earth owns the shared globe, sky/weather, scenes and 360 images, UI, renderer, toolbar,
 generic About viewer, developer contribution framework and generic CI/setup
 machinery. The proposed repositories are `foss-earth/engine`, `ui`, `renderer`,
-`toolbar`, `about`, `sky`, `weather`, `panorama`, `dev`, `ci` and `dev_installer`. The existing
+`toolbar`, `about`, `sky`, `weather`, `scenes`, `360`, `images`, `equirectangular`,
+`cubemap`, `tiled-cubemap`, `preview-sheets`, `dev`, `ci` and `dev_installer`. The existing
 `foss-earth/foss-earth.github.io` becomes a pinned consumer of the engine rather
 than a second source copy. Earth documentation, research, community guidance,
 branding, release metadata and workspace metadata remain Earth-owned.
+
+The [image repository proposal](image-repositories.md) inventories every currently
+supported 360 image structure, its source files, tools and extraction contract.
+`scenes` owns the Scenes tab and scene placement/link orchestration. `360` is the
+top-level viewer and owns the active 360 image and 360 image settings tabs. It
+composes the separate equirectangular, cubemap, tiled-cubemap and preview-sheet
+implementations. `images` owns common contracts and the resource/cache broker;
+its core imports no representation or renderer. Equi-angular and gnomonic tiled
+cubes share the implemented quadtree structure and therefore `tiled-cubemap`;
+both variants are explicit in the inventory. These replace the draft's single
+`foss-earth/panorama` repository.
 
 Renderer owns device/scene/backend lifecycle and frame scheduling. Globe engine
 consumes renderer; renderer has no import back into globe code. UI owns generic

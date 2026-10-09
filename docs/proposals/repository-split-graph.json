@@ -49,6 +49,11 @@
       "note": "Globe-neutral code consumed by Earth and applications."
     },
     {
+      "id": "image-formats",
+      "title": "Scenes and 360 image structures",
+      "note": "360 composes independent formats; common image services coordinate resources."
+    },
+    {
       "id": "foundation",
       "title": "Device handling",
       "note": "Established upstream owner."
@@ -115,12 +120,67 @@
       "note": "The larger weather model is a specification, not a completed extraction. Core imports neither globe runtime nor JSBSim."
     },
     {
-      "id": "panorama",
-      "name": "foss-earth/panorama",
+      "id": "scenes",
+      "name": "foss-earth/scenes",
       "owner": "foss-earth",
-      "group": "shared",
-      "tab": "Scenes · Active 360 image · 360 image settings",
-      "detail": "Generic scene schema, loader, panorama viewer, image preparation and validation tools. Campus photographs and placements remain UMN-owned."
+      "group": "image-formats",
+      "tab": "Scenes",
+      "detail": "Scene manifest envelope, reference validation, placements, groups/links, navigation orchestration and Scenes panel. Composes the 360 viewer through public interfaces.",
+      "note": "World, height and camera services arrive through host ports. Scene validation uses registered representation validators; formats do not import scene or globe code."
+    },
+    {
+      "id": "images360",
+      "name": "foss-earth/360",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Active 360 image · 360 image settings",
+      "detail": "Top-level 360-image viewer, orb/immersion presentation, entry/exit and motion/input through supplied ports, representation registration and preparation-tool composition.",
+      "note": "Consumes independent image structures and shared resource services. It never imports scene, globe, campus or flight implementations."
+    },
+    {
+      "id": "images",
+      "name": "foss-earth/images",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Common image contracts and resources",
+      "detail": "Common image identity, decoded records, orientation/color helpers, header validation, transport/cache, cancellation and coordinated resource reservations.",
+      "note": "Pure core imports no concrete format, renderer, viewer or scene. One supplied broker accounts for representation residency and replacement overlap."
+    },
+    {
+      "id": "equirectangular",
+      "name": "foss-earth/equirectangular",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Image structure · whole equirectangular",
+      "detail": "Full 2:1 spherical image records/schema, direction-to-UV mapping, seam/pole handling, estimates, loading/sampling, preparation and validation.",
+      "note": "Pure core and preparation entry points are separate from the GPU adapter. JPEG and PNG are codecs for this same spatial structure."
+    },
+    {
+      "id": "cubemap",
+      "name": "foss-earth/cubemap",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Image structure · whole six-face cube",
+      "detail": "Six named cube faces, orientation conventions, direction lookup, seam filtering, estimates, preparation and whole-cube loading/sampling.",
+      "note": "Exports pure face geometry for tiled-cubemap and preview-sheets. It never imports those consumers or the 360 viewer."
+    },
+    {
+      "id": "tiled-cubemap",
+      "name": "foss-earth/tiled-cubemap",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Image structure · tiled cube, EAC and gnomonic",
+      "detail": "Six face quadtrees, tile addressing/LOD/selection, scheduler, cancellation/residency, GPU atlas/display table, preparation and sampling.",
+      "note": "Gnomonic and equi-angular are explicit warps of the same stored tile structure. Both use one shared scheduler and the supplied resource broker."
+    },
+    {
+      "id": "preview-sheets",
+      "name": "foss-earth/preview-sheets",
+      "owner": "foss-earth",
+      "group": "image-formats",
+      "tab": "Image structure · packed cube previews",
+      "detail": "Preview-sheet and placement extension, packing/extraction, file checking, shared sheet reads and fallback to the original six face files.",
+      "note": "Uses pure cubemap face conventions and common image services. It supplies decoded face regions; cubemap owns GPU upload."
     },
     {
       "id": "earth-dev",
@@ -264,9 +324,9 @@
     },
     {
       "from": "earth",
-      "to": "panorama",
+      "to": "scenes",
       "type": "code",
-      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+      "reason": "Globe composition consumes the scene controller, which composes the 360 viewer and independent image representations."
     },
     {
       "from": "earth",
@@ -294,12 +354,6 @@
     },
     {
       "from": "weather",
-      "to": "interface",
-      "type": "code",
-      "reason": "Optional panels/settings use the shared registry/widgets."
-    },
-    {
-      "from": "panorama",
       "to": "interface",
       "type": "code",
       "reason": "Optional panels/settings use the shared registry/widgets."
@@ -373,7 +427,49 @@
     },
     {
       "from": "earth-installer",
-      "to": "panorama",
+      "to": "scenes",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "images360",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "images",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "equirectangular",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "cubemap",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "tiled-cubemap",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "preview-sheets",
       "type": "reference",
       "reason": "Earth-workspace manifest selects this checkout/build target.",
       "label": "Earth workspace orchestration"
@@ -456,7 +552,49 @@
       "label": "shared checks"
     },
     {
-      "from": "panorama",
+      "from": "scenes",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "images360",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "images",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "equirectangular",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "cubemap",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "tiled-cubemap",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "preview-sheets",
       "to": "earth-ci",
       "type": "reference",
       "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
@@ -548,7 +686,43 @@
     },
     {
       "from": "docs",
-      "to": "panorama",
+      "to": "scenes",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "images360",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "images",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "equirectangular",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "cubemap",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "tiled-cubemap",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "preview-sheets",
       "type": "reference",
       "reason": "Links versioned owner-maintained contracts and release notes."
     },
@@ -616,6 +790,124 @@
       "type": "reference",
       "reason": "Earth-workspace manifest selects this shared checkout/build target.",
       "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "scenes",
+      "to": "images360",
+      "type": "code",
+      "reason": "Scene navigation and placement orchestration invoke the viewer through public data and service ports."
+    },
+    {
+      "from": "scenes",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "scenes",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panel/contribution entry point consumes generic UI contracts and widgets."
+    },
+    {
+      "from": "images360",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "images360",
+      "to": "equirectangular",
+      "type": "code",
+      "reason": "Top-level 360 composition registers this representation for viewing and preparation."
+    },
+    {
+      "from": "images360",
+      "to": "cubemap",
+      "type": "code",
+      "reason": "Consumes pure face conventions and cube geometry; no whole-cube acquisition or reverse format dependency."
+    },
+    {
+      "from": "images360",
+      "to": "tiled-cubemap",
+      "type": "code",
+      "reason": "Top-level 360 composition registers this representation for viewing and preparation."
+    },
+    {
+      "from": "images360",
+      "to": "preview-sheets",
+      "type": "code",
+      "reason": "Top-level 360 composition registers this representation for viewing and preparation."
+    },
+    {
+      "from": "images360",
+      "to": "renderer",
+      "type": "code",
+      "reason": "GPU/draw adapter entry point consumes shared device and upload services; pure format entry points remain renderer-free.",
+      "label": "GPU adapter"
+    },
+    {
+      "from": "images360",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panel/contribution entry point consumes generic UI contracts and widgets."
+    },
+    {
+      "from": "equirectangular",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "equirectangular",
+      "to": "renderer",
+      "type": "code",
+      "reason": "GPU/draw adapter entry point consumes shared device and upload services; pure format entry points remain renderer-free.",
+      "label": "GPU adapter"
+    },
+    {
+      "from": "cubemap",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "cubemap",
+      "to": "renderer",
+      "type": "code",
+      "reason": "GPU/draw adapter entry point consumes shared device and upload services; pure format entry points remain renderer-free.",
+      "label": "GPU adapter"
+    },
+    {
+      "from": "tiled-cubemap",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "tiled-cubemap",
+      "to": "cubemap",
+      "type": "code",
+      "reason": "Consumes pure face conventions and cube geometry; no whole-cube acquisition or reverse format dependency."
+    },
+    {
+      "from": "tiled-cubemap",
+      "to": "renderer",
+      "type": "code",
+      "reason": "GPU/draw adapter entry point consumes shared device and upload services; pure format entry points remain renderer-free.",
+      "label": "GPU adapter"
+    },
+    {
+      "from": "preview-sheets",
+      "to": "images",
+      "type": "code",
+      "reason": "Consumes common image records and the supplied resource broker/cache without allocating a second independent budget."
+    },
+    {
+      "from": "preview-sheets",
+      "to": "cubemap",
+      "type": "code",
+      "reason": "Consumes pure face conventions and cube geometry; no whole-cube acquisition or reverse format dependency."
     }
   ]
 }
