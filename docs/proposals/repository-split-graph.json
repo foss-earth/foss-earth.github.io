@@ -1,0 +1,621 @@
+{
+  "schemaVersion": 1,
+  "owner": "foss-earth",
+  "status": "proposed-not-live",
+  "date": "2026-10-08",
+  "arrowDirection": "consumer-to-dependency",
+  "title": "FOSS Earth · repository split",
+  "summary": "Shared globe, viewer and tools, with no dependency on downstream applications.",
+  "sourceDocument": "repository-graphs.md",
+  "sourceLabel": "Earth ownership and regeneration",
+  "dataFile": "repository-split-graph.json",
+  "relatedGraphs": [
+    {
+      "label": "0sfs graph",
+      "href": "../../../0sfs/docs/proposals/repository-split-graph.html"
+    },
+    {
+      "label": "UMN VR graph",
+      "href": "../../../UMN-VR/UMN-VR.github.io/docs/proposals/repository-split-graph.html"
+    }
+  ],
+  "ownershipNote": "FOSS Earth owns shared globe/viewer/tooling code. It imports no flight or campus applications, and it contains no downstream application graph or manifest data.",
+  "scope": {
+    "owner": "foss-earth",
+    "allowedOwners": [
+      "foss-earth",
+      "Felipegalind0"
+    ],
+    "dependencyOwners": {
+      "foss-earth": [
+        "foss-earth",
+        "Felipegalind0"
+      ],
+      "Felipegalind0": [
+        "Felipegalind0",
+        "foss-earth"
+      ]
+    }
+  },
+  "groups": [
+    {
+      "id": "applications",
+      "title": "Globe application & owned data",
+      "note": "Standalone Earth, with its own manifest and branding."
+    },
+    {
+      "id": "shared",
+      "title": "Shared FOSS Earth modules",
+      "note": "Globe-neutral code consumed by Earth and applications."
+    },
+    {
+      "id": "foundation",
+      "title": "Device handling",
+      "note": "Established upstream owner."
+    },
+    {
+      "id": "knowledge",
+      "title": "Earth docs, research & governance",
+      "note": "Earth-owned records and generic tooling."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "site",
+      "name": "foss-earth/foss-earth.github.io",
+      "owner": "foss-earth",
+      "group": "applications",
+      "tab": "Standalone globe website",
+      "detail": "Published globe application and Earth-specific composition, branding, release pins, developer contributions and manifest data.",
+      "existing": true
+    },
+    {
+      "id": "earth",
+      "name": "foss-earth/engine",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Map · Location",
+      "detail": "Proposed shared globe-engine extraction: terrain, imagery, coordinates, authoritative surface queries, globe camera/input and world integration. It consumes the shared renderer for scene/device/frame services.",
+      "note": "Globe code owns maps and surface queries. Renderer owns device, scene, backends and frame scheduling; its API has no import back into the globe engine."
+    },
+    {
+      "id": "interface",
+      "name": "foss-earth/ui",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Interface · Settings · Bug report",
+      "detail": "Generic windows/tabs, settings registry/types/widgets, contribution registration, status log and report contracts. Each host registers its own feature catalogs and callbacks.",
+      "note": "UI imports neither globe/renderer implementations nor flight/campus packages. Toolbar and feature panels consume its primitives. Shared ?dev=1 plumbing activates only host-registered developer contributions."
+    },
+    {
+      "id": "earth-about",
+      "name": "foss-earth/about",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "About · generic graph viewer",
+      "detail": "Shared build identity/provenance and dependency graph viewer. Reads a host-supplied manifest without importing any described runtime.",
+      "note": "Viewer code belongs to FOSS Earth; application-branded data, release pins and graph content belong to each application."
+    },
+    {
+      "id": "sky",
+      "name": "foss-earth/sky",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Sky · Date and time",
+      "detail": "Shared astronomy, clear atmosphere, stars, physical lighting and optional renderer/panels.",
+      "note": "Terrain-lighting, settings and scene-time ports are supplied by the host. No import back into globe engine and no flight dependency."
+    },
+    {
+      "id": "weather",
+      "name": "foss-earth/weather",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Weather",
+      "detail": "Canonical world weather definition, sampling, sources, optional rendering and shared panel. Aircraft samples and visuals consume one field.",
+      "note": "The larger weather model is a specification, not a completed extraction. Core imports neither globe runtime nor JSBSim."
+    },
+    {
+      "id": "panorama",
+      "name": "foss-earth/panorama",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Scenes · Active 360 image · 360 image settings",
+      "detail": "Generic scene schema, loader, panorama viewer, image preparation and validation tools. Campus photographs and placements remain UMN-owned."
+    },
+    {
+      "id": "earth-dev",
+      "name": "foss-earth/dev",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Dev · shared contribution framework",
+      "detail": "Shared developer-tab plumbing, graph/debug widget services and the ?dev=1 activation contract. Hosts register distinct app-owned developer panels.",
+      "note": "This framework does not import simulator debug code or a particular tour. Enabling Dev does not create another physics loop."
+    },
+    {
+      "id": "earth-installer",
+      "name": "foss-earth/dev_installer",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Generic developer workspace CLI",
+      "detail": "Generic setup/update/doctor machinery that reads an explicit versioned workspace manifest. It does not hardcode downstream projects or import their runtime packages."
+    },
+    {
+      "id": "earth-ci",
+      "name": "foss-earth/ci",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Shared CI / authorship validator",
+      "detail": "Shared reviewed workflows, checks and authorship validator machinery. Each consumer owns a thin pinned workflow entry point and its component-specific tests.",
+      "note": "Tooling reuse is not a runtime dependency. The shared validator does not own app-specific build or qualification claims."
+    },
+    {
+      "id": "manifest",
+      "name": "FOSS Earth release manifest",
+      "owner": "foss-earth",
+      "group": "applications",
+      "tab": "Earth-owned build data",
+      "detail": "The standalone globe release/dependency manifest. It includes no flight or campus application graph/content.",
+      "kind": "contract"
+    },
+    {
+      "id": "workspace-manifest",
+      "name": "FOSS Earth workspace manifest",
+      "owner": "foss-earth",
+      "group": "applications",
+      "tab": "Earth-owned setup data",
+      "detail": "Canonical globe/shared-module checkouts, revisions, toolchain requirements and build order. No downstream application checkout is required.",
+      "kind": "contract"
+    },
+    {
+      "id": "gamepad",
+      "name": "Felipegalind0/gamepad-tools",
+      "owner": "Felipegalind0",
+      "group": "foundation",
+      "tab": "Controller device handling",
+      "detail": "Public controller handling consumed by globe input.",
+      "existing": true
+    },
+    {
+      "id": "docs",
+      "name": "foss-earth/docs",
+      "owner": "foss-earth",
+      "group": "knowledge",
+      "tab": "Earth documentation",
+      "detail": "Shared globe/module docs, architecture, integration contracts and public documentation. Does not consume flight-owned documentation."
+    },
+    {
+      "id": "research",
+      "name": "foss-earth/research",
+      "owner": "foss-earth",
+      "group": "knowledge",
+      "tab": "Shared globe research",
+      "detail": "Sky/weather/terrain/panorama studies, alternatives and reproducible comparisons owned by FOSS Earth."
+    },
+    {
+      "id": "policy",
+      "name": "foss-earth/.github",
+      "owner": "foss-earth",
+      "group": "knowledge",
+      "tab": "Earth community guidance",
+      "detail": "FOSS Earth contribution documents and templates; executable shared checks live in foss-earth/ci."
+    },
+    {
+      "id": "renderer",
+      "name": "foss-earth/renderer",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Renderer",
+      "detail": "Shared device/scene lifecycle, WebGPU/WebGL backends, readiness, frame scheduler and optional Renderer panel.",
+      "note": "Renderer never imports the globe engine. Its optional panel consumes UI; map and aircraft contributions arrive through explicit services."
+    },
+    {
+      "id": "toolbar",
+      "name": "foss-earth/toolbar",
+      "owner": "foss-earth",
+      "group": "shared",
+      "tab": "Bottom HUD / toolbar",
+      "detail": "Bottom HUD layout and display of registered callbacks/values. Hosts supply map, position, renderer, input and app-specific items through public contracts.",
+      "note": "Consumes generic UI primitives. It does not import the implementations whose values/buttons it shows; each setting still has one tab home."
+    }
+  ],
+  "edges": [
+    {
+      "from": "site",
+      "to": "earth",
+      "type": "code",
+      "reason": "Standalone globe consumes shared public exports and supplies Earth-owned contributions."
+    },
+    {
+      "from": "site",
+      "to": "interface",
+      "type": "code",
+      "reason": "Standalone globe consumes shared public exports and supplies Earth-owned contributions."
+    },
+    {
+      "from": "site",
+      "to": "earth-about",
+      "type": "code",
+      "reason": "Standalone globe consumes shared public exports and supplies Earth-owned contributions."
+    },
+    {
+      "from": "site",
+      "to": "earth-dev",
+      "type": "code",
+      "reason": "Standalone globe consumes shared public exports and supplies Earth-owned contributions."
+    },
+    {
+      "from": "site",
+      "to": "manifest",
+      "type": "content",
+      "reason": "Build provides the Earth-owned release manifest to the generic About viewer.",
+      "label": "Earth build metadata"
+    },
+    {
+      "from": "earth",
+      "to": "sky",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "earth",
+      "to": "weather",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "earth",
+      "to": "panorama",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "earth",
+      "to": "interface",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "earth",
+      "to": "earth-about",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "earth",
+      "to": "gamepad",
+      "type": "code",
+      "reason": "Globe-engine integration consumes the shared module with public/injected contracts."
+    },
+    {
+      "from": "sky",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panels/settings use the shared registry/widgets."
+    },
+    {
+      "from": "weather",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panels/settings use the shared registry/widgets."
+    },
+    {
+      "from": "panorama",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panels/settings use the shared registry/widgets."
+    },
+    {
+      "from": "earth-about",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panels/settings use the shared registry/widgets."
+    },
+    {
+      "from": "earth-dev",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional panels/settings use the shared registry/widgets."
+    },
+    {
+      "from": "earth-dev",
+      "to": "earth-about",
+      "type": "code",
+      "reason": "Generic developer view reuses the generic graph/provenance viewer."
+    },
+    {
+      "from": "earth-installer",
+      "to": "workspace-manifest",
+      "type": "reference",
+      "reason": "Reads the Earth workspace plan. Generic tool never hardcodes downstream applications.",
+      "label": "workspace data"
+    },
+    {
+      "from": "earth-installer",
+      "to": "site",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "earth",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "interface",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "earth-about",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "sky",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "weather",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "panorama",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "earth-dev",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "docs",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "research",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "earth-installer",
+      "to": "policy",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "site",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "interface",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth-about",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "sky",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "weather",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "panorama",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth-dev",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth-installer",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "gamepad",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "docs",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "research",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "policy",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Proposed pinned shared-check entry point plus component-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "site",
+      "to": "docs",
+      "type": "reference",
+      "reason": "Standalone globe links its own documentation."
+    },
+    {
+      "from": "docs",
+      "to": "research",
+      "type": "reference",
+      "reason": "Documents adopted globe research."
+    },
+    {
+      "from": "docs",
+      "to": "earth",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "interface",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "earth-about",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "sky",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "weather",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "panorama",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "earth-dev",
+      "type": "reference",
+      "reason": "Links versioned owner-maintained contracts and release notes."
+    },
+    {
+      "from": "docs",
+      "to": "policy",
+      "type": "reference",
+      "reason": "Own organization contribution guidance."
+    },
+    {
+      "from": "earth",
+      "to": "renderer",
+      "type": "code",
+      "reason": "Globe integration consumes renderer device/scene/backend/frame services; renderer never imports globe code."
+    },
+    {
+      "from": "renderer",
+      "to": "interface",
+      "type": "code",
+      "reason": "Optional Renderer panel entry point consumes generic UI widgets/contracts.",
+      "label": "optional panel"
+    },
+    {
+      "from": "toolbar",
+      "to": "interface",
+      "type": "code",
+      "reason": "Toolbar layout and registered item controls use generic UI primitives."
+    },
+    {
+      "from": "site",
+      "to": "toolbar",
+      "type": "code",
+      "reason": "Application host registers toolbar callbacks/values without moving its feature implementations into the toolbar."
+    },
+    {
+      "from": "renderer",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Pinned shared check entry point plus renderer/toolbar-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth-installer",
+      "to": "renderer",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this shared checkout/build target.",
+      "label": "Earth workspace orchestration"
+    },
+    {
+      "from": "toolbar",
+      "to": "earth-ci",
+      "type": "reference",
+      "reason": "Pinned shared check entry point plus renderer/toolbar-specific validation.",
+      "label": "shared checks"
+    },
+    {
+      "from": "earth-installer",
+      "to": "toolbar",
+      "type": "reference",
+      "reason": "Earth-workspace manifest selects this shared checkout/build target.",
+      "label": "Earth workspace orchestration"
+    }
+  ]
+}
