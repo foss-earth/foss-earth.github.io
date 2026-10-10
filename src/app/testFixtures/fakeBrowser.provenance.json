@@ -1,8 +1,0 @@
-{
-  "sourceRepository": "https://github.com/foss-earth/foss-earth.github.io",
-  "sourceRevision": "90e23b3ee96f53ec5900afc5991a21fffa58649d",
-  "sourcePath": "src/diagnostics/testEnvironment.ts",
-  "inputSha256": "1a53f9073fee8e5c02e73e6dfad43399d530748ce4367b84a5d7867add90a918",
-  "adoption": "Test fixture only; public TrailEnvironment type import replaces removed monolith boundary. Original human history and license remain inherited.",
-  "execution": "UNRUN"
-}

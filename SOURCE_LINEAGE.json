@@ -1198,5 +1198,14 @@
     }
   ],
   "humanHeadersVerified": true,
-  "publicationAdmission": "pending installed common full-ref audit and remote enforcement"
+  "publicationAdmission": "pending installed common full-ref audit and remote enforcement",
+  "currentOwnershipBoundary": {
+    "combinedSourceRevision": "406e71e7c03317115a7c056548d45926c7d790be",
+    "applicationOwner": "foss-earth/app",
+    "landingOwner": "foss-earth/foss-earth.github.io",
+    "historicalPathListSemantics": "Original imported human history; not a list of current source ownership",
+    "currentBoundary": "Application composition and assets moved to app; landing consumes only the exact compiled app artifact at /app/",
+    "privateTransferEvidenceId": "source-transfer.json",
+    "historyRewritten": false
+  }
 }
