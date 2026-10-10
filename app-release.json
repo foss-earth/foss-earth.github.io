@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "owner": "foss-earth/app",
-  "sourceRevision": "7335a2a006e94d3f7ced566e8170ce5bde2766de",
+  "sourceRevision": "06500a8b584f27ccd1367c1497831beed676db50",
   "base": "/app/",
   "archive": {
-    "path": "deps/foss-earth-app-compiled-7335a2a006e94d3f7ced566e8170ce5bde2766de.tgz",
-    "sha256": "38f01c72f069352f415781e050e4bd20ea0e4f36cff5af5127c3eed98f9c6c33",
-    "sizeBytes": 4357675
+    "path": "deps/foss-earth-app-compiled-06500a8b584f27ccd1367c1497831beed676db50.tgz",
+    "sha256": "2d9ae09ce239f83771d58dc544bcb3d173b9d624f022dabe73d9db48d9c118f5",
+    "sizeBytes": 4359580
   },
   "files": [
     {
@@ -45,8 +45,8 @@
       "sizeBytes": 6187
     },
     {
-      "path": "assets/cubemapToSphericalPolynomial-D0NCHF51.js",
-      "sha256": "911bb4d03093ed1995f918beaece14d99336ce4e3645bd4503bdecd1cfa8d01c",
+      "path": "assets/cubemapToSphericalPolynomial-DRgu5DEn.js",
+      "sha256": "fff09956dbe00b902e6fbb9043d0d0294f80029981710995ff305f10da46e2dc",
       "sizeBytes": 2533
     },
     {
@@ -55,8 +55,8 @@
       "sizeBytes": 173
     },
     {
-      "path": "assets/dds-pkFzsIhd.js",
-      "sha256": "a588fd27688b9c85a77cbf731f2cc7be74609b160bfbee74acff920328eabacf",
+      "path": "assets/dds-ClaI0Kyx.js",
+      "sha256": "b5085b0e39716e2493395a85044d1c899bbd11cdda7418d878f86c40e3bdcd3c",
       "sizeBytes": 9224
     },
     {
@@ -135,14 +135,14 @@
       "sizeBytes": 157
     },
     {
-      "path": "assets/index-CRSmMsJ9.js",
-      "sha256": "e98114016a1eb2f39b63d27be3d253aa9ffb4757b030754d9cd5605ed182614d",
-      "sizeBytes": 5599823
-    },
-    {
       "path": "assets/index-CvIJiYzu.css",
       "sha256": "27f034f668eaa91b3d237ecccb59ad52a6f4fa1e84ee61c53ea1f7674836533d",
       "sizeBytes": 57828
+    },
+    {
+      "path": "assets/index-LkHTWnnH.js",
+      "sha256": "4c10928e6499c8cab12328db0c1db722f4ed7c456b951f7840ee24ba299136ad",
+      "sizeBytes": 5603671
     },
     {
       "path": "assets/lightConstants-DUaNSuF5.js",
@@ -245,8 +245,8 @@
       "sizeBytes": 27545
     },
     {
-      "path": "assets/textureTools-D7IaZeYH.js",
-      "sha256": "461eccf7b58e5f5183812fc7c058fa73b95bf694fba50fd70605ba4f491e59fd",
+      "path": "assets/textureTools-BJFM9JI2.js",
+      "sha256": "61f520a998cfc368a5af5a051f5db671a71e7a22c9bc7e93fab77d3980c9f453",
       "sizeBytes": 122368
     },
     {
@@ -270,8 +270,8 @@
       "sizeBytes": 80
     },
     {
-      "path": "assets/viewer-CIpdrGES.js",
-      "sha256": "b897badd48427cf77aab60047a2294258e374cedd362370b5acfabd71949b85e",
+      "path": "assets/viewer-B_xZxqD2.js",
+      "sha256": "16db90656cd0742293ac0184c390203ff0ae262c42f21547b044bb717011ec28",
       "sizeBytes": 3556
     },
     {
@@ -1931,7 +1931,7 @@
     },
     {
       "path": "foss-earth-sw.js",
-      "sha256": "6d0fb9f4c119db56cd0a25cf39b893dd4045d0e2a15ce587a87f4b25a7084893",
+      "sha256": "975532439858ba902e12091da21e4d83c614c23b7940907edcf84e19828c368f",
       "sizeBytes": 6387
     },
     {
@@ -1941,8 +1941,8 @@
     },
     {
       "path": "index.html",
-      "sha256": "8626d4179cf987ba78f3f949b69f937041534642589f719b93902e928115c95d",
-      "sizeBytes": 12173
+      "sha256": "b9e17319d7cc8bd48616aec086d40dc01a0ea717ce5d131d16b407027c17da23",
+      "sizeBytes": 12174
     }
   ]
 }
