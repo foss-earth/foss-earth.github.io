@@ -4,31 +4,15 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "description": "Thin FOSS Earth landing page and exact compiled app assembly.",
+  "description": "FOSS Earth landing page and the site build that serves the Earth app at /app/.",
   "repository": {
     "type": "git",
     "url": "https://github.com/foss-earth/foss-earth.github.io.git"
   },
   "scripts": {
-    "build": "node scripts/assemble.mjs",
-    "dev": "node scripts/serve.mjs",
-    "test": "node --test --test-concurrency=1 scripts/check-site.test.mjs",
-    "ci": "npm test && npm run build"
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/serve.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
-  "devDependencies": {},
-  "files": [
-    "index.html",
-    "landing.css",
-    "scripts",
-    "app-release.json",
-    "deps",
-    "README.md",
-    "AGENTS.md",
-    "CODE_OF_CONDUCT.md",
-    "CONTRIBUTING.md",
-    "LICENSE",
-    "SECURITY.md",
-    "NOTICE",
-    "COMMERCIAL_LICENSE.md"
-  ]
+  "devDependencies": {}
 }

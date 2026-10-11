@@ -1,41 +1,42 @@
 # FOSS Earth landing page
 
-This repository owns the thin public landing page. The standard globe application
-is developed in [foss-earth/app](https://github.com/foss-earth/app) and served from
-this site's `/app/` path as an exact compiled artifact. Application and provider
-source belongs in its independent checkout.
+The site at https://foss-earth.github.io/: a landing page at `/` and the Earth
+app at `/app/`. The app itself is developed in
+[foss-earth/app](https://github.com/foss-earth/app); this repository only copies
+its build into the site.
 
-## Assemble and check
+## Build and preview
 
-`app-release.json` records the app source revision, `/app/` base, immutable archive
-path, SHA256, byte count and every compiled file's identity. Place the exact
-archive at its recorded repository-local `deps/` path. Assembly verifies the
-archive and all entries before publishing the local output; links, unsafe paths,
-extra files and missing files are rejected. It preserves prior owned assemblies
-under ignored `build/assembly-retained/` and refuses to replace unmarked output.
+With [app](https://github.com/foss-earth/app) checked out next to this
+repository (see its README):
 
 ```sh
-npm ci
-npm run ci
-npm run dev -- --port 4174
+cd ../app && npm run build && cd -
+npm run build
+npm run preview
 ```
 
-`build` assembles the landing page and app under `dist/`. `dev` explicitly serves
-that existing output at `http://127.0.0.1:4174/`; it does not compile the app or
-start another process. `test` exercises exact artifact verification and local
-route/worker boundaries with Node's built-in test runner. `check:conformance`
-uses the same pinned shared CI component as the app and component owners.
-Migration checks and servers follow the coordinator's shared verification grant.
+`build` puts the site in `dist/`: `index.html` and `landing.css`, the app's
+`dist/` under `app/`, and `foss-earth-sw.js`. `preview` serves `dist/` at
+http://127.0.0.1:4174/.
 
-The app archive is consumed unchanged: app assets and its service worker stay
-inside `/app/`, and the landing page links to `/app/`. Local verification does not
-establish remote admission or authorize Pages deployment. Exact release receipts
-and rollout decisions remain separate from source preparation.
+The app used to be served at the root, so two things keep old visitors working:
 
-The shared `@foss-earth/dev-installer` owns source/package/hybrid workspace
-selection. Run application development in the real app checkout, with one public
-provider per independent component checkout. This landing assembly adds no
-provider dependency or alternative setup machinery.
+- Old links to the app carry its state in the query or hash, so the landing page
+  sends any URL with a query or hash to `/app/` with them.
+- The app kept its files on visitors' devices with a service worker at
+  `/foss-earth-sw.js`. The file at that address now deletes those files and
+  unregisters the worker; the app's current worker lives under `/app/`.
+
+## Deploy
+
+```sh
+npm run deploy
+```
+
+publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves. That
+branch also holds pages that aren't built here, `/eac-prototype/` and
+`/examples/`; deploying keeps them and replaces everything else.
 
 ## Project policies
 

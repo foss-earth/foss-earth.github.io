@@ -15,7 +15,7 @@ export async function startSiteServer({ root, port = 4174, host = '127.0.0.1' })
   if (host !== '127.0.0.1') throw new Error('The verification server binds only to 127.0.0.1');
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid local port');
   root = await realpath(root);
-  if (!(await stat(root)).isDirectory()) throw new Error('Existing assembled dist directory required');
+  if (!(await stat(root)).isDirectory()) throw new Error('No site in dist/: run npm run build first');
   const server = createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-cache');
@@ -48,7 +48,7 @@ export async function startSiteServer({ root, port = 4174, host = '127.0.0.1' })
       response.end(request.method === 'HEAD' ? undefined : await readFile(actual));
     } catch {
       if (!response.headersSent) response.writeHead(500);
-      response.end('Unable to serve assembled file');
+      response.end('Unable to serve file');
     }
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, resolve); });
@@ -65,6 +65,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (port === 0) throw new Error('Choose an explicit nonzero local port');
   const root = fileURLToPath(new URL('../dist/', import.meta.url));
   const { server, url } = await startSiteServer({ root, port });
-  console.log(`Serving exact landing/app assembly at ${url} (PID ${process.pid}).`);
+  console.log(`Serving dist/ at ${url}`);
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close(() => process.exit(0)));
 }
