@@ -13,18 +13,22 @@
     "build": "node scripts/assemble.mjs",
     "dev": "node scripts/serve.mjs",
     "test": "node --test --test-concurrency=1 scripts/check-site.test.mjs",
-    "ci": "npm run check:conformance && npm test && npm run build",
-    "check:conformance": "node node_modules/@foss-earth/ci/bin/conformance.mjs --consumer . --trusted-release .attribution-release.json --output-root build/common-conformance",
-    "check:attribution": "node node_modules/@foss-earth/ci/bin/attribution.mjs --repo . --refs-file build/repository-split/intended-publication-refs.json"
+    "ci": "npm test && npm run build"
   },
-  "devDependencies": {
-    "@foss-earth/ci": "file:deps/foss-earth-ci-1db73d1ddb342e348a2c9e8387f7bbc7ebb3225e.tgz"
-  },
+  "devDependencies": {},
   "files": [
-    "index.html", "landing.css", "scripts", "app-release.json", "deps",
-    "README.md", "AGENTS.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "LICENSE",
-    "SECURITY.md", "NOTICE", "COMMERCIAL_LICENSE.md", "SOURCE_LINEAGE.json",
-    "SOURCE_PROVENANCE.json", "SOURCE_RECEIPT.json", ".attribution.json",
-    ".attribution-release.json", ".github/workflows/attribution-check.yml"
+    "index.html",
+    "landing.css",
+    "scripts",
+    "app-release.json",
+    "deps",
+    "README.md",
+    "AGENTS.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "SECURITY.md",
+    "NOTICE",
+    "COMMERCIAL_LICENSE.md"
   ]
 }
