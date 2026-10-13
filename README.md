@@ -11,8 +11,8 @@ With [app](https://github.com/foss-earth/app) checked out next to this
 repository (see its README):
 
 ```sh
-cd ../app && npm run build && cd -
-npm run build
+cd ~/gh/foss-earth/app && npm run build
+cd ../foss-earth.github.io && npm run build
 npm run preview
 ```
 
@@ -31,12 +31,16 @@ The app used to be served at the root, so two things keep old visitors working:
 ## Deploy
 
 ```sh
-npm run deploy
+cd ~/gh/foss-earth/app && npm run build
+cd ../foss-earth.github.io && npm run build && npm run deploy
 ```
 
 publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves. That
 branch also holds pages that aren't built here, `/eac-prototype/` and
-`/examples/`; deploying keeps them and replaces everything else.
+`/examples/`; deploying keeps them and replaces everything else. The same
+steps are written in
+[foss-earth/docs](https://github.com/foss-earth/docs/blob/main/docs/deploying.md)
+so the other repositories can find them. Pushing `main` does not run this.
 
 ## Project policies
 
