@@ -31,10 +31,10 @@ The app used to be served at the root, so two things keep old visitors working:
 ## Deploy
 
 ```sh
-cd ~/gh/foss-earth/app && npm run build
-cd ../foss-earth.github.io && npm run build && npm run deploy
+cd ~/gh/foss-earth/foss-earth.github.io && npm run deploy
 ```
 
+records what the app is built from, builds the app and this site, and
 publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves. That
 branch also holds pages that aren't built here, `/eac-prototype/` and
 `/examples/`; deploying keeps them and replaces everything else. The same
