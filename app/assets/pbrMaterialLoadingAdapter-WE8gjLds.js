@@ -1,1 +1,0 @@
-export{n as PBRMaterialLoadingAdapter}from"./index.babylonjs-Bl0_bNc2.js";
