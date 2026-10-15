@@ -1,0 +1,1 @@
+export{n as PBRMaterialLoadingAdapter}from"./index.babylonjs-B3mtB_Mx.js";
