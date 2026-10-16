@@ -1,0 +1,1 @@
+function e(e,t,n){let r=t,i=n,a=0,o=0;for(let t of[20,24])e[t+2]>0&&e[t+3]>0&&(r=Math.min(r,e[t]),i=Math.min(i,e[t+1]),a=Math.max(a,e[t]+e[t+2]),o=Math.max(o,e[t+1]+e[t+3]));return r=Math.max(0,Math.floor(r)),i=Math.max(0,Math.floor(i)),a=Math.min(t,Math.ceil(a)),o=Math.min(n,Math.ceil(o)),a>r&&o>i?[r,i,a-r,o-i]:null}export{e as t};
