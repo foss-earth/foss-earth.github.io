@@ -7,6 +7,8 @@
     <title>FOSS Earth</title>
     <link rel="icon" type="image/svg+xml" href="/app/favicon.svg" />
     <link rel="stylesheet" href="/landing.css" />
+    <!-- Registers the app's worker while this page is read, so Open the globe loads it isolated, for its shared memory, without the first visit's reload. -->
+    <script src="/app/foss-earth-isolate.js" async></script>
     <script>
       // The app used to be served here, so old links to it can land on this page.
       // Its links carry their state in the query or hash: open those in the app.
