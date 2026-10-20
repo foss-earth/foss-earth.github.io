@@ -1,0 +1,1 @@
+var e=null,t=new Set,n=null;function r(){return e}function i(n){if(e!==n){e=n;for(let e of t)e()}}function a(e){return t.add(e),()=>{t.delete(e)}}function o(e){return n=e,()=>{n===e&&(n=null)}}function s(){n?.()}export{a,i,r as n,s as r,o as t};
