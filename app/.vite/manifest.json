@@ -19,15 +19,15 @@
       "_webRequest-dqz0dHXK.js"
     ]
   },
-  "_abstractEngine.cubeTexture-mj7626Vk.js": {
-    "file": "assets/abstractEngine.cubeTexture-mj7626Vk.js",
+  "_abstractEngine.cubeTexture-BfCPrQ5R.js": {
+    "file": "assets/abstractEngine.cubeTexture-BfCPrQ5R.js",
     "name": "abstractEngine.cubeTexture",
     "imports": [
       "_logger-CuBYPcDK.js",
       "_tools-Dn6DBqCZ.js",
       "_tools.functions-Bf64XVYQ.js",
       "_guid-BXdVC_j_.js",
-      "_textureTools-DYE4853h.js"
+      "_textureTools-k0GoRu7f.js"
     ]
   },
   "_abstractSoundInstance-D-nFsAP0.js": {
@@ -50,51 +50,51 @@
     "file": "assets/babylon-shader-store-D-XQlhUT.js",
     "name": "babylon-shader-store"
   },
-  "_babylon-shaders-glsl-DEWEOcF5.js": {
-    "file": "assets/babylon-shaders-glsl-DEWEOcF5.js",
+  "_babylon-shaders-glsl-CovYPAox.js": {
+    "file": "assets/babylon-shaders-glsl-CovYPAox.js",
     "name": "babylon-shaders-glsl",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_babylon-shader-store-D-XQlhUT.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js"
+      "_babylon-shaders-static-B5ITpmlb.js"
     ]
   },
-  "_babylon-shaders-static-Bcfsp4Q6.js": {
-    "file": "assets/babylon-shaders-static-Bcfsp4Q6.js",
+  "_babylon-shaders-static-B5ITpmlb.js": {
+    "file": "assets/babylon-shaders-static-B5ITpmlb.js",
     "name": "babylon-shaders-static",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_babylon-shader-store-D-XQlhUT.js"
     ]
   },
-  "_babylon-shaders-wgsl-BFL40Gbp.js": {
-    "file": "assets/babylon-shaders-wgsl-BFL40Gbp.js",
+  "_babylon-shaders-wgsl-CmAujgXY.js": {
+    "file": "assets/babylon-shaders-wgsl-CmAujgXY.js",
     "name": "babylon-shaders-wgsl",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_babylon-shader-store-D-XQlhUT.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js"
+      "_babylon-shaders-static-B5ITpmlb.js"
     ]
   },
-  "_baseTexture.polynomial-BFAP9ky0.js": {
-    "file": "assets/baseTexture.polynomial-BFAP9ky0.js",
+  "_baseTexture.polynomial-BVBk1TUM.js": {
+    "file": "assets/baseTexture.polynomial-BVBk1TUM.js",
     "name": "baseTexture.polynomial",
     "imports": [
       "_preload-helper-yvApXQsr.js",
       "_texture-BFawUibc.js",
-      "_textureTools-DYE4853h.js",
-      "_cubemapToSphericalPolynomial-W_bpu_dv.js"
+      "_textureTools-k0GoRu7f.js",
+      "_cubemapToSphericalPolynomial-NcRVidV7.js"
     ],
     "dynamicImports": [
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
-  "_browser-BRulVJyz.js": {
-    "file": "assets/browser-BRulVJyz.js",
+  "_browser-BUdRlEI4.js": {
+    "file": "assets/browser-BUdRlEI4.js",
     "name": "browser",
     "imports": [
-      "_src-Citv8AKM.js"
+      "_src-YIlhAeQk.js"
     ]
   },
   "_buffer-BwIgBsqV.js": {
@@ -133,14 +133,14 @@
       "_dataBuffer-C-wqV4qF.js"
     ]
   },
-  "_cubemapToSphericalPolynomial-W_bpu_dv.js": {
-    "file": "assets/cubemapToSphericalPolynomial-W_bpu_dv.js",
+  "_cubemapToSphericalPolynomial-NcRVidV7.js": {
+    "file": "assets/cubemapToSphericalPolynomial-NcRVidV7.js",
     "name": "cubemapToSphericalPolynomial",
     "imports": [
       "_math.vector-cXUysvte.js",
       "_math.scalar.functions-lnL7TJ7T.js",
       "_math.color-Ccaij935.js",
-      "_textureTools-DYE4853h.js"
+      "_textureTools-k0GoRu7f.js"
     ]
   },
   "_dataBuffer-C-wqV4qF.js": {
@@ -159,8 +159,8 @@
     "file": "assets/drawWrapper.functions-t22iQNzU.js",
     "name": "drawWrapper.functions"
   },
-  "_dumpTools-CeH4bm1j.js": {
-    "file": "assets/dumpTools-CeH4bm1j.js",
+  "_dumpTools-BX_Q-rKX.js": {
+    "file": "assets/dumpTools-BX_Q-rKX.js",
     "name": "dumpTools",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
@@ -170,22 +170,22 @@
       "_logger-CuBYPcDK.js",
       "_tools-Dn6DBqCZ.js",
       "_decorators-BOtej2xA.js",
-      "_effectRenderer-PmRWC1Ze.js"
+      "_effectRenderer-jsQImlJ-.js"
     ],
     "dynamicImports": [
       "_thinEngine-DYkgvbIo.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
-  "_effectRenderer-PmRWC1Ze.js": {
-    "file": "assets/effectRenderer-PmRWC1Ze.js",
+  "_effectRenderer-jsQImlJ-.js": {
+    "file": "assets/effectRenderer-jsQImlJ-.js",
     "name": "effectRenderer",
     "imports": [
       "_observable-BmPG9gPP.js",
       "_tools.functions-Bf64XVYQ.js",
       "_buffer-Co66ag14.js",
       "_math.viewport-1s33kfOs.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js"
+      "_babylon-shaders-static-B5ITpmlb.js"
     ]
   },
   "_engineStore-DYzBhiRl.js": {
@@ -195,8 +195,8 @@
       "_observable-BmPG9gPP.js"
     ]
   },
-  "_environmentTextureTools-OMccTqnS.js": {
-    "file": "assets/environmentTextureTools-OMccTqnS.js",
+  "_environmentTextureTools-3LLexv9E.js": {
+    "file": "assets/environmentTextureTools-3LLexv9E.js",
     "name": "environmentTextureTools",
     "imports": [
       "_preload-helper-yvApXQsr.js",
@@ -207,13 +207,13 @@
       "_tools-Dn6DBqCZ.js",
       "_tools.functions-Bf64XVYQ.js",
       "_texture-BFawUibc.js",
-      "_textureTools-DYE4853h.js",
-      "_baseTexture.polynomial-BFAP9ky0.js",
-      "_dumpTools-CeH4bm1j.js"
+      "_textureTools-k0GoRu7f.js",
+      "_baseTexture.polynomial-BVBk1TUM.js",
+      "_dumpTools-BX_Q-rKX.js"
     ],
     "dynamicImports": [
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
   "_floatingOriginMatrixOverrides-DqLXf5j4.js": {
@@ -455,8 +455,8 @@
     "file": "assets/observable-BmPG9gPP.js",
     "name": "observable"
   },
-  "_pbrMaterial-D_I7XJmQ.js": {
-    "file": "assets/pbrMaterial-D_I7XJmQ.js",
+  "_pbrMaterial-C27t-5R3.js": {
+    "file": "assets/pbrMaterial-C27t-5R3.js",
     "name": "pbrMaterial",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
@@ -479,12 +479,12 @@
       "_instancedMesh-D9N6Z3OI.js",
       "_light-CL9GVEpt.js",
       "_imageProcessing-DVX3Kfaz.js",
-      "_baseTexture.polynomial-BFAP9ky0.js",
+      "_baseTexture.polynomial-BVBk1TUM.js",
       "index.html"
     ],
     "dynamicImports": [
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
   "_pointerEvents-eWS9Fuue.js": {
@@ -578,8 +578,16 @@
       "_precisionDate-CfCevjl-.js"
     ]
   },
-  "_src-Citv8AKM.js": {
-    "file": "assets/src-Citv8AKM.js",
+  "_src-B5WrQm67.js": {
+    "file": "assets/src-B5WrQm67.js",
+    "name": "src",
+    "imports": [
+      "_rolldown-runtime-hePW80VL.js",
+      "_src-YIlhAeQk.js"
+    ]
+  },
+  "_src-YIlhAeQk.js": {
+    "file": "assets/src-YIlhAeQk.js",
     "name": "src"
   },
   "_texture-BFawUibc.js": {
@@ -599,8 +607,8 @@
       "_math.plane-DA2QKE_X.js"
     ]
   },
-  "_textureTools-DYE4853h.js": {
-    "file": "assets/textureTools-DYE4853h.js",
+  "_textureTools-k0GoRu7f.js": {
+    "file": "assets/textureTools-k0GoRu7f.js",
     "name": "textureTools",
     "imports": [
       "_preload-helper-yvApXQsr.js",
@@ -620,12 +628,12 @@
       "_math.path-BnUPJfuR.js",
       "_math.axis-BC8rv4_x.js",
       "_texture-BFawUibc.js",
-      "_effectRenderer-PmRWC1Ze.js",
+      "_effectRenderer-jsQImlJ-.js",
       "_thinEngine-DYkgvbIo.js"
     ],
     "dynamicImports": [
-      "_dumpTools-CeH4bm1j.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js",
+      "_dumpTools-BX_Q-rKX.js",
+      "_babylon-shaders-static-B5ITpmlb.js",
       "node_modules/@babylonjs/core/Misc/dds.js",
       "node_modules/@babylonjs/core/Materials/Textures/Loaders/iesTextureLoader.js",
       "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js",
@@ -635,8 +643,8 @@
       "node_modules/@babylonjs/core/Materials/Textures/Loaders/ktxTextureLoader.js",
       "node_modules/@babylonjs/core/Materials/Textures/Loaders/tgaTextureLoader.js",
       "node_modules/@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js",
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
   "_thinEngine-DYkgvbIo.js": {
@@ -736,14 +744,15 @@
     "name": "workerPool"
   },
   "index.html": {
-    "file": "assets/index-D2eO2-p4.js",
+    "file": "assets/index-C5DmzwzJ.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
-      "_browser-BRulVJyz.js",
-      "_src-Citv8AKM.js",
+      "_browser-BUdRlEI4.js",
+      "_src-YIlhAeQk.js",
+      "_src-B5WrQm67.js",
       "_preload-helper-yvApXQsr.js",
       "_scene-5WPw9j_7.js",
       "_observable-BmPG9gPP.js",
@@ -755,6 +764,7 @@
       "_logger-CuBYPcDK.js",
       "_tools-Dn6DBqCZ.js",
       "_decorators-BOtej2xA.js",
+      "_devTools-DmD3AOL3.js",
       "_math.size-D0gDANMB.js",
       "_node-ByNcla8-.js",
       "_webRequest-dqz0dHXK.js",
@@ -778,16 +788,17 @@
       "_instancedMesh-D9N6Z3OI.js",
       "_light-CL9GVEpt.js",
       "_buffer-BwIgBsqV.js",
-      "_textureTools-DYE4853h.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js",
+      "_textureTools-k0GoRu7f.js",
+      "_babylon-shaders-static-B5ITpmlb.js",
+      "_effectRenderer-jsQImlJ-.js",
       "_thinEngine-DYkgvbIo.js",
       "_imageProcessing-DVX3Kfaz.js"
     ],
     "dynamicImports": [
       "node_modules/@foss-earth/sky/src/starCatalogue.ts",
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-static-Bcfsp4Q6.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js",
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-static-B5ITpmlb.js",
+      "_babylon-shaders-glsl-CovYPAox.js",
       "node_modules/@foss-earth/engine/src/visualization/compassCenterSphere.ts",
       "node_modules/3d-tiles-renderer/build/index.babylonjs.js",
       "node_modules/3d-tiles-renderer/build/index.core-plugins.js",
@@ -800,24 +811,24 @@
       "src/app/GlobeOverlay.tsx"
     ],
     "css": [
-      "assets/index-u1OCTdA0.css"
+      "assets/index-DYI9ojsU.css"
     ],
     "assets": [
-      "assets/atlasImagery.worker-PBssh3f2.js",
-      "assets/terrainDecode.worker-CdrMsCP6.js",
-      "assets/terrainMesh.worker-zO8tmVDw.js",
-      "assets/terrainHeights.worker-B01mugZO.js",
-      "assets/googlePreparation.worker-CH8fAZJl.js",
-      "assets/groundBvh.worker-dNIoj26C.js",
-      "assets/skyEvaluation.worker-WdajlurO.js",
-      "assets/skySharedHelper.worker-Co1E3es0.js",
       "assets/egm2008-60-bDxgbz8U.bin",
       "assets/egm2008-30-BpPXoGjA.bin",
-      "assets/egm2008-15-nvvz7MYe.bin"
+      "assets/egm2008-15-nvvz7MYe.bin",
+      "assets/atlasImagery.worker-DUeB22SI.js",
+      "assets/terrainDecode.worker-BisSXj7r.js",
+      "assets/terrainMesh.worker-DL9Slab7.js",
+      "assets/terrainHeights.worker-BHLEeuhF.js",
+      "assets/googlePreparation.worker-sGqikEbA.js",
+      "assets/groundBvh.worker-B2TW3Dws.js",
+      "assets/skyEvaluation.worker-fZBteom0.js",
+      "assets/skySharedHelper.worker-BqIP9ECd.js"
     ]
   },
   "node_modules/3d-tiles-renderer/build/index.babylonjs.js": {
-    "file": "assets/index.babylonjs-Bu-XDzdH.js",
+    "file": "assets/index.babylonjs-CEgIXjGD.js",
     "name": "index.babylonjs",
     "src": "node_modules/3d-tiles-renderer/build/index.babylonjs.js",
     "isDynamicEntry": true,
@@ -848,15 +859,15 @@
       "_pushMaterial-mbST6lNq.js",
       "_texture-BFawUibc.js",
       "_light-CL9GVEpt.js",
-      "_pbrMaterial-D_I7XJmQ.js",
+      "_pbrMaterial-C27t-5R3.js",
       "_buffer-BwIgBsqV.js",
       "_spatialWebAudio-DmiRWwlf.js",
       "_webAudioSoundSource-DZD4A5NC.js",
       "_webAudioStaticSound-B7fh76J9.js",
       "_webAudioStreamingSound-DYgvPJFz.js",
-      "_textureTools-DYE4853h.js",
-      "_abstractEngine.cubeTexture-mj7626Vk.js",
-      "_environmentTextureTools-OMccTqnS.js",
+      "_textureTools-k0GoRu7f.js",
+      "_abstractEngine.cubeTexture-BfCPrQ5R.js",
+      "_environmentTextureTools-3LLexv9E.js",
       "_flowGraphBlock-CnCenJAW.js",
       "_flowGraphAssetsContext-WtUyuDAI.js",
       "_flowGraphExecutionBlock-BQwplnqf.js",
@@ -918,7 +929,7 @@
       "node_modules/@babylonjs/loaders/glTF/2.0/glTFLoaderAnimation.js",
       "node_modules/@babylonjs/core/Materials/PBR/openpbrMaterial.js",
       "node_modules/@babylonjs/loaders/glTF/2.0/openpbrMaterialLoadingAdapter.js",
-      "_pbrMaterial-D_I7XJmQ.js",
+      "_pbrMaterial-C27t-5R3.js",
       "node_modules/@babylonjs/loaders/glTF/2.0/pbrMaterialLoadingAdapter.js",
       "node_modules/@babylonjs/loaders/glTF/2.0/Extensions/KHR_interactivity/flowGraphGLTFDataProvider.js"
     ]
@@ -933,7 +944,7 @@
     ]
   },
   "node_modules/@babylonjs/core/Animations/animationGroup.js": {
-    "file": "assets/animationGroup-DMf49yeG.js",
+    "file": "assets/animationGroup-DOzmbgxW.js",
     "name": "animationGroup",
     "src": "node_modules/@babylonjs/core/Animations/animationGroup.js",
     "isDynamicEntry": true,
@@ -969,7 +980,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Math/flowGraphMathBlocks.js": {
-    "file": "assets/flowGraphMathBlocks-yV9aq0ew.js",
+    "file": "assets/flowGraphMathBlocks-BtRcIo_L.js",
     "name": "flowGraphMathBlocks",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Math/flowGraphMathBlocks.js",
     "isDynamicEntry": true,
@@ -1009,7 +1020,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Math/flowGraphVectorMathBlocks.js": {
-    "file": "assets/flowGraphVectorMathBlocks-DT9c_kKM.js",
+    "file": "assets/flowGraphVectorMathBlocks-BksooOrG.js",
     "name": "flowGraphVectorMathBlocks",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Math/flowGraphVectorMathBlocks.js",
     "isDynamicEntry": true,
@@ -1049,7 +1060,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Utils/flowGraphArrayIndexBlock.js": {
-    "file": "assets/flowGraphArrayIndexBlock-B0Rv0Hvu.js",
+    "file": "assets/flowGraphArrayIndexBlock-y97g4ldG.js",
     "name": "flowGraphArrayIndexBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/Utils/flowGraphArrayIndexBlock.js",
     "isDynamicEntry": true,
@@ -1119,7 +1130,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/flowGraphDataSwitchBlock.js": {
-    "file": "assets/flowGraphDataSwitchBlock-CYdcOGhX.js",
+    "file": "assets/flowGraphDataSwitchBlock-CSss0G9X.js",
     "name": "flowGraphDataSwitchBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/flowGraphDataSwitchBlock.js",
     "isDynamicEntry": true,
@@ -1130,7 +1141,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/flowGraphGetAssetBlock.js": {
-    "file": "assets/flowGraphGetAssetBlock-D6AL_5V1.js",
+    "file": "assets/flowGraphGetAssetBlock-BwR7hA_w.js",
     "name": "flowGraphGetAssetBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Data/flowGraphGetAssetBlock.js",
     "isDynamicEntry": true,
@@ -1174,7 +1185,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphMeshPickEventBlock.js": {
-    "file": "assets/flowGraphMeshPickEventBlock-DPmeQa9S.js",
+    "file": "assets/flowGraphMeshPickEventBlock-CGUG0tkl.js",
     "name": "flowGraphMeshPickEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphMeshPickEventBlock.js",
     "isDynamicEntry": true,
@@ -1186,7 +1197,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphPointerOutEventBlock.js": {
-    "file": "assets/flowGraphPointerOutEventBlock-CdC3M6u1.js",
+    "file": "assets/flowGraphPointerOutEventBlock-C9sbZF-O.js",
     "name": "flowGraphPointerOutEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphPointerOutEventBlock.js",
     "isDynamicEntry": true,
@@ -1197,7 +1208,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphPointerOverEventBlock.js": {
-    "file": "assets/flowGraphPointerOverEventBlock-BRPNoOeg.js",
+    "file": "assets/flowGraphPointerOverEventBlock-Bvxh3aDc.js",
     "name": "flowGraphPointerOverEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphPointerOverEventBlock.js",
     "isDynamicEntry": true,
@@ -1208,7 +1219,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphReceiveCustomEventBlock.js": {
-    "file": "assets/flowGraphReceiveCustomEventBlock-D-d8lpI0.js",
+    "file": "assets/flowGraphReceiveCustomEventBlock-JuawXoCd.js",
     "name": "flowGraphReceiveCustomEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphReceiveCustomEventBlock.js",
     "isDynamicEntry": true,
@@ -1219,7 +1230,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphSceneReadyEventBlock.js": {
-    "file": "assets/flowGraphSceneReadyEventBlock-C1k4oLFD.js",
+    "file": "assets/flowGraphSceneReadyEventBlock-pnSmtMDW.js",
     "name": "flowGraphSceneReadyEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphSceneReadyEventBlock.js",
     "isDynamicEntry": true,
@@ -1229,7 +1240,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphSceneTickEventBlock.js": {
-    "file": "assets/flowGraphSceneTickEventBlock-CL9_telm.js",
+    "file": "assets/flowGraphSceneTickEventBlock-COjuENSR.js",
     "name": "flowGraphSceneTickEventBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Event/flowGraphSceneTickEventBlock.js",
     "isDynamicEntry": true,
@@ -1250,7 +1261,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphBezierCurveEasingBlock.js": {
-    "file": "assets/flowGraphBezierCurveEasingBlock-KdtzyA1X.js",
+    "file": "assets/flowGraphBezierCurveEasingBlock-Dt9XU7Nv.js",
     "name": "flowGraphBezierCurveEasingBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphBezierCurveEasingBlock.js",
     "isDynamicEntry": true,
@@ -1261,7 +1272,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphEasingBlock.js": {
-    "file": "assets/flowGraphEasingBlock-t3qOhE45.js",
+    "file": "assets/flowGraphEasingBlock-BqXaeSm7.js",
     "name": "flowGraphEasingBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphEasingBlock.js",
     "isDynamicEntry": true,
@@ -1272,7 +1283,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphInterpolationBlock.js": {
-    "file": "assets/flowGraphInterpolationBlock-DRgfnXoJ.js",
+    "file": "assets/flowGraphInterpolationBlock-D2w-sgrx.js",
     "name": "flowGraphInterpolationBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphInterpolationBlock.js",
     "isDynamicEntry": true,
@@ -1294,7 +1305,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphPlayAnimationBlock.js": {
-    "file": "assets/flowGraphPlayAnimationBlock-D-YaoZOD.js",
+    "file": "assets/flowGraphPlayAnimationBlock-CkhrNqhz.js",
     "name": "flowGraphPlayAnimationBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/Animation/flowGraphPlayAnimationBlock.js",
     "isDynamicEntry": true,
@@ -1329,7 +1340,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphCancelDelayBlock.js": {
-    "file": "assets/flowGraphCancelDelayBlock-BtsBT2x_.js",
+    "file": "assets/flowGraphCancelDelayBlock-B2zfRbx5.js",
     "name": "flowGraphCancelDelayBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphCancelDelayBlock.js",
     "isDynamicEntry": true,
@@ -1385,7 +1396,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphForLoopBlock.js": {
-    "file": "assets/flowGraphForLoopBlock-hsfOeUwG.js",
+    "file": "assets/flowGraphForLoopBlock-itS2Y7hH.js",
     "name": "flowGraphForLoopBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphForLoopBlock.js",
     "isDynamicEntry": true,
@@ -1431,7 +1442,7 @@
     ]
   },
   "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphSwitchBlock.js": {
-    "file": "assets/flowGraphSwitchBlock-C6c_jy48.js",
+    "file": "assets/flowGraphSwitchBlock-BCwbBExP.js",
     "name": "flowGraphSwitchBlock",
     "src": "node_modules/@babylonjs/core/FlowGraph/Blocks/Execution/ControlFlow/flowGraphSwitchBlock.js",
     "isDynamicEntry": true,
@@ -1511,7 +1522,7 @@
     ]
   },
   "node_modules/@babylonjs/core/Materials/PBR/openpbrMaterial.js": {
-    "file": "assets/openpbrMaterial-C0J2shZj.js",
+    "file": "assets/openpbrMaterial-G0vg8rz8.js",
     "name": "openpbrMaterial",
     "src": "node_modules/@babylonjs/core/Materials/PBR/openpbrMaterial.js",
     "isDynamicEntry": true,
@@ -1529,12 +1540,12 @@
       "_buffer-Co66ag14.js",
       "_pushMaterial-mbST6lNq.js",
       "_texture-BFawUibc.js",
-      "_pbrMaterial-D_I7XJmQ.js",
+      "_pbrMaterial-C27t-5R3.js",
       "_imageProcessing-DVX3Kfaz.js"
     ],
     "dynamicImports": [
-      "_babylon-shaders-wgsl-BFL40Gbp.js",
-      "_babylon-shaders-glsl-DEWEOcF5.js"
+      "_babylon-shaders-wgsl-CmAujgXY.js",
+      "_babylon-shaders-glsl-CovYPAox.js"
     ]
   },
   "node_modules/@babylonjs/core/Materials/Textures/Loaders/basisTextureLoader.js": {
@@ -1549,22 +1560,22 @@
     ]
   },
   "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js": {
-    "file": "assets/ddsTextureLoader-dDEqOSNP.js",
+    "file": "assets/ddsTextureLoader-CQV_PQaM.js",
     "name": "ddsTextureLoader",
     "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/ddsTextureLoader.js",
     "isDynamicEntry": true,
     "imports": [
-      "_textureTools-DYE4853h.js",
+      "_textureTools-k0GoRu7f.js",
       "node_modules/@babylonjs/core/Misc/dds.js"
     ]
   },
   "node_modules/@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js": {
-    "file": "assets/envTextureLoader-B8Dd-SAV.js",
+    "file": "assets/envTextureLoader-CYSe89lF.js",
     "name": "envTextureLoader",
     "src": "node_modules/@babylonjs/core/Materials/Textures/Loaders/envTextureLoader.js",
     "isDynamicEntry": true,
     "imports": [
-      "_environmentTextureTools-OMccTqnS.js"
+      "_environmentTextureTools-3LLexv9E.js"
     ]
   },
   "node_modules/@babylonjs/core/Materials/Textures/Loaders/exrTextureLoader.js": {
@@ -1623,20 +1634,20 @@
     "isDynamicEntry": true
   },
   "node_modules/@babylonjs/core/Misc/dds.js": {
-    "file": "assets/dds-CPAaKJPf.js",
+    "file": "assets/dds-D_5drp2r.js",
     "name": "dds",
     "src": "node_modules/@babylonjs/core/Misc/dds.js",
     "isDynamicEntry": true,
     "imports": [
       "_math.scalar.functions-lnL7TJ7T.js",
       "_logger-CuBYPcDK.js",
-      "_textureTools-DYE4853h.js",
-      "_abstractEngine.cubeTexture-mj7626Vk.js",
-      "_cubemapToSphericalPolynomial-W_bpu_dv.js"
+      "_textureTools-k0GoRu7f.js",
+      "_abstractEngine.cubeTexture-BfCPrQ5R.js",
+      "_cubemapToSphericalPolynomial-NcRVidV7.js"
     ]
   },
   "node_modules/@babylonjs/loaders/glTF/2.0/Extensions/KHR_interactivity/flowGraphGLTFDataProvider.js": {
-    "file": "assets/flowGraphGLTFDataProvider-CJrQUe1B.js",
+    "file": "assets/flowGraphGLTFDataProvider-pe8Qkt-n.js",
     "name": "flowGraphGLTFDataProvider",
     "src": "node_modules/@babylonjs/loaders/glTF/2.0/Extensions/KHR_interactivity/flowGraphGLTFDataProvider.js",
     "isDynamicEntry": true,
@@ -1645,7 +1656,7 @@
     ]
   },
   "node_modules/@babylonjs/loaders/glTF/2.0/glTFLoaderAnimation.js": {
-    "file": "assets/glTFLoaderAnimation-Cddhol-X.js",
+    "file": "assets/glTFLoaderAnimation-EtZs3Hz7.js",
     "name": "glTFLoaderAnimation",
     "src": "node_modules/@babylonjs/loaders/glTF/2.0/glTFLoaderAnimation.js",
     "isDynamicEntry": true,
@@ -1654,7 +1665,7 @@
     ]
   },
   "node_modules/@babylonjs/loaders/glTF/2.0/openpbrMaterialLoadingAdapter.js": {
-    "file": "assets/openpbrMaterialLoadingAdapter-BBzrO_LN.js",
+    "file": "assets/openpbrMaterialLoadingAdapter-CHtdVnxi.js",
     "name": "openpbrMaterialLoadingAdapter",
     "src": "node_modules/@babylonjs/loaders/glTF/2.0/openpbrMaterialLoadingAdapter.js",
     "isDynamicEntry": true,
@@ -1663,7 +1674,7 @@
     ]
   },
   "node_modules/@babylonjs/loaders/glTF/2.0/pbrMaterialLoadingAdapter.js": {
-    "file": "assets/pbrMaterialLoadingAdapter-DXnzRumC.js",
+    "file": "assets/pbrMaterialLoadingAdapter-BzgvvZdY.js",
     "name": "pbrMaterialLoadingAdapter",
     "src": "node_modules/@babylonjs/loaders/glTF/2.0/pbrMaterialLoadingAdapter.js",
     "isDynamicEntry": true,
@@ -1672,7 +1683,7 @@
     ]
   },
   "node_modules/@felipegalind0/gamepad-tools/dist/ui/index.js": {
-    "file": "assets/ui-CsYiXxqy.js",
+    "file": "assets/ui-B4YqlstE.js",
     "name": "ui",
     "src": "node_modules/@felipegalind0/gamepad-tools/dist/ui/index.js",
     "isDynamicEntry": true,
@@ -1685,7 +1696,7 @@
     ]
   },
   "node_modules/@felipegalind0/gamepad-tools/dist/viewer/index.js": {
-    "file": "assets/viewer-jrargylF.js",
+    "file": "assets/viewer-4kW8g2qI.js",
     "name": "viewer",
     "src": "node_modules/@felipegalind0/gamepad-tools/dist/viewer/index.js",
     "isDynamicEntry": true,
@@ -1724,7 +1735,7 @@
     "src": "node_modules/@foss-earth/engine/assets/geoid/egm2008-60.bin"
   },
   "node_modules/@foss-earth/engine/src/visualization/compassCenterSphere.ts": {
-    "file": "assets/compassCenterSphere-D1bs1k38.js",
+    "file": "assets/compassCenterSphere-DSdqq0kH.js",
     "name": "compassCenterSphere",
     "src": "node_modules/@foss-earth/engine/src/visualization/compassCenterSphere.ts",
     "isDynamicEntry": true,
@@ -1736,7 +1747,7 @@
     ]
   },
   "node_modules/@foss-earth/renderer/src/babylon/google.ts": {
-    "file": "assets/google-Cy6ncNSS.js",
+    "file": "assets/google-d9ixbtUG.js",
     "name": "google",
     "src": "node_modules/@foss-earth/renderer/src/babylon/google.ts",
     "isDynamicEntry": true,
@@ -1746,17 +1757,23 @@
       "_mesh-8DpaRX54.js",
       "_pushMaterial-mbST6lNq.js",
       "_texture-BFawUibc.js",
-      "_pbrMaterial-D_I7XJmQ.js"
+      "_pbrMaterial-C27t-5R3.js"
     ]
   },
+  "node_modules/@foss-earth/scenes/src/authoring.ts": {
+    "file": "assets/authoring-Cx8_Uzqp.js",
+    "name": "authoring",
+    "src": "node_modules/@foss-earth/scenes/src/authoring.ts",
+    "isDynamicEntry": true
+  },
   "node_modules/@foss-earth/scenes/src/miniViewerCpu.ts": {
-    "file": "assets/miniViewerCpu-DqTow_Mb.js",
+    "file": "assets/miniViewerCpu-DRkiY_In.js",
     "name": "miniViewerCpu",
     "src": "node_modules/@foss-earth/scenes/src/miniViewerCpu.ts",
     "isDynamicEntry": true,
     "imports": [
-      "_src-Citv8AKM.js",
-      "index.html"
+      "_src-YIlhAeQk.js",
+      "_src-B5WrQm67.js"
     ]
   },
   "node_modules/@foss-earth/sky/src/starCatalogue.ts": {
@@ -1776,27 +1793,32 @@
     ]
   },
   "src/app/GlobeOverlay.tsx": {
-    "file": "assets/GlobeOverlay-BIsz-EGK.js",
+    "file": "assets/GlobeOverlay-DQ2GBcBW.js",
     "name": "GlobeOverlay",
     "src": "src/app/GlobeOverlay.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "_browser-BRulVJyz.js",
+      "_browser-BUdRlEI4.js",
+      "_preload-helper-yvApXQsr.js",
       "index.html",
       "_react-dom-ByqcrMAm.js",
       "_poseEditTab-0T241VFP.js"
     ],
+    "dynamicImports": [
+      "node_modules/@foss-earth/scenes/src/authoring.ts",
+      "src/scenes/index.ts"
+    ],
     "css": [
-      "assets/GlobeOverlay-BFYBa-SE.css"
+      "assets/GlobeOverlay-DzP6jp8n.css"
     ]
   },
   "src/app/poseEditor/editor.ts": {
-    "file": "assets/editor-O-YTnJxr.js",
+    "file": "assets/editor-D_X-Z2ws.js",
     "name": "editor",
     "src": "src/app/poseEditor/editor.ts",
     "isDynamicEntry": true,
     "imports": [
-      "_browser-BRulVJyz.js",
+      "_browser-BUdRlEI4.js",
       "index.html",
       "_poseEditTab-0T241VFP.js"
     ],
@@ -1805,14 +1827,14 @@
     ]
   },
   "src/app/thumbnailBackend.ts": {
-    "file": "assets/thumbnailBackend-byohCbPq.js",
+    "file": "assets/thumbnailBackend-CJqqglCG.js",
     "name": "thumbnailBackend",
     "src": "src/app/thumbnailBackend.ts",
     "isDynamicEntry": true,
     "imports": [
-      "_src-Citv8AKM.js",
-      "_preload-helper-yvApXQsr.js",
-      "index.html"
+      "_src-YIlhAeQk.js",
+      "_src-B5WrQm67.js",
+      "_preload-helper-yvApXQsr.js"
     ],
     "dynamicImports": [
       "src/app/thumbnailWebGpu.ts",
@@ -1829,13 +1851,24 @@
     ]
   },
   "src/app/thumbnailWebGpu.ts": {
-    "file": "assets/thumbnailWebGpu-BdMwdqfZ.js",
+    "file": "assets/thumbnailWebGpu-Dr7DqQrc.js",
     "name": "thumbnailWebGpu",
     "src": "src/app/thumbnailWebGpu.ts",
     "isDynamicEntry": true,
     "imports": [
       "index.html",
       "_thumbnailOcclusion-Dq7SNB76.js"
+    ]
+  },
+  "src/scenes/index.ts": {
+    "file": "assets/scenes-B4qGojSd.js",
+    "name": "scenes",
+    "src": "src/scenes/index.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_src-YIlhAeQk.js",
+      "_src-B5WrQm67.js",
+      "index.html"
     ]
   }
 }
