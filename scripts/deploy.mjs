@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LANDING } from './build.mjs'
+import { brandPalette, LANDING } from './build.mjs'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const BRANCH = 'refs/heads/gh-pages'
@@ -105,7 +105,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // What the app is built from, in its deployed-from.json, so new code in a checkout
   // it is built from is a new version of the app (FOSS Earth About's record).
   const inputs = recordBuildInputs({ root: appRoot, dryRun })
-  const why = args.includes('--force') ? 'asked to with --force' : rebuildReason({ root: appRoot, page, inputs })
+  // An app gh-pages has in a brand palette is replaced even when its source is unchanged, and build.mjs refuses one.
+  const branded = page === null ? null : brandPalette(page)
+  const why = args.includes('--force') ? 'asked to with --force'
+    : rebuildReason({ root: appRoot, page, inputs }) ?? (branded === null ? undefined : `gh-pages' app names the ${JSON.stringify(branded)} palette`)
   if (why) {
     console.log(`Building the Earth app: ${why}.`)
     execFileSync('npm', ['run', 'build'], { cwd: appRoot, stdio: 'inherit' })
