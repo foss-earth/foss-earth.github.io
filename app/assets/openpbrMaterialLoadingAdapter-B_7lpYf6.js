@@ -1,0 +1,1 @@
+export{i as OpenPBRMaterialLoadingAdapter}from"./index.babylonjs-FnG5SEOv.js";
